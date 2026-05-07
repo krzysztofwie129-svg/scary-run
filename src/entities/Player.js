@@ -17,6 +17,7 @@ import {
   GAME_WIDTH,
   GROUND_Y,
 } from '../config.js';
+import { Haptic } from '../utils/Haptic.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -114,6 +115,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.state_ = 'jumping';
     this.play(this.animKeys.jump, true);
     this.scene.audioManager?.playSfx('jump', { rate: isFirstJump ? 1.0 : 1.15, volume: 0.7 });
+    Haptic.jump();
     this.landingGraceCounter = 0;
   }
 
@@ -122,6 +124,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.state_ = 'dead';
     this.setVelocityX(0);
     this.play(this.animKeys.hit, true);
+    Haptic.crash();
     this.scene.events.emit('player-died');
   }
 

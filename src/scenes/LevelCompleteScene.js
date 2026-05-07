@@ -8,6 +8,7 @@ import { AudioManager } from '../utils/AudioManager.js';
 import { playFanfare } from '../utils/SuccessFanfare.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { formatScore } from '../utils/format.js';
+import { Haptic } from '../utils/Haptic.js';
 
 const SPARK_KEY = '__spark_4x4';
 
@@ -25,6 +26,7 @@ export class LevelCompleteScene extends Phaser.Scene {
 
   create() {
     this.audioManager = new AudioManager(this);
+    Haptic.levelComplete();
 
     const completedLvl = LEVELS[this.completedLevelIdx];
     const bgKey = `bg_${completedLvl.bgFolder}_layer1`;

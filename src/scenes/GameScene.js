@@ -46,6 +46,7 @@ import { formatScore, formatNumber } from '../utils/format.js';
 import { playFanfare } from '../utils/SuccessFanfare.js';
 import { InputHandler } from '../utils/InputHandler.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
+import { Haptic } from '../utils/Haptic.js';
 
 const SPARK_TEXTURE_KEY = '__spark_4x4';
 
@@ -489,12 +490,16 @@ export class GameScene extends Phaser.Scene {
       sessionManager.addDiamond();
       this.audioManager.playSfx('coin', { rate: DIAMOND_PICKUP_PITCH });
       this.emitParticles(x, y, PARTICLE_DIAMOND_COLOR, PARTICLE_DIAMOND_COUNT);
+      Haptic.diamond();
     } else {
       const result = sessionManager.addCoin();
       this.audioManager.playSfx('coin', { rate: COIN_PICKUP_PITCH });
       this.emitParticles(x, y, PARTICLE_COIN_COLOR, PARTICLE_COIN_COUNT);
       if (result.extraLife) {
         this.showExtraLifeEffect();
+        Haptic.extraLife();
+      } else {
+        Haptic.coin();
       }
     }
   }

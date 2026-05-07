@@ -8,6 +8,7 @@ import { sessionManager } from '../utils/SessionManager.js';
 import { Leaderboard } from '../utils/Leaderboard.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { formatScore } from '../utils/format.js';
+import { Haptic } from '../utils/Haptic.js';
 
 export class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -43,6 +44,7 @@ export class GameOverScene extends Phaser.Scene {
 
   create() {
     this.audioManager = new AudioManager(this);
+    Haptic.gameOver();
 
     if (this.textures.exists('bg_layer_00')) {
       const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_layer_00');

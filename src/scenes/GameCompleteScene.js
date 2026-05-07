@@ -12,6 +12,7 @@ import { playFanfare } from '../utils/SuccessFanfare.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { Leaderboard } from '../utils/Leaderboard.js';
 import { formatScore } from '../utils/format.js';
+import { Haptic } from '../utils/Haptic.js';
 
 const SPARK_KEY = '__spark_4x4';
 
@@ -48,6 +49,7 @@ export class GameCompleteScene extends Phaser.Scene {
 
   create() {
     this.audioManager = new AudioManager(this);
+    Haptic.gameComplete();
 
     if (this.textures.exists('bg_layer_00')) {
       const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_layer_00');
