@@ -1,28 +1,36 @@
-// InputHandler — TYLKO tap zone (sesja 8 jump-only). Cały ekran = jump.
-// Bez slideZone (slide został usunięty — gameplay tylko skoki).
-// Niewidzialny (alpha 0) interactive rectangle na bardzo wysokim depth (99998).
-
-import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+// InputHandler — DOM-level pointerdown listener (sesja 7.4.5).
+// Tap kędykolwiek na ekranie (canvas + black margins po bokach z FIT scaling)
+// = jump. Wcześniejsza wersja używała Phaser zone ograniczonego do canvas
+// (1280×720 game coords) — na phone landscape canvas display ~764×430 z
+// margin 84px po bokach, marginesy nie reagowały na tapy (zmarnowane miejsce).
+//
+// Dlaczego DOM a nie Phaser scene.input?
+// scene.input.on('pointerdown') reaguje TYLKO na pointer w obrębie canvas.
+// document-level listener wyłapuje WSZYSTKIE tapy w viewport — w tym
+// na #game-container marginesach.
+//
+// Cleanup w destroy() — listener removed gdy GameScene shutdown.
 
 export class InputHandler {
   constructor(scene, options = {}) {
     this.scene = scene;
     this.onJump = options.onJump || (() => {});
 
-    this.jumpZone = scene.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      0xffffff,
-      0,
-    );
-    this.jumpZone.setInteractive().setScrollFactor(0).setDepth(99998);
-    this.jumpZone.on('pointerdown', () => this.onJump());
+    this._handler = (e) => {
+      // Ignoruj tapy na HTML input (np. NameInputScene) — chociaż w GameScene
+      // tego inputa nie ma, defensive check na wszelki wypadek.
+      if (e.target && e.target.tagName === 'INPUT') return;
+      this.onJump();
+    };
+
+    // 'pointerdown' łapie i mouse i touch. Mobile: touchscreen tap = pointerdown.
+    document.addEventListener('pointerdown', this._handler);
   }
 
   destroy() {
-    try { this.jumpZone?.destroy(); } catch (e) { /* ignore */ }
-    this.jumpZone = null;
+    if (this._handler) {
+      try { document.removeEventListener('pointerdown', this._handler); } catch (e) { /* ignore */ }
+      this._handler = null;
+    }
   }
 }

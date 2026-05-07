@@ -1,4 +1,6 @@
-// LeaderboardScene — top 10 z localStorage. RANK | NAME | SCORE | LEVEL | COINS | DATE.
+// LeaderboardScene — top 10 GLOBALNY (sesja 7.4.6). Fetch z /api/leaderboard
+// (CF Pages Function + KV); fallback localStorage gdy serwer offline.
+// RANK | NAME | SCORE | LEVEL | COINS | DATE.
 
 import {
   GAME_WIDTH,
@@ -34,20 +36,34 @@ export class LeaderboardScene extends Phaser.Scene {
       shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 12, fill: true },
     }).setOrigin(0.5);
 
-    const entries = Leaderboard.load();
+    // Loading placeholder — pokazuje się dopóki async fetch nie wróci.
+    this.loadingText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Wczytywanie...', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '28px',
+      color: '#bdaee3',
+      fontStyle: 'italic',
+      stroke: '#000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
 
-    if (entries.length === 0) {
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'No scores yet — play to be the first!', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '28px',
-        color: '#bdaee3',
-        fontStyle: 'italic',
-        stroke: '#000',
-        strokeThickness: 3,
-      }).setOrigin(0.5);
-    } else {
-      this.renderTable(entries);
-    }
+    Leaderboard.loadAsync().then((entries) => {
+      if (this.loadingText) {
+        this.loadingText.destroy();
+        this.loadingText = null;
+      }
+      if (entries.length === 0) {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'No scores yet — play to be the first!', {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '28px',
+          color: '#bdaee3',
+          fontStyle: 'italic',
+          stroke: '#000',
+          strokeThickness: 3,
+        }).setOrigin(0.5);
+      } else {
+        this.renderTable(entries);
+      }
+    });
 
     // BACK button.
     const onBack = () => {

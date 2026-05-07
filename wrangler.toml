@@ -1,0 +1,13 @@
+# Cloudflare Pages config (sesja 7.4.6).
+# Pages Function /functions/api/leaderboard.js używa KV przez binding LEADERBOARD.
+# CF Pages auto-pickup'uje wrangler.toml z root repo przy deploy.
+
+name = "scary-run"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "dist"
+
+# KV binding — Pages Function `env.LEADERBOARD` map'uje na ten namespace.
+# Namespace ID utworzone przez `wrangler kv namespace create scary-run-leaderboard`.
+[[kv_namespaces]]
+binding = "LEADERBOARD"
+id = "83036e57dbb2427b998052e43f8a7696"

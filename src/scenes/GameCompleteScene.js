@@ -25,13 +25,17 @@ export class GameCompleteScene extends Phaser.Scene {
     sessionManager.finishCurrentPlayer();
 
     // Leaderboard z level = LEVELS.length (czyli "ALL").
-    this.rank = Leaderboard.add({
+    // Sync local dla natychmiastowego "NEW HIGH SCORE!" UX.
+    const lbPayload = {
       name: this.player.name || 'Anon',
       score: Math.floor(this.player.score),
       level: LEVELS.length,
       coins: this.player.coins,
-    });
+    };
+    this.rank = Leaderboard._addLocal(lbPayload).rank;
     this.isHighScore = this.rank >= 0;
+    // Async global POST — fire-and-forget.
+    Leaderboard.addAsync(lbPayload).catch(() => { /* fallback localStorage in util */ });
 
     // Hi-total-score legacy.
     const raw = localStorage.getItem(HI_TOTAL_SCORE_KEY);

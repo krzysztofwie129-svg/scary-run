@@ -19,14 +19,26 @@ export class GameOverScene extends Phaser.Scene {
     this.player = player;
     sessionManager.finishCurrentPlayer();
 
-    // Zapis do leaderboard. level zapisujemy jako 1-based (level reached).
-    this.rank = Leaderboard.add({
+    // Sync local — żeby od razu pokazać "NEW HIGH SCORE!" jeśli rank w lokalnym
+    // top 10 (UX nie czeka na serwer).
+    const localResult = Leaderboard._addLocal({
       name: player.name || 'Anon',
       score: Math.floor(player.score),
       level: player.level + 1,
       coins: player.coins,
     });
+    this.rank = localResult.rank;
     this.isHighScore = this.rank >= 0;
+
+    // Async global — POST do /api/leaderboard. Fire-and-forget; jeśli rank
+    // globalny się różni od localnego, leaderboard sam się zaktualizuje
+    // przy następnej wizycie LeaderboardScene (która robi loadAsync).
+    Leaderboard.addAsync({
+      name: player.name || 'Anon',
+      score: Math.floor(player.score),
+      level: player.level + 1,
+      coins: player.coins,
+    }).catch(() => { /* już ma fallback localStorage wewnątrz */ });
   }
 
   create() {
