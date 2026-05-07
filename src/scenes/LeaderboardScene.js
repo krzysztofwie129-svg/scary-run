@@ -54,7 +54,7 @@ export class LeaderboardScene extends Phaser.Scene {
       this.audioManager.playSfx('click');
       this.scene.start('MenuScene');
     };
-    const btnY = GAME_HEIGHT - 60;
+    const btnY = GAME_HEIGHT - 120;
     const btnX = GAME_WIDTH / 2;
     const btnW = 240;
     const btnH = 60;
@@ -71,9 +71,9 @@ export class LeaderboardScene extends Phaser.Scene {
     this.add.zone(btnX, btnY, btnW, btnH).setInteractive({ useHandCursor: true })
       .on('pointerup', onBack);
 
-    this.input.keyboard.on('keydown-ESC', onBack);
-    this.input.keyboard.on('keydown-SPACE', onBack);
-    this.input.keyboard.on('keydown-ENTER', onBack);
+    this.input.keyboard?.on('keydown-ESC', onBack);
+    this.input.keyboard?.on('keydown-SPACE', onBack);
+    this.input.keyboard?.on('keydown-ENTER', onBack);
   }
 
   renderTable(entries) {

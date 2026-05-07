@@ -107,7 +107,9 @@ class SessionManager {
     this.currentPlayer().finished = true;
   }
 
-  /** Restart bieżącego gracza (po RESTART z GameOver w SP). */
+  /** Restart bieżącego gracza (po RESTART z GameOver w SP).
+   *  level pozostaje — zostaje na tym samym poziomie. (Zachowane dla
+   *  scenariusza re-try konkretnego levelu jeśli kiedyś będzie potrzebne.) */
   restartCurrentPlayer() {
     const p = this.currentPlayer();
     p.score = 0;
@@ -115,7 +117,19 @@ class SessionManager {
     p.diamonds = 0;
     p.lives = INITIAL_LIVES;
     p.finished = false;
-    // level pozostaje (zostają na tym samym levelu)
+  }
+
+  /** Pełen restart bieżącego gracza — RESET DO LEVELU 0.
+   *  Używany przez GameOverScene RESTART po stracie wszystkich żyć.
+   *  Postać (character) pozostaje — gracz i postać te same. */
+  restartCurrentPlayerFromLevel0() {
+    const p = this.currentPlayer();
+    p.score = 0;
+    p.coins = 0;
+    p.diamonds = 0;
+    p.level = 0;
+    p.lives = INITIAL_LIVES;
+    p.finished = false;
   }
 
   hasNextPlayer() {

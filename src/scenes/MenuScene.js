@@ -9,7 +9,7 @@ import {
 } from '../config.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
-import { isMobile } from '../utils/DeviceDetect.js';
+import { isMobileDevice } from '../utils/DeviceDetect.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -17,16 +17,19 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    // Muzyka menu wyłączona (sesja 7.1).
     this.audioManager = new AudioManager(this);
-    // Audio unlock dla mobile — pierwszy tap odblokowuje AudioContext (browser
-    // autoplay policy). Próbujemy od razu, jeśli sound.locked → czekamy na tap.
+    // Audio unlock dla mobile — KLUCZOWE dla SFX. iOS Safari autoplay policy
+    // wymaga pierwszej próby play() na user gesture żeby odblokować audio
+    // dla całej strony. Wcześniejsza wersja używała playMusic('music_menu')
+    // jako "ofiarne" play żeby unlock — po wyłączeniu muzyki SFX przestały
+    // grać. Tu używamy this.sound.unlock() który robi to samo bez słyszalnego
+    // dźwięku (silent buffer pod spodem).
     if (this.sound.locked) {
       this.input.once('pointerdown', () => {
+        try { this.sound.unlock(); } catch (e) { /* ignore */ }
         try { this.sound.context?.resume(); } catch (e) { /* ignore */ }
-        this.audioManager.playMusic('music_menu', 0.4, false);
       });
-    } else {
-      this.audioManager.playMusic('music_menu', 0.4, false);
     }
 
     // Tło: layer_00 z tileset/background.
@@ -55,14 +58,14 @@ export class MenuScene extends Phaser.Scene {
     this.menuState = 'main';
     this.buildMainButtons();
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, '↑ ↓ wybór · ENTER / SPACE zatwierdź', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, 'Tap aby wybrac', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '14px',
       color: '#bdaee3',
     }).setOrigin(0.5);
 
-    if (isMobile()) {
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'Tap UP to jump  •  Tap DOWN to slide', {
+    if (isMobileDevice()) {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'Tap GORA aby skoczyc  •  Tap DOL aby slizgac', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '18px',
         color: '#ffd93c',
@@ -153,20 +156,20 @@ export class MenuScene extends Phaser.Scene {
     const onDown = () => move(1);
     const onActivate = () => this.buttons[this.focusedIndex]?.onClick();
 
-    this.input.keyboard.on('keydown-UP', onUp);
-    this.input.keyboard.on('keydown-W', onUp);
-    this.input.keyboard.on('keydown-DOWN', onDown);
-    this.input.keyboard.on('keydown-S', onDown);
-    this.input.keyboard.on('keydown-SPACE', onActivate);
-    this.input.keyboard.on('keydown-ENTER', onActivate);
+    this.input.keyboard?.on('keydown-UP', onUp);
+    this.input.keyboard?.on('keydown-W', onUp);
+    this.input.keyboard?.on('keydown-DOWN', onDown);
+    this.input.keyboard?.on('keydown-S', onDown);
+    this.input.keyboard?.on('keydown-SPACE', onActivate);
+    this.input.keyboard?.on('keydown-ENTER', onActivate);
 
     this.kbHandlers = [
-      () => this.input.keyboard.off('keydown-UP', onUp),
-      () => this.input.keyboard.off('keydown-W', onUp),
-      () => this.input.keyboard.off('keydown-DOWN', onDown),
-      () => this.input.keyboard.off('keydown-S', onDown),
-      () => this.input.keyboard.off('keydown-SPACE', onActivate),
-      () => this.input.keyboard.off('keydown-ENTER', onActivate),
+      () => this.input.keyboard?.off('keydown-UP', onUp),
+      () => this.input.keyboard?.off('keydown-W', onUp),
+      () => this.input.keyboard?.off('keydown-DOWN', onDown),
+      () => this.input.keyboard?.off('keydown-S', onDown),
+      () => this.input.keyboard?.off('keydown-SPACE', onActivate),
+      () => this.input.keyboard?.off('keydown-ENTER', onActivate),
     ];
   }
 

@@ -5,69 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#1a0a2e" />
   <title>Scary Run</title>
   <style>
+    * { box-sizing: border-box; }
+
     html, body {
       margin: 0;
       padding: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       background: #1a0a2e;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       -webkit-user-select: none;
-      -moz-user-select: none;
       user-select: none;
       -webkit-touch-callout: none;
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
-    }
-
-    /* Disable iOS Safari bounce scroll. */
-    body {
       position: fixed;
       top: 0;
       left: 0;
     }
 
-    /* iOS Safari zoom'uje viewport gdy focus na <input>/<textarea> z fontem
-       <16px. Wymuszamy 16px na hidden inputach żeby zachować skalę. */
-    input, textarea, select {
-      font-size: 16px !important;
-    }
+    /* NIE używamy env(safe-area-inset-*) na body — w landscape iPhone
+       (notch po lewej) padding-left=44 a padding-right=0 jest asymetryczny
+       i przesuwa container w prawo. Game canvas zajmuje pełen viewport,
+       gra wizualnie może sięgać pod notch (typowe w landscape grach). */
 
-    /* Domyślnie kontener wypełnia viewport. Phaser scale FIT centeruje canvas. */
+    /* Container = pełen viewport. NIE używamy display:flex bo Phaser
+       Scale.FIT + autoCenter:CENTER_BOTH sam ustawia margin canvasa
+       — flex + Phaser-center daje konflikt centering => przesunięcie. */
     #game-container {
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
     }
 
-    /* Klasa dodawana z JS gdy mobile + portrait. JS-driven detection jest
-       niezawodne — DevTools emulacja często nie matche'uje
-       @media (hover:none) and (pointer:coarse). Wzorzec center/center
-       (translate-50 + rotate-90 wokół środka) matematycznie wypełnia
-       viewport bez offsetów. */
-    #game-container.rotated {
+    canvas {
+      display: block !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+    }
+
+    /* HTML input dla NameInputScene — pojawia się nad canvasem na fokus.
+       Natywny element = soft keyboard automatycznie na mobile. */
+    #name-input-html {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 100vh;
-      height: 100vw;
-      transform: translate(-50%, -50%) rotate(90deg);
-      transform-origin: center center;
+      transform: translate(-50%, -50%);
+      font-size: 24px;
+      padding: 12px 20px;
+      border: 3px solid #ffd93c;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      text-align: center;
+      width: 320px;
+      max-width: 90vw;
+      outline: none;
+      z-index: 10000;
+      display: none;
+      font-family: 'Arial Black', sans-serif;
+      letter-spacing: 0.05em;
     }
-
-    canvas {
-      display: block !important;
-      max-width: 100%;
-      max-height: 100%;
+    #name-input-html.active {
+      display: block;
     }
   </style>
 </head>
 <body>
   <div id="game-container"></div>
+  <input id="name-input-html" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" />
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

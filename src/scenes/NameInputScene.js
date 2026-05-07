@@ -1,11 +1,9 @@
-// NameInputScene — pyta o imię gracza. Po ENTER:
-//   • playerIndex < numPlayers - 1 → kolejny gracz (rekursja)
-//   • last player → CharSelectScene
+// NameInputScene (sesja 7) — używa NATYWNEGO HTML <input> (#name-input-html
+// w index.html) zamiast Phaser TextInput. Soft keyboard automatycznie na
+// mobile, bez ukrytych inputów + workarounds.
 
-import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
-import { TextInput } from '../utils/InputHelper.js';
+import { GAME_WIDTH, GAME_HEIGHT, NAME_MAX_LENGTH } from '../config.js';
 import { sessionManager } from '../utils/SessionManager.js';
-import { isTouchDevice } from '../utils/DeviceDetect.js';
 
 export class NameInputScene extends Phaser.Scene {
   constructor() {
@@ -19,8 +17,8 @@ export class NameInputScene extends Phaser.Scene {
   }
 
   create() {
-    // Dla MP, playerIndex > 0, bez flagi skipSplash → przekieruj na splash.
-    // Pierwszy gracz (index 0) i SP wchodzą bezpośrednio bez splasha.
+    // MP playerIndex>0: najpierw splash (NameSplashScene), potem wracamy ze
+    // skipSplash=true. SP / pierwszy gracz wchodzą bezpośrednio.
     if (this.numPlayers > 1 && this.playerIndex > 0 && !this.skipSplash) {
       this.scene.start('NameSplashScene', {
         playerIndex: this.playerIndex,
@@ -28,7 +26,8 @@ export class NameInputScene extends Phaser.Scene {
       });
       return;
     }
-    // Tło: pierwsza warstwa level1 z alpha + ciemny overlay.
+
+    // Tło — pierwsza warstwa level1 z alpha + ciemny overlay.
     if (this.textures.exists('bg_level1_layer1')) {
       const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_level1_layer1');
       bg.setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.4);
@@ -38,65 +37,101 @@ export class NameInputScene extends Phaser.Scene {
     overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     const title = this.numPlayers > 1
-      ? `Player ${this.playerIndex + 1} — enter your name`
-      : 'Enter your name';
-    // Wszystkie elementy w GÓRNEJ HALF gry (Y < GAME_HEIGHT/2 = 360),
-    // żeby soft keyboard na mobile (która zajmuje dolne 40-50% ekranu)
-    // nie zasłaniała inputu i przycisku.
-    this.add.text(GAME_WIDTH / 2, 80, title, {
+      ? `PLAYER ${this.playerIndex + 1} — wpisz imie`
+      : 'WPISZ IMIE';
+    this.add.text(GAME_WIDTH / 2, 120, title, {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '48px',
-      color: '#ffe066',
-      stroke: '#000',
-      strokeThickness: 6,
+      fontSize: '44px',
+      color: '#ffd93c',
+      stroke: '#000000',
+      strokeThickness: 5,
     }).setOrigin(0.5);
 
-    const hint = isTouchDevice()
-      ? 'Tap pole aby pisać · max 12 znaków, ENTER aby zatwierdzić'
-      : 'A-Z 0-9 spacja, max 12 znaków, ENTER aby zatwierdzić';
-    this.add.text(GAME_WIDTH / 2, 145, hint, {
+    this.add.text(GAME_WIDTH / 2, 175, `A-Z 0-9 spacja, max ${NAME_MAX_LENGTH} znakow`, {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '18px',
+      fontSize: '20px',
       color: '#bdaee3',
       stroke: '#000',
       strokeThickness: 2,
     }).setOrigin(0.5);
 
-    this.input_ = new TextInput(this, GAME_WIDTH / 2, 220, {
-      onEnter: (val) => this.confirm(val),
-    });
+    // Natywny HTML input z index.html.
+    this.htmlInput = document.getElementById('name-input-html');
+    if (this.htmlInput) {
+      this.htmlInput.value = '';
+      this.htmlInput.classList.add('active');
+      // Mała chwila opóźnienia żeby DOM się zsynchronizował, potem focus
+      // (mobile soft keyboard wstaje).
+      this.focusTimeout = setTimeout(() => {
+        try { this.htmlInput.focus(); } catch (e) { /* ignore */ }
+      }, 100);
 
-    // Przycisk CONFIRM (alternatywa dla ENTER).
-    const btnY = 320;
-    const btn = this.add.zone(GAME_WIDTH / 2, btnY, 240, 60).setInteractive({ useHandCursor: true });
-    const btnGfx = this.add.graphics();
-    btnGfx.fillStyle(0x6b3eb6, 1);
-    btnGfx.fillRoundedRect(GAME_WIDTH / 2 - 120, btnY - 30, 240, 60, 14);
-    btnGfx.lineStyle(3, 0xffe066, 1);
-    btnGfx.strokeRoundedRect(GAME_WIDTH / 2 - 120, btnY - 30, 240, 60, 14);
-    this.add.text(GAME_WIDTH / 2, btnY, 'CONFIRM', {
+      this.enterListener = (e) => {
+        if (e.key === 'Enter') this.confirmName();
+      };
+      this.htmlInput.addEventListener('keydown', this.enterListener);
+    }
+
+    // Przycisk POTWIERDZ (alternatywa dla Enter — szczególnie ważne na mobile).
+    // y = GAME_HEIGHT - 140 = safe-zone (sesja 6.5).
+    const btnY = GAME_HEIGHT - 140;
+    const confirmBtn = this.add.text(GAME_WIDTH / 2, btnY, 'POTWIERDZ', {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '26px',
-      color: '#fff',
-    }).setOrigin(0.5);
-    btn.on('pointerup', () => this.confirm(this.input_.value));
+      fontSize: '36px',
+      color: '#ffffff',
+      backgroundColor: '#5C3E70',
+      padding: { x: 28, y: 14 },
+      stroke: '#ffe066',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    confirmBtn.on('pointerdown', () => this.confirmName());
+
+    // Cleanup przy shutdown — bez tego HTML input wisi z aktywną klasą.
+    this.events.once('shutdown', () => this.cleanup());
   }
 
-  confirm(value) {
-    const trimmed = (value || '').trim();
-    if (!trimmed) {
-      this.input_.shake();
+  confirmName() {
+    if (!this.htmlInput) return;
+    const raw = this.htmlInput.value || '';
+    const sanitized = raw
+      .toUpperCase()
+      .replace(/[^A-Z0-9 ]/g, '')
+      .slice(0, NAME_MAX_LENGTH)
+      .trim();
+
+    if (sanitized.length === 0) {
+      this.cameras.main.shake(200, 0.01);
       return;
     }
-    sessionManager.setName(this.playerIndex, trimmed);
+
+    sessionManager.setName(this.playerIndex, sanitized);
+    this.cleanup();
 
     if (this.playerIndex < this.numPlayers - 1) {
-      // Wyczyść scenę zanim restart żeby keyboard listener nie wisiał.
-      this.input_?.destroy();
-      this.scene.start('NameInputScene', { playerIndex: this.playerIndex + 1, numPlayers: this.numPlayers });
+      this.scene.start('NameInputScene', {
+        playerIndex: this.playerIndex + 1,
+        numPlayers: this.numPlayers,
+      });
     } else {
-      this.input_?.destroy();
       this.scene.start('CharSelectScene');
+    }
+  }
+
+  cleanup() {
+    if (this.focusTimeout) {
+      clearTimeout(this.focusTimeout);
+      this.focusTimeout = null;
+    }
+    if (this.htmlInput) {
+      try {
+        this.htmlInput.classList.remove('active');
+        if (this.enterListener) {
+          this.htmlInput.removeEventListener('keydown', this.enterListener);
+        }
+        this.htmlInput.blur();
+      } catch (e) { /* ignore */ }
+      this.htmlInput = null;
+      this.enterListener = null;
     }
   }
 }

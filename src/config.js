@@ -286,9 +286,10 @@ export const OBSTACLE_TIERS = {
   mid: {
     types: ['wooden_box', 'wooden_barrel'],
     properties: {
-      // Mid przeszkody — single jump musi wystarczyć (NIE double).
-      wooden_box:    { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_only' },
-      wooden_barrel: { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
+      // Mid przeszkody — można przeskoczyć LUB przeturlać (slide). Hitbox
+      // średniej wysokości daje fair grę dla obu opcji.
+      wooden_box:    { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_or_slide' },
+      wooden_barrel: { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_or_slide' },
     },
   },
   high: {

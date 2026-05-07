@@ -1,8 +1,12 @@
-// Entry point gry — inicjalizacja Phaser z konfiguracją global'ą.
-// Załączane przez index.html jako module script.
+// Entry point gry — Phaser config + start. Mobile-only (sesja 7).
+// NIE ma klawiatury, myszki, CSS rotacji, setRealHeight, resize listenerów.
+// OrientationGuard pilnuje czy gracz na telefonie + landscape — jeśli nie,
+// pokazuje OrientationLockScene.
 
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, PHYSICS_GRAVITY } from './config.js';
+import { orientationGuard } from './utils/OrientationGuard.js';
+
 import { BootScene } from './scenes/BootScene.js';
 import { PreloadScene } from './scenes/PreloadScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
@@ -16,7 +20,7 @@ import { GameCompleteScene } from './scenes/GameCompleteScene.js';
 import { LeaderboardScene } from './scenes/LeaderboardScene.js';
 import { PlayerTurnSplashScene } from './scenes/PlayerTurnSplashScene.js';
 import { SessionResultsScene } from './scenes/SessionResultsScene.js';
-import { onOrientationChange, isMobile, isPortrait } from './utils/DeviceDetect.js';
+import { OrientationLockScene } from './scenes/OrientationLockScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -28,7 +32,6 @@ const config = {
     parent: 'game-container',
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    expandParent: false,
   },
   physics: {
     default: 'arcade',
@@ -37,15 +40,22 @@ const config = {
       debug: false,
     },
   },
-  // Multi-touch żeby jump + slide mogły zadziałać równolegle (np. szybki
-  // tap top + tap bottom).
-  input: { activePointers: 3 },
+  // Mobile-only: keyboard + mouse OFF, tylko touch + multi-pointer.
+  input: {
+    activePointers: 3,
+    keyboard: false,
+    mouse: false,
+    touch: true,
+  },
+  // Phaser renderuje sceny w kolejności array — późniejsze NA WIERZCHU.
+  // OrientationLockScene musi być OSTATNIA żeby przykrywała wszystkie
+  // pozostałe gdy aktywna (zapobiega "MenuScene widoczne pod OrientationLock").
   scene: [
     BootScene,
     PreloadScene,
     MenuScene,
-    NameInputScene,
     NameSplashScene,
+    NameInputScene,
     CharSelectScene,
     PlayerTurnSplashScene,
     GameScene,
@@ -54,30 +64,12 @@ const config = {
     GameCompleteScene,
     LeaderboardScene,
     SessionResultsScene,
+    OrientationLockScene,
   ],
 };
 
 const game = new Phaser.Game(config);
 
-// JS-driven orientation handling. Dodajemy/usuwamy klasę .rotated na
-// kontenerze gry żeby CSS rotacji się odpalił dla mobile + portrait.
-// Dlaczego nie czysto CSS @media? — DevTools mobile emulation często nie
-// matche'uje (hover:none) and (pointer:coarse), przez co @media nie
-// odpalał na realnych telefonach które ich nie raportują. JS detection
-// (touch + window dimensions) jest niezawodne.
-function applyOrientationClass() {
-  const container = document.getElementById('game-container');
-  if (!container) return;
-  const shouldRotate = isMobile() && isPortrait();
-  if (shouldRotate) {
-    container.classList.add('rotated');
-  } else {
-    container.classList.remove('rotated');
-  }
-  // Phaser musi przeliczyć rozmiar canvasu po zmianie wymiarów rodzica.
-  game.scale.refresh();
-}
-
-// Initial — po Phaser boot, daj DOM chwilę.
-setTimeout(applyOrientationClass, 100);
-onOrientationChange(applyOrientationClass);
+// OrientationGuard — pilnuje czy mobile + landscape, inaczej pokazuje
+// OrientationLockScene. Sam zarządza orientation/resize listenerami.
+orientationGuard.init(game);

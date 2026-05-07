@@ -109,10 +109,10 @@ export class LevelCompleteScene extends Phaser.Scene {
     };
 
     this.time.delayedCall(1500, () => {
-      const btn = this.makeButton(GAME_WIDTH / 2, GAME_HEIGHT - 100, buttonLabel, 0x6b3eb6, onClick);
+      const btn = this.makeButton(GAME_WIDTH / 2, GAME_HEIGHT - 140, buttonLabel, 0x6b3eb6, onClick);
       btn.setFocused(true);
-      this.input.keyboard.once('keydown-ENTER', onClick);
-      this.input.keyboard.once('keydown-SPACE', onClick);
+      this.input.keyboard?.once('keydown-ENTER', onClick);
+      this.input.keyboard?.once('keydown-SPACE', onClick);
     });
 
     this.spawnConfetti();

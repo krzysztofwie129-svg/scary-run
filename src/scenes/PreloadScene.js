@@ -8,7 +8,6 @@
 //   bg_layer_00, bg_layer_01
 
 import { ASSET_PATHS, CHARACTER_KEYS, ANIM_FRAME_COUNTS, LEVELS } from '../config.js';
-import { preloadMusic } from '../utils/AudioManager.js';
 
 // Zero-pad number do 2 cyfr (CraftPix file naming).
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -24,12 +23,7 @@ export class PreloadScene extends Phaser.Scene {
   preload() {
     this.drawProgressBar();
 
-    // Pre-fetch muzyki menu RÓWNOLEGLE z preloadem Phasera. HTMLAudio fetch
-    // jest niezależny od Phaser load queue — startuje natychmiast, w trakcie
-    // gdy Phaser ładuje obrazki/dźwięki SFX. Gdy MenuScene wystartuje, plik
-    // już jest cały (lub większość) zbuforowany — brak laga przy starcie
-    // .play().
-    preloadMusic('music_menu');
+    // Muzyka menu wyłączona (sesja 7.1) — nie pre-fetchujemy.
 
     // Postacie — każda animacja jako sekwencja pojedynczych obrazków.
     // Phaser nie ma natywnego "load.imageSequence", więc pętla po klatkach.

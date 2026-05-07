@@ -1,10 +1,6 @@
-// InputHandler — centralna fasada sterowania w GameScene:
-//   • klawiatura: SPACE/UP → jump, DOWN/S → slide
-//   • tap zones: górne 60% ekranu = jump, dolne 40% = slide
-//
-// Tap zones to interactive rectangles z alpha 0 (niewidzialne) pokrywające
-// cały ekran, depth=99998 (pod HUD ale nad gameplay). Klik gdziekolwiek
-// na ekranie = akcja zależna od pozycji Y.
+// InputHandler — TYLKO tap zones (sesja 7 mobile-only). Bez klawiatury.
+// Górne 60% ekranu = jump, dolne 40% = slide. Niewidzialne (alpha 0)
+// interactive rectangles na bardzo wysokim depth (99998).
 
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 
@@ -14,20 +10,6 @@ export class InputHandler {
     this.onJump = options.onJump || (() => {});
     this.onSlide = options.onSlide || (() => {});
 
-    // Keyboard. Używamy event 'keydown-X' (zamiast addKey + key.on('down'))
-    // bo jest spójne z resztą scen i nie wymaga ręcznego cleanup keys.
-    this._kbHandlers = [];
-    const bindKey = (keyName, fn) => {
-      this.scene.input.keyboard.on(`keydown-${keyName}`, fn);
-      this._kbHandlers.push(() => this.scene.input.keyboard.off(`keydown-${keyName}`, fn));
-    };
-    bindKey('SPACE', () => this.onJump());
-    bindKey('UP', () => this.onJump());
-    bindKey('W', () => this.onJump());
-    bindKey('DOWN', () => this.onSlide());
-    bindKey('S', () => this.onSlide());
-
-    // Tap zones — górne 60% = jump, dolne 40% = slide.
     const splitY = GAME_HEIGHT * 0.6;
 
     this.jumpZone = scene.add.rectangle(
@@ -54,10 +36,6 @@ export class InputHandler {
   }
 
   destroy() {
-    for (const off of this._kbHandlers) {
-      try { off(); } catch (e) { /* ignore */ }
-    }
-    this._kbHandlers.length = 0;
     try { this.jumpZone?.destroy(); } catch (e) { /* ignore */ }
     try { this.slideZone?.destroy(); } catch (e) { /* ignore */ }
     this.jumpZone = null;

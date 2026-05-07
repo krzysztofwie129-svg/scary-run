@@ -15,6 +15,8 @@ import {
   SLIDE_DURATION_MS,
   SLIDE_HITBOX_HEIGHT_RATIO,
   LANDING_GRACE_FRAMES,
+  GAME_WIDTH,
+  GROUND_Y,
 } from '../config.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -68,6 +70,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setGravityY(PHYSICS_GRAVITY);
     this.setCollideWorldBounds(true);
     this.setBounce(0);
+
+    // Custom world bounds dla player'a — ograniczamy ZJAZD do GROUND_Y, NIE
+    // do GAME_HEIGHT. Default world bounds (0, 0, 1280, 720) ma 100px
+    // "podziemia" między groundem (Y=620) a dnem ekranu (720). Player tunelował
+    // przez ground i lądował na world bottom y=720 — body wtedy w przedziale
+    // [620, 720], poniżej obstacles (~519-611), brak overlap.
+    // Ten setBoundsRectangle wymusza body bottom <= GROUND_Y → body siedzi
+    // dokładnie na ground'ie (jak gdyby ground był world bottom).
+    this.body.setBoundsRectangle(new Phaser.Geom.Rectangle(0, 0, GAME_WIDTH, GROUND_Y));
 
     // Hitbox per-postać z CHARACTER_INFO.body (Hex jest węższa niż Fix/Mavix
     // — jednolity body powodował że kolizje rejestrowały się "w powietrzu"

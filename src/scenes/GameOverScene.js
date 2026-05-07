@@ -92,7 +92,7 @@ export class GameOverScene extends Phaser.Scene {
     const buttons = this.makeButtonsForFlow();
     this.bindKbNav(buttons);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '← → wybór · SPACE / ENTER zatwierdź', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, 'Tap przycisku aby wybrac', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '14px',
       color: '#bdaee3',
@@ -136,12 +136,15 @@ export class GameOverScene extends Phaser.Scene {
     return [
       this.makeButton(left, cy, 'RESTART', 0x6b3eb6, () => {
         this.audioManager.playSfx('click');
-        // Reset stats bieżącego gracza (level pozostaje), nowy lifeline.
-        sessionManager.restartCurrentPlayer();
+        // GameOver = stracone wszystkie życia → pełen restart od levelu 0.
+        // (Postać i imię pozostają — ten sam gracz.) NIE używamy
+        // restartCurrentPlayer (zachowuje level) — tylko z resetu od początku.
+        sessionManager.restartCurrentPlayerFromLevel0();
         this.scene.start('GameScene');
       }),
       this.makeButton(right, cy, 'MAIN MENU', 0x3e6bb6, () => {
         this.audioManager.playSfx('click');
+        // Pełen reset sesji — usuwa imiona, postacie, multiplayer state.
         sessionManager.reset();
         this.scene.start('MenuScene');
       }),
@@ -191,11 +194,11 @@ export class GameOverScene extends Phaser.Scene {
     const refresh = () => buttons.forEach((b, i) => b.setFocused(i === idx));
     refresh();
     const move = (delta) => { idx = (idx + delta + buttons.length) % buttons.length; refresh(); };
-    this.input.keyboard.on('keydown-LEFT', () => move(-1));
-    this.input.keyboard.on('keydown-A', () => move(-1));
-    this.input.keyboard.on('keydown-RIGHT', () => move(1));
-    this.input.keyboard.on('keydown-D', () => move(1));
-    this.input.keyboard.on('keydown-SPACE', () => buttons[idx].onClick());
-    this.input.keyboard.on('keydown-ENTER', () => buttons[idx].onClick());
+    this.input.keyboard?.on('keydown-LEFT', () => move(-1));
+    this.input.keyboard?.on('keydown-A', () => move(-1));
+    this.input.keyboard?.on('keydown-RIGHT', () => move(1));
+    this.input.keyboard?.on('keydown-D', () => move(1));
+    this.input.keyboard?.on('keydown-SPACE', () => buttons[idx].onClick());
+    this.input.keyboard?.on('keydown-ENTER', () => buttons[idx].onClick());
   }
 }

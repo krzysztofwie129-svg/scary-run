@@ -10,7 +10,7 @@ import {
 } from '../config.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
-import { isMobile } from '../utils/DeviceDetect.js';
+import { isMobileDevice } from '../utils/DeviceDetect.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -115,21 +115,21 @@ export class CharSelectScene extends Phaser.Scene {
 
     // Klawiatura.
     const move = (delta) => this.select((this.selectedIndex + delta + CHARACTER_INFO.length) % CHARACTER_INFO.length);
-    this.input.keyboard.on('keydown-LEFT', () => move(-1));
-    this.input.keyboard.on('keydown-A', () => move(-1));
-    this.input.keyboard.on('keydown-RIGHT', () => move(1));
-    this.input.keyboard.on('keydown-D', () => move(1));
-    this.input.keyboard.on('keydown-SPACE', () => this.confirm());
-    this.input.keyboard.on('keydown-ENTER', () => this.confirm());
+    this.input.keyboard?.on('keydown-LEFT', () => move(-1));
+    this.input.keyboard?.on('keydown-A', () => move(-1));
+    this.input.keyboard?.on('keydown-RIGHT', () => move(1));
+    this.input.keyboard?.on('keydown-D', () => move(1));
+    this.input.keyboard?.on('keydown-SPACE', () => this.confirm());
+    this.input.keyboard?.on('keydown-ENTER', () => this.confirm());
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, '← → wybór · SPACE / ENTER start · klik postaci wybiera + zatwierdza', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, 'Tap postaci aby wybrac i rozpoczac', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '14px',
       color: '#bdaee3',
     }).setOrigin(0.5);
 
-    if (isMobile()) {
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'Tap UP to jump  •  Tap DOWN to slide', {
+    if (isMobileDevice()) {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'Tap GORA aby skoczyc  •  Tap DOL aby slizgac', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '18px',
         color: '#ffd93c',

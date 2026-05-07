@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false,
+    host: true,  // dostęp z sieci lokalnej (telefon w tej samej WiFi)
   },
   build: {
     outDir: 'dist',

@@ -41,7 +41,7 @@ export class SessionResultsScene extends Phaser.Scene {
 
     // Buttons.
     const buttons = [
-      this.makeButton(GAME_WIDTH / 2 - 180, GAME_HEIGHT - 70, 'PLAY AGAIN', 0x6b3eb6, () => {
+      this.makeButton(GAME_WIDTH / 2 - 180, GAME_HEIGHT - 140, 'PLAY AGAIN', 0x6b3eb6, () => {
         // Te same imiona, reset stats.
         const names = sessionManager.players.map((p) => p.name);
         if (sessionManager.isMultiplayer) sessionManager.setupMultiplayer(names.length);
@@ -49,7 +49,7 @@ export class SessionResultsScene extends Phaser.Scene {
         names.forEach((n, i) => sessionManager.setName(i, n));
         this.scene.start('CharSelectScene');
       }),
-      this.makeButton(GAME_WIDTH / 2 + 180, GAME_HEIGHT - 70, 'MAIN MENU', 0x3e6bb6, () => {
+      this.makeButton(GAME_WIDTH / 2 + 180, GAME_HEIGHT - 140, 'MAIN MENU', 0x3e6bb6, () => {
         sessionManager.reset();
         this.scene.start('MenuScene');
       }),
@@ -145,10 +145,10 @@ export class SessionResultsScene extends Phaser.Scene {
     const refresh = () => buttons.forEach((b, i) => b.setFocused(i === idx));
     refresh();
     const move = (delta) => { idx = (idx + delta + buttons.length) % buttons.length; refresh(); };
-    this.input.keyboard.on('keydown-LEFT', () => move(-1));
-    this.input.keyboard.on('keydown-RIGHT', () => move(1));
-    this.input.keyboard.on('keydown-SPACE', () => buttons[idx].onClick());
-    this.input.keyboard.on('keydown-ENTER', () => buttons[idx].onClick());
+    this.input.keyboard?.on('keydown-LEFT', () => move(-1));
+    this.input.keyboard?.on('keydown-RIGHT', () => move(1));
+    this.input.keyboard?.on('keydown-SPACE', () => buttons[idx].onClick());
+    this.input.keyboard?.on('keydown-ENTER', () => buttons[idx].onClick());
   }
 
   spawnConfetti() {

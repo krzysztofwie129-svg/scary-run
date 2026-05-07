@@ -1,13 +1,15 @@
-// DeviceDetect — heurystyki touch / mobile / orientation. Bez analytics,
-// bez user agent fingerprinting — tylko feature detection.
+// DeviceDetect — heurystyki touch + landscape. Mobile-only — gra dziala
+// wylacznie na telefonie w landscape (sesja 7).
 
 export function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 }
 
-/** Mobile = touch + krótszy bok < 900px (telefony do dużych Androidów). */
-export function isMobile() {
-  return isTouchDevice() && Math.min(window.innerWidth, window.innerHeight) < 900;
+/** Mobile = touch + maks. przekątna ≤ 1100px (smartphone, mniejsze tablety). */
+export function isMobileDevice() {
+  if (!isTouchDevice()) return false;
+  const maxDim = Math.max(window.innerWidth, window.innerHeight);
+  return maxDim <= 1100;
 }
 
 export function isLandscape() {
@@ -18,29 +20,13 @@ export function isPortrait() {
   return !isLandscape();
 }
 
-/** Czy gra jest aktualnie obrócona przez CSS (mobile + portrait). */
-export function isRotatedByCSS() {
-  return isMobile() && isPortrait();
+/** Czy można grać? mobile + landscape. */
+export function canPlay() {
+  return isMobileDevice() && isLandscape();
 }
 
-/**
- * Efektywne wymiary viewport widziane PRZEZ GRĘ — po uwzględnieniu CSS rotacji.
- * Gdy telefon trzymany pionowo, kontener jest obrócony o 90° → szerokość gry
- * to faktycznie window.innerHeight, a wysokość to window.innerWidth.
- */
-export function getEffectiveViewport() {
-  if (isRotatedByCSS()) {
-    return { width: window.innerHeight, height: window.innerWidth };
-  }
-  return { width: window.innerWidth, height: window.innerHeight };
-}
-
-/** Helper: zarejestruj listener który strzela przy resize + orientationchange. */
+/** Listener orientation/resize. */
 export function onOrientationChange(callback) {
   window.addEventListener('resize', callback);
   window.addEventListener('orientationchange', callback);
-  return () => {
-    window.removeEventListener('resize', callback);
-    window.removeEventListener('orientationchange', callback);
-  };
 }

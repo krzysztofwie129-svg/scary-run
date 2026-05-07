@@ -407,8 +407,12 @@ export class GameScene extends Phaser.Scene {
           pb.y < ob.y + ob.height && pb.y + pb.height > ob.y;
         if (!overlap) return true;
         const req = o.config_?.requiresAction;
-        if (isSliding && req === 'slide_only') {
-          return true; // slide pod latającą dynię — przeżyj
+        // Slide pomaga jeśli obstacle dopuszcza slide jako akcję ratunkową.
+        // 'slide_only' (flying_pumpkin) i 'jump_or_slide' (mid wooden_box/barrel)
+        // pozwalają na przejście slidem. 'jump_only' (low spikes/stone, wall)
+        // wymagają skoku — slide nie pomaga.
+        if (isSliding && (req === 'slide_only' || req === 'jump_or_slide')) {
+          return true;
         }
         this.player.die();
         return false;

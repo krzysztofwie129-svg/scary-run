@@ -115,7 +115,7 @@ export class GameCompleteScene extends Phaser.Scene {
   }
 
   makeButtons() {
-    const cy = GAME_HEIGHT - 80;
+    const cy = GAME_HEIGHT - 140;
     const left = GAME_WIDTH / 2 - 180;
     const right = GAME_WIDTH / 2 + 180;
 
@@ -227,10 +227,10 @@ export class GameCompleteScene extends Phaser.Scene {
     const refresh = () => buttons.forEach((b, i) => b.setFocused(i === idx));
     refresh();
     const move = (delta) => { idx = (idx + delta + buttons.length) % buttons.length; refresh(); };
-    this.input.keyboard.on('keydown-LEFT', () => move(-1));
-    this.input.keyboard.on('keydown-RIGHT', () => move(1));
-    this.input.keyboard.on('keydown-SPACE', () => buttons[idx].onClick());
-    this.input.keyboard.on('keydown-ENTER', () => buttons[idx].onClick());
+    this.input.keyboard?.on('keydown-LEFT', () => move(-1));
+    this.input.keyboard?.on('keydown-RIGHT', () => move(1));
+    this.input.keyboard?.on('keydown-SPACE', () => buttons[idx].onClick());
+    this.input.keyboard?.on('keydown-ENTER', () => buttons[idx].onClick());
   }
 
   spawnConfetti() {
