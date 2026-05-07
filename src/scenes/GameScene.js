@@ -510,6 +510,10 @@ export class GameScene extends Phaser.Scene {
       this.emitParticles(x, y, PARTICLE_COIN_COLOR, PARTICLE_COIN_COUNT);
       if (result.extraLife) {
         this.showExtraLifeEffect();
+        // Bug fix: refresh HUD natychmiast, nie czekaj na updateHUD —
+        // user wcześniej widział "lose 2 lives" bo bonus heart nie zdążył
+        // pojawić się przed crash (1-frame delay + visual confusion).
+        this.refreshLivesHUD();
         Haptic.extraLife();
       } else {
         Haptic.coin();
@@ -591,6 +595,9 @@ export class GameScene extends Phaser.Scene {
   handlePlayerDeath() {
     if (this.obstacleTimer) { this.obstacleTimer.remove(false); this.obstacleTimer = null; }
     if (this.coinTimer) { this.coinTimer.remove(false); this.coinTimer = null; }
+    // Bug fix: save timer mógł fire w 1.5s delay PO GameStateStore.clear(),
+    // re-zapisując state i powodując że KONTYNUUJ pojawia się po game over.
+    if (this.saveStateTimer) { this.saveStateTimer.remove(); this.saveStateTimer = null; }
 
     this.audioManager.playSfx('crash');
     this.emitParticles(this.player.x, this.player.y - 50, PARTICLE_CRASH_COLOR, PARTICLE_CRASH_COUNT);
