@@ -65,6 +65,9 @@ export class GameScene extends Phaser.Scene {
     this.finishSequenceStarted = false;
     this.lastObstacleTier = null;
     this.lastObstacleX = -Infinity;
+    // Reset idempotency flag — scene singleton instance persistuje między
+    // restartami, bez tego po pierwszej śmierci handlePlayerDeath byłby zablokowany.
+    this._deathHandled = false;
   }
 
   create() {
@@ -593,6 +596,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   handlePlayerDeath() {
+    // Idempotent guard — gdyby player-died event fire'ował dwukrotnie (Phaser
+    // quirks albo my emit z dwóch ścieżek), bez tego loseLife() leciałoby 2x
+    // i HUD pokazywałby -2 serca per crash zamiast -1.
+    if (this._deathHandled) return;
+    this._deathHandled = true;
+
     if (this.obstacleTimer) { this.obstacleTimer.remove(false); this.obstacleTimer = null; }
     if (this.coinTimer) { this.coinTimer.remove(false); this.coinTimer = null; }
     // Bug fix: save timer mógł fire w 1.5s delay PO GameStateStore.clear(),
