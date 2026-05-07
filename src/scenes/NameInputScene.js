@@ -40,7 +40,10 @@ export class NameInputScene extends Phaser.Scene {
     const title = this.numPlayers > 1
       ? `Player ${this.playerIndex + 1} — enter your name`
       : 'Enter your name';
-    this.add.text(GAME_WIDTH / 2, 200, title, {
+    // Wszystkie elementy w GÓRNEJ HALF gry (Y < GAME_HEIGHT/2 = 360),
+    // żeby soft keyboard na mobile (która zajmuje dolne 40-50% ekranu)
+    // nie zasłaniała inputu i przycisku.
+    this.add.text(GAME_WIDTH / 2, 80, title, {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '48px',
       color: '#ffe066',
@@ -51,7 +54,7 @@ export class NameInputScene extends Phaser.Scene {
     const hint = isTouchDevice()
       ? 'Tap pole aby pisać · max 12 znaków, ENTER aby zatwierdzić'
       : 'A-Z 0-9 spacja, max 12 znaków, ENTER aby zatwierdzić';
-    this.add.text(GAME_WIDTH / 2, 270, hint, {
+    this.add.text(GAME_WIDTH / 2, 145, hint, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '18px',
       color: '#bdaee3',
@@ -59,18 +62,19 @@ export class NameInputScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setOrigin(0.5);
 
-    this.input_ = new TextInput(this, GAME_WIDTH / 2, 380, {
+    this.input_ = new TextInput(this, GAME_WIDTH / 2, 220, {
       onEnter: (val) => this.confirm(val),
     });
 
     // Przycisk CONFIRM (alternatywa dla ENTER).
-    const btn = this.add.zone(GAME_WIDTH / 2, 500, 240, 60).setInteractive({ useHandCursor: true });
+    const btnY = 320;
+    const btn = this.add.zone(GAME_WIDTH / 2, btnY, 240, 60).setInteractive({ useHandCursor: true });
     const btnGfx = this.add.graphics();
     btnGfx.fillStyle(0x6b3eb6, 1);
-    btnGfx.fillRoundedRect(GAME_WIDTH / 2 - 120, 470, 240, 60, 14);
+    btnGfx.fillRoundedRect(GAME_WIDTH / 2 - 120, btnY - 30, 240, 60, 14);
     btnGfx.lineStyle(3, 0xffe066, 1);
-    btnGfx.strokeRoundedRect(GAME_WIDTH / 2 - 120, 470, 240, 60, 14);
-    this.add.text(GAME_WIDTH / 2, 500, 'CONFIRM', {
+    btnGfx.strokeRoundedRect(GAME_WIDTH / 2 - 120, btnY - 30, 240, 60, 14);
+    this.add.text(GAME_WIDTH / 2, btnY, 'CONFIRM', {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '26px',
       color: '#fff',

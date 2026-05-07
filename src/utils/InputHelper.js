@@ -96,6 +96,22 @@ export class TextInput {
       this.bg.on('pointerdown', () => {
         try { this.htmlInput.focus(); } catch (e) { /* ignore */ }
       });
+
+      // visualViewport API — wykrywa gdy soft keyboard się otwiera/zamyka
+      // (window.innerHeight zostaje, ale visualViewport.height zmienia).
+      // Przy otwartej keyboard scrollujemy kamerę żeby UI było widoczne.
+      if (window.visualViewport) {
+        this.viewportListener = () => {
+          const offsetY = window.innerHeight - window.visualViewport.height;
+          // offsetY > 100 = keyboard otwarta (przybliżenie).
+          if (offsetY > 100) {
+            scene.cameras.main.setScroll(0, 100);
+          } else {
+            scene.cameras.main.setScroll(0, 0);
+          }
+        };
+        window.visualViewport.addEventListener('resize', this.viewportListener);
+      }
     }
   }
 
@@ -175,5 +191,13 @@ export class TextInput {
       } catch (e) { /* ignore */ }
       this.htmlInput = null;
     }
+    if (this.viewportListener && window.visualViewport) {
+      try {
+        window.visualViewport.removeEventListener('resize', this.viewportListener);
+      } catch (e) { /* ignore */ }
+      this.viewportListener = null;
+    }
+    // Reset camera scroll na wyjściu (na wszelki wypadek jeśli był offset).
+    try { this.scene?.cameras?.main?.setScroll(0, 0); } catch (e) { /* ignore */ }
   }
 }
