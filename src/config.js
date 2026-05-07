@@ -157,7 +157,8 @@ export const OBSTACLE_TYPES = {};
 // public/assets/backgrounds/levelN/). Speeds rozłożone od najgłębszej (0.05)
 // do najbliższej (1.0) — najgłębsza ledwo się rusza, najbliższa biegnie ze
 // światem.
-// obstacleMix per level — sumy wag (low + mid + high) muszą = 1.0.
+// obstacleMix per level — sumy wag (low + mid + wall) muszą = 1.0.
+// (Sesja 8: 'high' = flying_pumpkin usunięte ze spawnów po wyrzuceniu slide.)
 // Spawner robi weighted random na bazie tych wartości.
 export const LEVELS = [
   {
@@ -167,7 +168,7 @@ export const LEVELS = [
     bgFolder: 'level1',
     bgLayerCount: 9,
     parallaxSpeeds: [0.05, 0.1, 0.18, 0.28, 0.4, 0.55, 0.7, 0.85, 1.0],
-    obstacleMix: { low: 1.0, mid: 0.0, high: 0.0, wall: 0.0 },
+    obstacleMix: { low: 1.0, mid: 0.0, wall: 0.0 },
     obstacleSpawnRate: { min: 2.2, max: 3.2 },
     coinSpawnRate: { min: 0.7, max: 1.5 },
     diamondChance: 0.075,
@@ -181,7 +182,7 @@ export const LEVELS = [
     bgFolder: 'level2',
     bgLayerCount: 7,
     parallaxSpeeds: [0.05, 0.1, 0.2, 0.35, 0.5, 0.7, 1.0],
-    obstacleMix: { low: 0.5, mid: 0.3, high: 0.15, wall: 0.05 },
+    obstacleMix: { low: 0.5, mid: 0.4, wall: 0.1 },
     obstacleSpawnRate: { min: 1.8, max: 2.8 },
     coinSpawnRate: { min: 0.6, max: 1.3 },
     diamondChance: 0.12,
@@ -195,7 +196,7 @@ export const LEVELS = [
     bgFolder: 'level3',
     bgLayerCount: 6,
     parallaxSpeeds: [0.05, 0.15, 0.3, 0.5, 0.75, 1.0],
-    obstacleMix: { low: 0.4, mid: 0.3, high: 0.2, wall: 0.1 },
+    obstacleMix: { low: 0.4, mid: 0.4, wall: 0.2 },
     obstacleSpawnRate: { min: 1.5, max: 2.4 },
     coinSpawnRate: { min: 0.5, max: 1.2 },
     diamondChance: 0.18,
@@ -209,7 +210,7 @@ export const LEVELS = [
     bgFolder: 'level4',
     bgLayerCount: 7,
     parallaxSpeeds: [0.05, 0.1, 0.2, 0.35, 0.5, 0.7, 1.0],
-    obstacleMix: { low: 0.3, mid: 0.35, high: 0.2, wall: 0.15 },
+    obstacleMix: { low: 0.3, mid: 0.45, wall: 0.25 },
     obstacleSpawnRate: { min: 1.2, max: 2.0 },
     coinSpawnRate: { min: 0.5, max: 1.0 },
     diamondChance: 0.22,

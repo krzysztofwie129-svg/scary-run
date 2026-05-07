@@ -68,8 +68,18 @@ const config = {
   ],
 };
 
-const game = new Phaser.Game(config);
-
-// OrientationGuard — pilnuje czy mobile + landscape, inaczej pokazuje
-// OrientationLockScene. Sam zarządza orientation/resize listenerami.
-orientationGuard.init(game);
+// Phaser init wrapped w try-catch — jeśli wywali się np. na bardzo starym
+// browserze bez WebGL/Canvas2D wsparcia, pokazujemy fallback z index.html.
+let game = null;
+try {
+  game = new Phaser.Game(config);
+  // OrientationGuard.init rejestruje listenery, ale `check()` jest gated
+  // przez flagę `started` — sprawdzanie odpala się DOPIERO gdy PreloadScene
+  // wywoła `orientationGuard.start()` po complete eventcie ładowania.
+  // Dzięki temu rotation overlay nie nakłada się na loading bar (sesja 7.3).
+  orientationGuard.init(game);
+} catch (e) {
+  console.error('Game init failed:', e);
+  const fallback = document.getElementById('browser-fallback');
+  if (fallback) fallback.style.display = 'flex';
+}

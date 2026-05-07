@@ -13,12 +13,25 @@ class OrientationGuard {
     this.game = null;
     this.lastSceneKey = null;
     this.lockActive = false;
+    // Flaga aktywacji (sesja 7.3) — `check()` returns early dopóki PreloadScene
+    // nie wywoła `start()`. Wcześniejsze auto-init z setTimeout 200ms strzelało
+    // zanim preloader skończył ładowanie → overlay rotacji nakładał się na
+    // progress bar ładowania. Teraz: 1) loading 2) start() 3) check().
+    this.started = false;
   }
 
   init(game) {
     this.game = game;
+    // Listener orientation/resize zarejestrowany od razu — ale `check()`
+    // zignoruje wywołania dopóki `started === false`. Dzięki temu obrót
+    // ekranu w trakcie ładowania nie pokaże OrientationLock.
     onOrientationChange(() => this.check());
-    setTimeout(() => this.check(), 200);
+  }
+
+  /** Wywoływane przez PreloadScene po `complete` event. Aktywuje sprawdzanie. */
+  start() {
+    this.started = true;
+    this.check();
   }
 
   /** Aktywne sceny inne niż OrientationLock (do zatrzymania przy locku). */
@@ -31,6 +44,7 @@ class OrientationGuard {
 
   check() {
     if (!this.game) return;
+    if (!this.started) return; // gated do sesji 7.3 — patrz constructor
 
     if (!canPlay()) {
       if (this.lockActive) return; // już zablokowane

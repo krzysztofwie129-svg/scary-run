@@ -8,6 +8,7 @@
 //   bg_layer_00, bg_layer_01
 
 import { ASSET_PATHS, CHARACTER_KEYS, ANIM_FRAME_COUNTS, LEVELS } from '../config.js';
+import { orientationGuard } from '../utils/OrientationGuard.js';
 
 // Zero-pad number do 2 cyfr (CraftPix file naming).
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -111,7 +112,18 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('MenuScene');
+    // Aktywuj OrientationGuard DOPIERO TERAZ — assety załadowane, można
+    // oceniać czy gracz ma poprawną orientację. Jeśli portrait/desktop,
+    // start() wywoła scene.start('OrientationLockScene') i zatrzyma PreloadScene.
+    orientationGuard.start();
+
+    // Jeśli gra może działać (mobile + landscape), start() nic nie zrobił —
+    // PreloadScene wciąż aktywne, ręcznie przechodzimy do MenuScene.
+    // Jeśli OrientationLock wystartował, ten scene już jest .stop()ed
+    // (przez OrientationGuard.check), więc isActive zwróci false.
+    if (this.scene.isActive('PreloadScene')) {
+      this.scene.start('MenuScene');
+    }
   }
 
   drawProgressBar() {

@@ -100,13 +100,10 @@ export class GameScene extends Phaser.Scene {
     });
     this.particles.setDepth(150);
 
-    // Sterowanie — klawiatura (SPACE/UP/W jump, DOWN/S slide) + tap zones
-    // (górne 60% = jump, dolne 40% = slide). InputHandler tworzy interactive
-    // rectangles depth 99998 (pod HUD 1000... wait, HUD ma 1000, tap 99998 więc
-    // tap nad HUD — ale zone alpha 0 i nie blokuje wizualnie).
+    // Sterowanie — sesja 8: tylko jump. Cały ekran = tap zone, niewidzialna,
+    // depth 99998 (zone alpha 0 — nie blokuje wizualnie HUD).
     this.inputHandler = new InputHandler(this, {
       onJump: () => this.player.jump(),
-      onSlide: () => this.player.slide(),
     });
 
     this.lastFlyingPumpkinTime = -Infinity;
@@ -392,13 +389,10 @@ export class GameScene extends Phaser.Scene {
     // Survival score (10/s). Zapisujemy do sessionManager żeby przeżył restart.
     sessionManager.addSurvivalScore(SCORE_PER_SECOND * (delta / 1000));
 
-    // Manual AABB — obstacles vs player. Slide-aware: jeśli gracz ślizga się
-    // i obstacle ma requiresAction 'slide_only', overlap NIE zabija
-    // (slide skutecznie omija). Reszta typów ('jump_only') zawsze zabija
-    // niezależnie od stanu gracza — slide nie pomaga przeciw naziemnym.
+    // Manual AABB — obstacles vs player. Sesja 8: slide usunięty,
+    // każdy overlap = śmierć (niezależnie od typu obstacle).
     const pb = this.player.body;
     if (pb && !this.player.isDead()) {
-      const isSliding = this.player.state_ === 'sliding';
       this.obstacles.children.iterate((o) => {
         if (!o || !o.active || !o.body) return true;
         const ob = o.body;
@@ -406,14 +400,6 @@ export class GameScene extends Phaser.Scene {
           pb.x < ob.x + ob.width && pb.x + pb.width > ob.x &&
           pb.y < ob.y + ob.height && pb.y + pb.height > ob.y;
         if (!overlap) return true;
-        const req = o.config_?.requiresAction;
-        // Slide pomaga jeśli obstacle dopuszcza slide jako akcję ratunkową.
-        // 'slide_only' (flying_pumpkin) i 'jump_or_slide' (mid wooden_box/barrel)
-        // pozwalają na przejście slidem. 'jump_only' (low spikes/stone, wall)
-        // wymagają skoku — slide nie pomaga.
-        if (isSliding && (req === 'slide_only' || req === 'jump_or_slide')) {
-          return true;
-        }
         this.player.die();
         return false;
       });

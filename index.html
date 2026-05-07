@@ -36,7 +36,11 @@
       margin: 0;
       padding: 0;
       width: 100vw;
-      height: 100vh;
+      /* dvh = dynamic viewport height — uwzględnia Safari toolbar/tab
+         switcher dynamicznie (gdy Safari ma wiele kart, dolny pasek zjada
+         ~50px; vh tego nie respektuje, dvh respektuje). Wymaga iOS Safari
+         15.4+ — starsze browser pokazuje fallback z scriptu w body. */
+      height: 100dvh;
       background: #1a0a2e;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -63,7 +67,7 @@
       top: 0;
       left: 0;
       width: 100vw;
-      height: 100vh;
+      height: 100dvh;
       overflow: hidden;
     }
 
@@ -74,10 +78,13 @@
     }
 
     /* HTML input dla NameInputScene — pojawia się nad canvasem na fokus.
-       Natywny element = soft keyboard automatycznie na mobile. */
+       Natywny element = soft keyboard automatycznie na mobile.
+       UWAGA: top: 30% (nie 50%) żeby HTML input nie pokrywał stacking
+       context'u przycisku POTWIERDZ na dole — tap na przycisk czasem
+       był łapany przez htmlInput jeśli oba w tym samym Y. */
     #name-input-html {
       position: fixed;
-      top: 50%;
+      top: 30%;
       left: 50%;
       transform: translate(-50%, -50%);
       font-size: 24px;
@@ -88,7 +95,7 @@
       color: white;
       text-align: center;
       width: 320px;
-      max-width: 90vw;
+      max-width: 80vw;
       outline: none;
       z-index: 10000;
       display: none;
@@ -101,8 +108,42 @@
   </style>
 </head>
 <body>
+  <noscript>
+    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#1a0a2e;color:#ffd93c;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Arial,sans-serif;text-align:center;padding:20px;">
+      <h1 style="font-size:36px;margin-bottom:20px;">SCARY RUN</h1>
+      <p style="font-size:18px;color:white;">Wlacz JavaScript w przegladarce zeby zagrac.</p>
+    </div>
+  </noscript>
+
+  <!-- Fallback dla starych przeglądarek bez ES modules / Phaser init fail.
+       Uruchamiany przez script niżej (timeout 5s lub brak noModule support). -->
+  <div id="browser-fallback" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#1a0a2e;color:#ffd93c;flex-direction:column;align-items:center;justify-content:center;font-family:Arial,sans-serif;text-align:center;padding:20px;z-index:99999;">
+    <h1 style="font-size:36px;margin-bottom:20px;">SCARY RUN</h1>
+    <p style="font-size:18px;color:white;margin-bottom:20px;">Twoja przegladarka jest za stara.</p>
+    <p style="font-size:16px;color:#aaa;">Otworz strone w nowoczesnym Chrome lub Safari (iOS 15.4+).</p>
+  </div>
+
   <div id="game-container"></div>
   <input id="name-input-html" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" />
+
+  <script>
+    // Detection: jeśli za 5s canvas nie istnieje (Phaser nie wystartował),
+    // pokaż browser-fallback. Dla bardzo starych browserów albo gdy ES
+    // modules nie wspierany.
+    setTimeout(function() {
+      if (!document.querySelector('canvas')) {
+        var fb = document.getElementById('browser-fallback');
+        if (fb) fb.style.display = 'flex';
+      }
+    }, 5000);
+
+    // Bezwarunkowo: brak noModule attribute = stary browser bez ES modules.
+    if (!('noModule' in HTMLScriptElement.prototype)) {
+      var fb = document.getElementById('browser-fallback');
+      if (fb) fb.style.display = 'flex';
+    }
+  </script>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

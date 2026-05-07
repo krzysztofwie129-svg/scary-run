@@ -87,13 +87,28 @@ export class NameInputScene extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     confirmBtn.on('pointerdown', () => this.confirmName());
 
+    // Backup tap zone — gdy przycisk POTWIERDZ jest poza viewportem (Safari
+    // tab bar) lub stacking conflict z htmlInput, gracz wciąż może potwierdzić
+    // tappując dolne 200px ekranu poza polem inputa.
+    const backupZone = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT - 60,
+      GAME_WIDTH,
+      200,
+      0x000000,
+      0,
+    ).setInteractive().setDepth(99997);
+    backupZone.on('pointerdown', () => this.confirmName());
+
     // Cleanup przy shutdown — bez tego HTML input wisi z aktywną klasą.
     this.events.once('shutdown', () => this.cleanup());
   }
 
   confirmName() {
+    // Pobierz value direct z DOM (race-safe — htmlInput może być w trakcie
+    // input event). Jeśli już cleanup'owane, htmlInput == null, return.
     if (!this.htmlInput) return;
-    const raw = this.htmlInput.value || '';
+    const raw = (this.htmlInput.value || '').trim();
     const sanitized = raw
       .toUpperCase()
       .replace(/[^A-Z0-9 ]/g, '')
@@ -102,6 +117,10 @@ export class NameInputScene extends Phaser.Scene {
 
     if (sanitized.length === 0) {
       this.cameras.main.shake(200, 0.01);
+      // Re-focus żeby user wpisał coś — soft keyboard nie zamyka się.
+      setTimeout(() => {
+        try { this.htmlInput?.focus(); } catch (e) { /* ignore */ }
+      }, 100);
       return;
     }
 

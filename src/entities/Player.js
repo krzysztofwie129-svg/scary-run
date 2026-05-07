@@ -2,8 +2,9 @@
 // charKey to 'char01' / 'char02' / 'char03'. Animacje rejestrowane per-postać
 // żeby klucze nie kolidowały (anims.create jest globalne dla całej gry).
 //
-// Sesja 3.5: + double jump (2 skoki), + slide (DOWN, obniżony hitbox),
-// + landing grace counter (eliminuje drżenie 'fall'<->'run' po lądowaniu).
+// Sesja 8: SLIDE USUNIĘTY — gameplay tylko skoki (single + double jump).
+// Animacja roll została usunięta z animKeys (asset roll/* w public pozostaje
+// niewyrzucany ale niewczytywany — patrz config.ANIM_FRAME_COUNTS bez 'roll').
 
 import {
   PHYSICS_GRAVITY,
@@ -12,8 +13,6 @@ import {
   ANIM_FRAME_COUNTS,
   CHARACTER_FRAME,
   CHARACTER_INFO,
-  SLIDE_DURATION_MS,
-  SLIDE_HITBOX_HEIGHT_RATIO,
   LANDING_GRACE_FRAMES,
   GAME_WIDTH,
   GROUND_Y,
@@ -21,39 +20,32 @@ import {
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
-// Fallback body jeśli postać nie ma definicji w CHARACTER_INFO.body
-// (nie powinno się zdarzyć — wszystkie 3 mają zdefiniowane).
 const DEFAULT_BODY = { w: 140, h: 200, offsetX: 247, offsetY: 200 };
 
-// Animacje — klucze pod jakimi rejestrujemy animacje per postać.
-// 'roll' używamy jako ślizg (slide) — krótki, bez loopu.
-const ANIMS = ['idle', 'run', 'jump', 'hit', 'fall', 'roll'];
+// Animacje per postać — bez 'roll' (slide usunięty w sesji 8).
+const ANIMS = ['idle', 'run', 'jump', 'hit', 'fall'];
 
-// Frame rates per anim (żeby anim trwał roughly tyle ile ma sens akcyjnie).
 const FRAME_RATES = {
   idle: 12,
   run: 30,
   jump: 24,
   fall: 12,
-  hit: 30,  // 40 frames @ 30fps = 1.33s, daje czas na śmierć
-  roll: 24, // 8 frames @ 24fps = 0.33s — szybki ślizg, slide trwa 600ms i nie zapętli
+  hit: 30, // 40 frames @ 30fps = 1.33s
 };
 
 // Animacje które NIE loopują (jednorazowe).
-const NON_LOOPING = new Set(['hit', 'roll']);
+const NON_LOOPING = new Set(['hit']);
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, charKey) {
-    // Pierwsza klatka run jako początkowa tekstura.
     super(scene, x, y, `${charKey}_run_00`);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
     this.charKey = charKey;
-    // Phaser ma własne pole `.state` na GameObject (Phaser 3.50+) — używamy
-    // state_ żeby się nie ścierać.
-    this.state_ = 'running'; // running | jumping | falling | sliding | dead
+    // states: running | jumping | falling | dead
+    this.state_ = 'running';
 
     // Double jump — reset przy lądowaniu, dekrement w jump().
     this.jumpsRemaining = 2;
@@ -71,13 +63,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
     this.setBounce(0);
 
-    // Custom world bounds dla player'a — ograniczamy ZJAZD do GROUND_Y, NIE
-    // do GAME_HEIGHT. Default world bounds (0, 0, 1280, 720) ma 100px
-    // "podziemia" między groundem (Y=620) a dnem ekranu (720). Player tunelował
-    // przez ground i lądował na world bottom y=720 — body wtedy w przedziale
-    // [620, 720], poniżej obstacles (~519-611), brak overlap.
-    // Ten setBoundsRectangle wymusza body bottom <= GROUND_Y → body siedzi
-    // dokładnie na ground'ie (jak gdyby ground był world bottom).
+    // Custom world bounds — ograniczamy ZJAZD do GROUND_Y, NIE do GAME_HEIGHT.
+    // Default world bounds (0, 0, 1280, 720) ma 100px "podziemia" między
+    // groundem (Y=620) a dnem ekranu (720); player tunelował przez ground i
+    // lądował na world bottom y=720, brak overlap z obstacles. setBoundsRectangle
+    // wymusza body bottom <= GROUND_Y → body siedzi dokładnie na ground'ie.
     this.body.setBoundsRectangle(new Phaser.Geom.Rectangle(0, 0, GAME_WIDTH, GROUND_Y));
 
     // Hitbox per-postać z CHARACTER_INFO.body (Hex jest węższa niż Fix/Mavix
@@ -88,15 +78,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setSize(bodyDef.w, bodyDef.h);
     this.body.setOffset(bodyDef.offsetX, bodyDef.offsetY);
 
-    // Zachowujemy oryginalne wymiary body żeby slide() mógł je przywrócić
-    // bez ryzyka kumulacji błędów po wielokrotnym slide.
-    this.originalBodyHeight = this.body.height;
-    this.originalBodyOffsetY = this.body.offset.y;
-
-    // Klucze animacji — wstrzyknięte raz, używane wszędzie zamiast template
-    // stringów (czytelniej + łatwo refaktorować).
     this.animKeys = this.setupAnimations(scene, charKey);
-
     this.play(this.animKeys.run);
   }
 
@@ -123,7 +105,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   jump() {
     if (this.state_ === 'dead') return;
-    if (this.state_ === 'sliding') return;
     if (this.jumpsRemaining <= 0) return;
 
     const isFirstJump = this.jumpsRemaining === 2;
@@ -131,43 +112,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.jumpsRemaining--;
     this.state_ = 'jumping';
     this.play(this.animKeys.jump, true);
-    // SFX — pierwszy skok normalny pitch, double jump lekko wyższy.
     this.scene.audioManager?.playSfx('jump', { rate: isFirstJump ? 1.0 : 1.15, volume: 0.7 });
     this.landingGraceCounter = 0;
   }
 
-  slide() {
-    // Można schylić się tylko biegnąc (nie w skoku, nie w spadaniu).
-    if (this.state_ !== 'running') return;
-    this.state_ = 'sliding';
-    this.play(this.animKeys.roll, true);
-
-    // Hitbox: zmniejszamy wysokość, podnosimy offset Y o różnicę żeby spód
-    // (stopy) zostały na ziemi. NIGDY nie kumuluj — zawsze relative do
-    // oryginałów zapisanych w konstruktorze.
-    const newHeight = this.originalBodyHeight * SLIDE_HITBOX_HEIGHT_RATIO;
-    this.body.setSize(this.body.width, newHeight);
-    this.body.setOffset(this.body.offset.x, this.originalBodyOffsetY + (this.originalBodyHeight - newHeight));
-
-    // Auto-restore po SLIDE_DURATION_MS. Sprawdzamy state_ żeby nie nadpisać
-    // jeśli gracz w międzyczasie zmarł lub wszedł w inny stan.
-    this.scene.time.delayedCall(SLIDE_DURATION_MS, () => {
-      if (this.state_ !== 'sliding') return;
-      this.body.setSize(this.body.width, this.originalBodyHeight);
-      this.body.setOffset(this.body.offset.x, this.originalBodyOffsetY);
-      this.state_ = 'running';
-      this.play(this.animKeys.run, true);
-    });
-  }
-
   die() {
     if (this.state_ === 'dead') return;
-    // Jeśli umarł w trakcie slide — przywróć body żeby kolizja z ziemią
-    // dalej działała poprawnie (drobny ale mógłby kosztować bug w przyszłości).
-    if (this.state_ === 'sliding') {
-      this.body.setSize(this.body.width, this.originalBodyHeight);
-      this.body.setOffset(this.body.offset.x, this.originalBodyOffsetY);
-    }
     this.state_ = 'dead';
     this.setVelocityX(0);
     this.play(this.animKeys.hit, true);
@@ -180,16 +130,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
-
     if (this.state_ === 'dead') return;
-    if (this.state_ === 'sliding') return; // ślizg trwa, anim/state nie zmieniaj
 
     const onGround = this.body.touching.down || this.body.blocked.down;
 
     if (onGround) {
-      // Counter się dekrementuje — w trakcie grace nie odpalamy 'fall'->'run'
-      // od nowa (anim run już leci jeśli wróciliśmy z grace), ale jeśli
-      // w grace damy SPACE to jump() i tak zadziała (sprawdza touching.down).
       if (this.landingGraceCounter > 0) this.landingGraceCounter--;
 
       if (this.state_ !== 'running') {
@@ -208,12 +153,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.play(this.animKeys.fall, true);
         this.landingGraceCounter = LANDING_GRACE_FRAMES;
       } else if (this.state_ === 'jumping' && this.body.velocity.y > 50) {
-        // Po szczycie skoku przejdź na fall.
         this.state_ = 'falling';
         this.play(this.animKeys.fall, true);
         this.landingGraceCounter = LANDING_GRACE_FRAMES;
       }
-      // Faza wznoszenia (vy < 0) — pozostaje 'jumping', anim jump leci.
     }
   }
 }
