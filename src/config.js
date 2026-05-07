@@ -152,15 +152,14 @@ export const OBSTACLE_TYPES = {};
 
 // === Sesja 4: Levele, monety, finish line ===
 
-// 4 levele po 30s każdy. parallaxSpeeds długość = bgLayerCount.
-// Faktyczne liczby warstw: lvl1=9, lvl2=7, lvl3=6, lvl4=7 (sprawdzono w
-// public/assets/backgrounds/levelN/). Speeds rozłożone od najgłębszej (0.05)
-// do najbliższej (1.0) — najgłębsza ledwo się rusza, najbliższa biegnie ze
-// światem.
-// obstacleMix per level — sumy wag (low + mid + wall) muszą = 1.0.
-// (Sesja 8: 'high' = flying_pumpkin usunięte ze spawnów po wyrzuceniu slide.)
-// Spawner robi weighted random na bazie tych wartości.
+// 7 leveli po 30s każdy (sesja 8). L1-L4 oryginalne, L5-L7 nowe ekstremalne
+// reusing biomy z L2-L4. parallaxSpeeds długość = bgLayerCount.
+// obstacleMix sumy = 1.0 (low + mid + high + wall). 'high' = flying_pumpkin —
+// po sesji 7 (slide removed) wciąż grywalne: bieg POD pumpkin = no overlap
+// (player body Y 530-630 vs pumpkin Y 404-436), tylko skok blisko pumpkin
+// = ryzyko kolizji w fazie wznoszenia. Pumpkin staje się "nie skacz tutaj".
 export const LEVELS = [
+  // L1 — tutorial
   {
     id: 1,
     name: 'Graveyard',
@@ -168,53 +167,101 @@ export const LEVELS = [
     bgFolder: 'level1',
     bgLayerCount: 9,
     parallaxSpeeds: [0.05, 0.1, 0.18, 0.28, 0.4, 0.55, 0.7, 0.85, 1.0],
-    obstacleMix: { low: 1.0, mid: 0.0, wall: 0.0 },
+    obstacleMix: { low: 1.0, mid: 0.0, high: 0.0, wall: 0.0 },
     obstacleSpawnRate: { min: 2.2, max: 3.2 },
     coinSpawnRate: { min: 0.7, max: 1.5 },
     diamondChance: 0.075,
     worldSpeed: 300,
     musicVolume: 0.0,
   },
+  // L2 — lekkie podkręcenie (sesja 8: speed 360→380, spawn 1.8-2.8→1.7-2.7)
   {
     id: 2,
     name: "Witch's Hill",
     duration: 30,
     bgFolder: 'level2',
     bgLayerCount: 7,
-    parallaxSpeeds: [0.05, 0.1, 0.2, 0.35, 0.5, 0.7, 1.0],
-    obstacleMix: { low: 0.5, mid: 0.4, wall: 0.1 },
-    obstacleSpawnRate: { min: 1.8, max: 2.8 },
+    parallaxSpeeds: [0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 1.0],
+    obstacleMix: { low: 0.5, mid: 0.3, high: 0.15, wall: 0.05 },
+    obstacleSpawnRate: { min: 1.7, max: 2.7 },
     coinSpawnRate: { min: 0.6, max: 1.3 },
     diamondChance: 0.12,
-    worldSpeed: 360,
+    worldSpeed: 380,
     musicVolume: 0.0,
   },
+  // L3 — średnie (sesja 8: speed 430→470, +9%)
   {
     id: 3,
     name: 'Spider Forest',
     duration: 30,
     bgFolder: 'level3',
     bgLayerCount: 6,
-    parallaxSpeeds: [0.05, 0.15, 0.3, 0.5, 0.75, 1.0],
-    obstacleMix: { low: 0.4, mid: 0.4, wall: 0.2 },
-    obstacleSpawnRate: { min: 1.5, max: 2.4 },
-    coinSpawnRate: { min: 0.5, max: 1.2 },
+    parallaxSpeeds: [0.08, 0.2, 0.4, 0.6, 0.8, 1.0],
+    obstacleMix: { low: 0.35, mid: 0.30, high: 0.20, wall: 0.15 },
+    obstacleSpawnRate: { min: 1.4, max: 2.3 },
+    coinSpawnRate: { min: 0.55, max: 1.2 },
     diamondChance: 0.18,
-    worldSpeed: 430,
+    worldSpeed: 470,
     musicVolume: 0.0,
   },
+  // L4 — mocniejsze (sesja 8: speed 500→560, +12%)
   {
     id: 4,
     name: "Witch's House",
     duration: 30,
     bgFolder: 'level4',
     bgLayerCount: 7,
-    parallaxSpeeds: [0.05, 0.1, 0.2, 0.35, 0.5, 0.7, 1.0],
-    obstacleMix: { low: 0.3, mid: 0.45, wall: 0.25 },
-    obstacleSpawnRate: { min: 1.2, max: 2.0 },
-    coinSpawnRate: { min: 0.5, max: 1.0 },
+    parallaxSpeeds: [0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 1.0],
+    obstacleMix: { low: 0.25, mid: 0.35, high: 0.25, wall: 0.15 },
+    obstacleSpawnRate: { min: 1.1, max: 1.9 },
+    coinSpawnRate: { min: 0.5, max: 1.1 },
     diamondChance: 0.22,
-    worldSpeed: 500,
+    worldSpeed: 560,
+    musicVolume: 0.0,
+  },
+  // L5 — NOWY (sesja 8) — biom L2, ekstremalna trudność
+  {
+    id: 5,
+    name: "Witch's Hill - Cursed",
+    duration: 30,
+    bgFolder: 'level2',
+    bgLayerCount: 7,
+    parallaxSpeeds: [0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 1.0],
+    obstacleMix: { low: 0.25, mid: 0.30, high: 0.25, wall: 0.20 },
+    obstacleSpawnRate: { min: 1.0, max: 1.7 },
+    coinSpawnRate: { min: 0.5, max: 1.0 },
+    diamondChance: 0.25,
+    worldSpeed: 620,
+    musicVolume: 0.0,
+  },
+  // L6 — NOWY (sesja 8) — biom L3, ostre tempo
+  {
+    id: 6,
+    name: 'Spider Forest - Toxic',
+    duration: 30,
+    bgFolder: 'level3',
+    bgLayerCount: 6,
+    parallaxSpeeds: [0.08, 0.2, 0.4, 0.6, 0.8, 1.0],
+    obstacleMix: { low: 0.20, mid: 0.30, high: 0.25, wall: 0.25 },
+    obstacleSpawnRate: { min: 0.9, max: 1.5 },
+    coinSpawnRate: { min: 0.45, max: 0.95 },
+    diamondChance: 0.28,
+    worldSpeed: 700,
+    musicVolume: 0.0,
+  },
+  // L7 — NOWY (sesja 8) — biom L4, finalna walka
+  {
+    id: 7,
+    name: "Witch's House - Hellfire",
+    duration: 30,
+    bgFolder: 'level4',
+    bgLayerCount: 7,
+    parallaxSpeeds: [0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 1.0],
+    obstacleMix: { low: 0.15, mid: 0.25, high: 0.30, wall: 0.30 },
+    obstacleSpawnRate: { min: 0.8, max: 1.3 },
+    coinSpawnRate: { min: 0.4, max: 0.9 },
+    diamondChance: 0.30,
+    worldSpeed: 780,
     musicVolume: 0.0,
   },
 ];

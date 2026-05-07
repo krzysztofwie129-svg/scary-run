@@ -76,7 +76,7 @@ export class GameCompleteScene extends Phaser.Scene {
         strokeThickness: 4,
       }).setOrigin(0.5);
     } else {
-      this.add.text(GAME_WIDTH / 2, subY, 'You beat all 4 levels!', {
+      this.add.text(GAME_WIDTH / 2, subY, `You beat all ${LEVELS.length} levels!`, {
         fontFamily: 'Arial, sans-serif',
         fontSize: '28px',
         color: '#bdaee3',
