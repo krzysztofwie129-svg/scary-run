@@ -45,6 +45,7 @@ import { sessionManager } from '../utils/SessionManager.js';
 import { formatScore, formatNumber } from '../utils/format.js';
 import { playFanfare } from '../utils/SuccessFanfare.js';
 import { InputHandler } from '../utils/InputHandler.js';
+import { GameStateStore } from '../utils/GameStateStore.js';
 
 const SPARK_TEXTURE_KEY = '__spark_4x4';
 
@@ -116,6 +117,52 @@ export class GameScene extends Phaser.Scene {
 
     this.createHUD();
     this.startTime = this.time.now;
+
+    // === Sesja P1: Pause + Save + Tab Blur ===
+
+    // PAUSE button — prawy górny róg, pod Score (Score Y=16, Pause Y=80
+    // żeby nie kolidowały).
+    const pauseBtn = this.add.text(GAME_WIDTH - 30, 80, '⏸', {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '40px',
+      color: '#ffffff',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      padding: { x: 12, y: 6 },
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true })
+      .setDepth(10000).setScrollFactor(0);
+    pauseBtn.on('pointerdown', () => this.pauseGame());
+
+    // Auto-save state co 2 sekundy.
+    this.saveStateTimer = this.time.addEvent({
+      delay: 2000,
+      loop: true,
+      callback: () => this.saveCurrentState(),
+    });
+
+    // Tab blur auto-pauza — gdy user przełączy zakładkę / minimalizuje
+    // przeglądarkę / przyjdzie połączenie, pauzujemy automatycznie.
+    this.visibilityHandler = () => {
+      if (document.hidden && !this.scene.isPaused()) {
+        this.pauseGame();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+  }
+
+  pauseGame() {
+    if (this.scene.isPaused()) return;
+    this.scene.pause();
+    this.scene.launch('PauseScene', { parentSceneKey: this.scene.key });
+  }
+
+  saveCurrentState() {
+    const player = sessionManager.currentPlayer();
+    if (!player) return;
+    GameStateStore.save({
+      session: sessionManager.serialize(),
+      currentLevel: this.currentLevel,
+      elapsedSeconds: this.elapsedSeconds || 0,
+    });
   }
 
   ensureSparkTexture() {
@@ -504,6 +551,10 @@ export class GameScene extends Phaser.Scene {
     // Fanfara — static import (był dynamic, jeden powód mniej do failu).
     try { playFanfare(); } catch (e) { /* ignore audio quirks */ }
 
+    // Sesja P1: clear save — gracz świadomie przeszedł level, "Continue"
+    // by wracał do tego samego startu zamiast kontynuować nową progresję.
+    GameStateStore.clear();
+
     // Po FINISH_SLOWMO_DURATION + 300ms przejście do LevelComplete.
     // advanceLevel() przeniesione do LevelComplete.create — tam ekran pokazuje
     // ukończony level (player.level) zanim go inkrementuje przy NEXT LEVEL.
@@ -529,7 +580,8 @@ export class GameScene extends Phaser.Scene {
     const gameOverForPlayer = sessionManager.loseLife();
 
     if (gameOverForPlayer) {
-      // Wszystkie życia stracone — GameOverScene.
+      // Wszystkie życia stracone — GameOverScene + clear save (sesja P1).
+      GameStateStore.clear();
       this.time.delayedCall(200, () => this.audioManager.playSfx('gameover', { volume: 0.6 }));
       this.time.delayedCall(1500, () => {
         this.scene.start('GameOverScene', { source: 'gameplay' });
@@ -547,5 +599,10 @@ export class GameScene extends Phaser.Scene {
     if (this.coinTimer) { this.coinTimer.remove(false); this.coinTimer = null; }
     if (this.parallax) { this.parallax.destroy(); this.parallax = null; }
     if (this.inputHandler) { this.inputHandler.destroy(); this.inputHandler = null; }
+    if (this.saveStateTimer) { this.saveStateTimer.remove(); this.saveStateTimer = null; }
+    if (this.visibilityHandler) {
+      try { document.removeEventListener('visibilitychange', this.visibilityHandler); } catch (e) { /* ignore */ }
+      this.visibilityHandler = null;
+    }
   }
 }

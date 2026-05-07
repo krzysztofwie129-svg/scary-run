@@ -151,6 +151,27 @@ class SessionManager {
   getResultsSorted() {
     return [...this.players].sort((a, b) => b.score - a.score);
   }
+
+  // === Sesja P1: serialize / deserialize do GameStateStore ===
+
+  serialize() {
+    return {
+      players: this.players,
+      currentPlayerIndex: this.currentPlayerIndex,
+      numPlayers: this.numPlayers,
+      isMultiplayer: this.isMultiplayer,
+    };
+  }
+
+  /** Returns true on success, false jeśli data malformed. */
+  deserialize(data) {
+    if (!data || !Array.isArray(data.players)) return false;
+    this.players = data.players;
+    this.currentPlayerIndex = data.currentPlayerIndex || 0;
+    this.numPlayers = data.numPlayers || data.players.length;
+    this.isMultiplayer = !!data.isMultiplayer;
+    return true;
+  }
 }
 
 export const sessionManager = new SessionManager();

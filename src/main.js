@@ -14,6 +14,7 @@ import { NameInputScene } from './scenes/NameInputScene.js';
 import { NameSplashScene } from './scenes/NameSplashScene.js';
 import { CharSelectScene } from './scenes/CharSelectScene.js';
 import { GameScene } from './scenes/GameScene.js';
+import { PauseScene } from './scenes/PauseScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
 import { LevelCompleteScene } from './scenes/LevelCompleteScene.js';
 import { GameCompleteScene } from './scenes/GameCompleteScene.js';
@@ -59,6 +60,7 @@ const config = {
     CharSelectScene,
     PlayerTurnSplashScene,
     GameScene,
+    PauseScene,
     GameOverScene,
     LevelCompleteScene,
     GameCompleteScene,

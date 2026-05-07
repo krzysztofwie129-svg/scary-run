@@ -10,6 +10,7 @@ import {
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { isMobileDevice } from '../utils/DeviceDetect.js';
+import { GameStateStore } from '../utils/GameStateStore.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -92,21 +93,38 @@ export class MenuScene extends Phaser.Scene {
     this.destroyButtons();
 
     const cy = GAME_HEIGHT / 2;
-    this.buttons = [
-      this.makeButton(GAME_WIDTH / 2, cy - 40, 'START GAME', 0x6b3eb6, () => {
+    const hasSave = GameStateStore.hasSave();
+    // Layout: jeśli save istnieje, dodajemy CONTINUE jako pierwszy
+    // i przesuwamy resztę w dół o 90px (mieszczą się w safe-zone GAME_HEIGHT-180).
+    const offset = hasSave ? 90 : 0;
+
+    this.buttons = [];
+    if (hasSave) {
+      this.buttons.push(
+        this.makeButton(GAME_WIDTH / 2, cy - 130, '▶ KONTYNUUJ', 0xffd93c, () => {
+          this.audioManager?.playSfx('click');
+          this.continueGame();
+        }),
+      );
+    }
+    this.buttons.push(
+      this.makeButton(GAME_WIDTH / 2, cy - 40 + offset, 'START GAME', 0x6b3eb6, () => {
         this.audioManager?.playSfx('click');
+        // Klik START GAME → świadomy nowy start, clear istniejącego save'a.
+        GameStateStore.clear();
         sessionManager.setupSinglePlayer('');
         this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: 1 });
       }),
-      this.makeButton(GAME_WIDTH / 2, cy + 50, 'MULTIPLAYER', 0x3e6bb6, () => {
+      this.makeButton(GAME_WIDTH / 2, cy + 50 + offset, 'MULTIPLAYER', 0x3e6bb6, () => {
         this.audioManager?.playSfx('click');
+        GameStateStore.clear();
         this.buildPlayerCountButtons();
       }),
-      this.makeButton(GAME_WIDTH / 2, cy + 140, 'LEADERBOARD', 0x4ad8ff, () => {
+      this.makeButton(GAME_WIDTH / 2, cy + 140 + offset, 'LEADERBOARD', 0x4ad8ff, () => {
         this.audioManager?.playSfx('click');
         this.scene.start('LeaderboardScene');
       }),
-    ];
+    );
     this.bindKeyboardNav();
   }
 
@@ -177,6 +195,27 @@ export class MenuScene extends Phaser.Scene {
 
   refreshFocus() {
     this.buttons?.forEach((b, i) => b.setFocused?.(i === this.focusedIndex));
+  }
+
+  /** Sesja P1 — odtwarza stan z localStorage i przechodzi prosto do GameScene
+   *  (postać i imię już z save'a, NameInput/CharSelect pominięte). */
+  continueGame() {
+    const data = GameStateStore.load();
+    if (!data) {
+      // Save zniknął między pokazaniem buttona a kliknięciem (TTL?). Restart menu.
+      this.scene.restart();
+      return;
+    }
+    if (!sessionManager.deserialize(data.session)) {
+      // Malformed save — clear i refresh.
+      GameStateStore.clear();
+      this.scene.restart();
+      return;
+    }
+    if (typeof data.currentLevel === 'number') {
+      sessionManager.currentPlayer().level = data.currentLevel;
+    }
+    this.scene.start('GameScene');
   }
 
   makeButton(centerX, centerY, label, fillColor, onClick) {
