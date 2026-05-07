@@ -10,6 +10,7 @@ import {
 } from '../config.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
+import { isMobile } from '../utils/DeviceDetect.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -126,6 +127,16 @@ export class CharSelectScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#bdaee3',
     }).setOrigin(0.5);
+
+    if (isMobile()) {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'Tap UP to jump  •  Tap DOWN to slide', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '18px',
+        color: '#ffd93c',
+        stroke: '#000',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(10000);
+    }
   }
 
   select(idx) {

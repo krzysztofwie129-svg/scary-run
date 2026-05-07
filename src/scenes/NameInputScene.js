@@ -5,6 +5,7 @@
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { TextInput } from '../utils/InputHelper.js';
 import { sessionManager } from '../utils/SessionManager.js';
+import { isTouchDevice } from '../utils/DeviceDetect.js';
 
 export class NameInputScene extends Phaser.Scene {
   constructor() {
@@ -47,7 +48,10 @@ export class NameInputScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 270, 'A-Z 0-9 spacja, max 12 znaków, ENTER aby zatwierdzić', {
+    const hint = isTouchDevice()
+      ? 'Tap pole aby pisać · max 12 znaków, ENTER aby zatwierdzić'
+      : 'A-Z 0-9 spacja, max 12 znaków, ENTER aby zatwierdzić';
+    this.add.text(GAME_WIDTH / 2, 270, hint, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '18px',
       color: '#bdaee3',

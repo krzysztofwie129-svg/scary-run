@@ -9,6 +9,7 @@ import {
 } from '../config.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
+import { isMobile } from '../utils/DeviceDetect.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -17,9 +18,16 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     this.audioManager = new AudioManager(this);
-    // Bez loop — odtwarza raz i kończy. Trim 15s i tak nie poprawił czasu
-    // ładowania, więc nie ma sensu zapętlać krótkiego klipu.
-    this.audioManager.playMusic('music_menu', 0.4, false);
+    // Audio unlock dla mobile — pierwszy tap odblokowuje AudioContext (browser
+    // autoplay policy). Próbujemy od razu, jeśli sound.locked → czekamy na tap.
+    if (this.sound.locked) {
+      this.input.once('pointerdown', () => {
+        try { this.sound.context?.resume(); } catch (e) { /* ignore */ }
+        this.audioManager.playMusic('music_menu', 0.4, false);
+      });
+    } else {
+      this.audioManager.playMusic('music_menu', 0.4, false);
+    }
 
     // Tło: layer_00 z tileset/background.
     if (this.textures.exists('bg_layer_00')) {
@@ -52,6 +60,16 @@ export class MenuScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#bdaee3',
     }).setOrigin(0.5);
+
+    if (isMobile()) {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'Tap UP to jump  •  Tap DOWN to slide', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '18px',
+        color: '#ffd93c',
+        stroke: '#000',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(10000);
+    }
   }
 
   destroyButtons() {

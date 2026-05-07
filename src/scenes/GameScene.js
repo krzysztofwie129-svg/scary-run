@@ -44,6 +44,7 @@ import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { formatScore, formatNumber } from '../utils/format.js';
 import { playFanfare } from '../utils/SuccessFanfare.js';
+import { InputHandler } from '../utils/InputHandler.js';
 
 const SPARK_TEXTURE_KEY = '__spark_4x4';
 
@@ -99,11 +100,14 @@ export class GameScene extends Phaser.Scene {
     });
     this.particles.setDepth(150);
 
-    this.input.keyboard.on('keydown-SPACE', () => this.player.jump());
-    this.input.keyboard.on('keydown-UP', () => this.player.jump());
-    this.input.keyboard.on('keydown-DOWN', () => this.player.slide());
-    this.input.keyboard.on('keydown-S', () => this.player.slide());
-    this.input.on('pointerdown', () => this.player.jump());
+    // Sterowanie — klawiatura (SPACE/UP/W jump, DOWN/S slide) + tap zones
+    // (górne 60% = jump, dolne 40% = slide). InputHandler tworzy interactive
+    // rectangles depth 99998 (pod HUD 1000... wait, HUD ma 1000, tap 99998 więc
+    // tap nad HUD — ale zone alpha 0 i nie blokuje wizualnie).
+    this.inputHandler = new InputHandler(this, {
+      onJump: () => this.player.jump(),
+      onSlide: () => this.player.slide(),
+    });
 
     this.lastFlyingPumpkinTime = -Infinity;
     this.scheduleNextObstacle();
@@ -546,5 +550,6 @@ export class GameScene extends Phaser.Scene {
     if (this.obstacleTimer) { this.obstacleTimer.remove(false); this.obstacleTimer = null; }
     if (this.coinTimer) { this.coinTimer.remove(false); this.coinTimer = null; }
     if (this.parallax) { this.parallax.destroy(); this.parallax = null; }
+    if (this.inputHandler) { this.inputHandler.destroy(); this.inputHandler = null; }
   }
 }

@@ -12,6 +12,7 @@ import {
   NAME_MAX_LENGTH,
   NAME_ALLOWED_CHARS_REGEX,
 } from '../config.js';
+import { isTouchDevice } from './DeviceDetect.js';
 
 export class TextInput {
   constructor(scene, x, y, options = {}) {
@@ -47,6 +48,55 @@ export class TextInput {
 
     this.keyHandler = (event) => this.handleKey(event);
     scene.input.keyboard.on('keydown', this.keyHandler);
+
+    // Mobile soft keyboard support — Phaser na touch device nie wywołuje
+    // natywnej klawiatury. Tworzymy ukryty <input> w DOM, focus na nim
+    // pokazuje soft keyboard, a my synchronizujemy value z naszym text.
+    if (isTouchDevice()) {
+      this.htmlInput = document.createElement('input');
+      this.htmlInput.type = 'text';
+      this.htmlInput.maxLength = this.maxLength;
+      this.htmlInput.autocomplete = 'off';
+      this.htmlInput.autocapitalize = 'characters';
+      this.htmlInput.style.position = 'fixed';
+      this.htmlInput.style.opacity = '0.01';
+      this.htmlInput.style.left = '50%';
+      this.htmlInput.style.top = '50%';
+      this.htmlInput.style.width = '1px';
+      this.htmlInput.style.height = '1px';
+      // fontSize 16px → iOS nie zoom'uje viewport przy focusie.
+      this.htmlInput.style.fontSize = '16px';
+      this.htmlInput.style.zIndex = '99999';
+      this.htmlInput.style.border = 'none';
+      this.htmlInput.style.background = 'transparent';
+      this.htmlInput.style.color = 'transparent';
+      this.htmlInput.style.caretColor = 'transparent';
+      document.body.appendChild(this.htmlInput);
+
+      this.htmlInputHandler = (e) => {
+        const raw = (e.target.value || '').toUpperCase();
+        // Filtruj do dozwolonych znaków: A-Z, 0-9, spacja.
+        const filtered = raw.replace(/[^A-Z0-9 ]/g, '').slice(0, this.maxLength);
+        this.value = filtered;
+        e.target.value = filtered;
+        this.refresh();
+      };
+      this.htmlInput.addEventListener('input', this.htmlInputHandler);
+      this.htmlInputKeyHandler = (e) => {
+        if (e.key === 'Enter') {
+          if (this.value.length > 0) this.onEnter(this.value);
+          this.htmlInput.blur();
+        }
+      };
+      this.htmlInput.addEventListener('keydown', this.htmlInputKeyHandler);
+
+      // Focus html input na klik w naszym tekstowym polu — to wywołuje
+      // soft keyboard.
+      this.bg.setInteractive({ useHandCursor: true });
+      this.bg.on('pointerdown', () => {
+        try { this.htmlInput.focus(); } catch (e) { /* ignore */ }
+      });
+    }
   }
 
   displayValue() {
@@ -117,5 +167,13 @@ export class TextInput {
     if (this.cursorBlink) this.cursorBlink.stop();
     if (this.bg) this.bg.destroy();
     if (this.text) this.text.destroy();
+    if (this.htmlInput) {
+      try {
+        this.htmlInput.removeEventListener('input', this.htmlInputHandler);
+        this.htmlInput.removeEventListener('keydown', this.htmlInputKeyHandler);
+        document.body.removeChild(this.htmlInput);
+      } catch (e) { /* ignore */ }
+      this.htmlInput = null;
+    }
   }
 }
