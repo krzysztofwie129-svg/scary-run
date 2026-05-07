@@ -63,12 +63,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
     this.setBounce(0);
 
-    // Custom world bounds — ograniczamy ZJAZD do GROUND_Y, NIE do GAME_HEIGHT.
-    // Default world bounds (0, 0, 1280, 720) ma 100px "podziemia" między
-    // groundem (Y=620) a dnem ekranu (720); player tunelował przez ground i
-    // lądował na world bottom y=720, brak overlap z obstacles. setBoundsRectangle
-    // wymusza body bottom <= GROUND_Y → body siedzi dokładnie na ground'ie.
-    this.body.setBoundsRectangle(new Phaser.Geom.Rectangle(0, 0, GAME_WIDTH, GROUND_Y));
+    // Custom world bounds — body bottom clamped na GROUND_Y + GROUND_VISUAL_OFFSET.
+    // GROUND_Y = 620 to top of ground tile, ale tile ma decoration grass top
+    // ~10px wysokości; body offset (200, 200) z originY=0.6 daje body bottom
+    // na texture y=400 ale visible character feet są na texture y~380 (10
+    // texture / 5 display wyżej). Razem to ~10 display floating nad visible
+    // ground line. Shift +10 w bounds rectangle koryguje obie różnice.
+    this.body.setBoundsRectangle(new Phaser.Geom.Rectangle(0, 0, GAME_WIDTH, GROUND_Y + 10));
 
     // Hitbox per-postać z CHARACTER_INFO.body (Hex jest węższa niż Fix/Mavix
     // — jednolity body powodował że kolizje rejestrowały się "w powietrzu"

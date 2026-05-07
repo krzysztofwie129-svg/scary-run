@@ -1,78 +1,57 @@
-// Ground — pętla ziemi z object pool ground_*.png tiles.
-// Tile'y ground_01..13 są 128×128, ground_additional_01..07 są 320×320 i inne
-// kształty (skały na ziemi etc.) — używamy tylko podstawowych ground_01..13
-// jako "powierzchnia do biegania", żeby nie psuć kolizji.
+// Ground (sesja 7.4.4) — wizualny pas trawy generowany w kodzie, BEZ tile
+// textures. Zwykłe Phaser rectangles:
+//   • dark soil pas od GROUND_Y+10 do dołu (cała wysokość poniżej ground line)
+//   • cienki grass top edge na samym GROUND_Y+10 (jasna kreska)
 //
-// Strategia:
-//   • pula ceil(GAME_WIDTH/TILE) + 2 tile'ów rozłożonych w rzędzie
-//   • każda klatka update() przesuwa wszystkie w lewo
-//   • tile który wyszedł poza lewy ekran → przekładamy na koniec rzędu
-//   • physics body immovable=true, allowGravity=false → solidna podłoga
+// Dlaczego nie polegamy na parallax: bottom layer parallax to art z CraftPix
+// gdzie ground line nie zawsze trafia na nasz GROUND_Y (=620). Bez własnego
+// pasa player wizualnie lewitował.
+//
+// Player.body clampuje się przy GROUND_Y+10 przez setBoundsRectangle (Player.js)
+// → body.blocked.down=true gdy spada → onGround=true. Pusty `this.group`
+// zachowany dla GameScene `physics.add.collider(player, ground.group)` no-op.
 
-import { GAME_WIDTH, GROUND_Y, GROUND_SPEED_MULTIPLIER } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, GROUND_Y } from '../config.js';
 
-const TILE_SIZE = 128;
+const GROUND_TOP_Y = GROUND_Y + 10;             // gdzie wizualny ground top
+const SOIL_COLOR = 0x2d2540;                    // ciemny ciemnoFiolet (mroczne tło)
+const GRASS_EDGE_COLOR = 0x4a7d2a;              // jasna kreska trawy na top edge
+const GRASS_EDGE_HEIGHT = 4;                    // wysokość kreski trawy
 
 export class Ground {
   constructor(scene) {
     this.scene = scene;
-    // Static group nie aktualizuje body przy ruchu, ale my chcemy ruszać
-    // tile'ami i zachować kolizję — używamy zwykłej (dynamic) grupy z body
-    // immovable=true + allowGravity=false. Po ruchu wołamy
-    // body.updateFromGameObject() żeby odświeżyć pozycję body za sprite.
+
+    // Wypełniony soil pas pod ground line — od GROUND_TOP_Y do GAME_HEIGHT.
+    const soilHeight = GAME_HEIGHT - GROUND_TOP_Y;
+    this.soil = scene.add.rectangle(
+      GAME_WIDTH / 2,
+      GROUND_TOP_Y + soilHeight / 2,
+      GAME_WIDTH,
+      soilHeight,
+      SOIL_COLOR,
+    );
+    this.soil.setDepth(2).setScrollFactor(0);
+
+    // Cienka kreska "trawy" na samym top edge.
+    this.grassEdge = scene.add.rectangle(
+      GAME_WIDTH / 2,
+      GROUND_TOP_Y + GRASS_EDGE_HEIGHT / 2,
+      GAME_WIDTH,
+      GRASS_EDGE_HEIGHT,
+      GRASS_EDGE_COLOR,
+    );
+    this.grassEdge.setDepth(3).setScrollFactor(0);
+
+    // Pusta physics group — collider w GameScene już istnieje na tej grupie,
+    // pusta = no-op (kolizja graceful skipping).
     this.group = scene.physics.add.group({
       allowGravity: false,
       immovable: true,
     });
-
-    // Liczba tile'ów = ceil(width/tile) + 2 (bufor na recykling).
-    const count = Math.ceil(GAME_WIDTH / TILE_SIZE) + 2;
-    this.tiles = [];
-
-    // Klucze ground_01..13 — tylko podstawowe (te są spójne stylistycznie).
-    const keys = [];
-    for (let i = 1; i <= 13; i++) {
-      keys.push(`ground_${String(i).padStart(2, '0')}`);
-    }
-
-    for (let i = 0; i < count; i++) {
-      const key = keys[Math.floor(Math.random() * keys.length)];
-      const tile = this.group.create(i * TILE_SIZE, GROUND_Y, key);
-      tile.setOrigin(0, 0);
-      tile.setDisplaySize(TILE_SIZE, TILE_SIZE);
-      // Body dopasowane do display size (Phaser auto-size'uje na podstawie
-      // tekstury 128×128 — więc nie trzeba setSize).
-      tile.body.setSize(TILE_SIZE, TILE_SIZE);
-      tile.body.setOffset(0, 0);
-      tile.setDepth(2); // nad parallax (depth 0/1), pod player/obstacles
-      this.tiles.push(tile);
-      this.tileKeys = keys;
-    }
   }
 
-  update(worldSpeed, delta) {
-    const dx = worldSpeed * GROUND_SPEED_MULTIPLIER * (delta / 1000);
-    for (const tile of this.tiles) {
-      tile.x -= dx;
-      // body chodzi za sprite (Phaser update'uje, bo allowGravity=false ale
-      // immovable=true pozwala na ręczny ruch). Dla pewności:
-      tile.body.updateFromGameObject();
-    }
-    // Recykling — przesuń tile'y które wyszły z ekranu na prawy koniec rzędu.
-    // Najprawszy tile = max x, doczepiamy się tile_size za nim.
-    let maxX = -Infinity;
-    for (const tile of this.tiles) {
-      if (tile.x > maxX) maxX = tile.x;
-    }
-    for (const tile of this.tiles) {
-      if (tile.x + TILE_SIZE < 0) {
-        tile.x = maxX + TILE_SIZE;
-        maxX = tile.x;
-        // Losujemy nową teksturę żeby zmiana wzoru była bardziej naturalna.
-        const newKey = this.tileKeys[Math.floor(Math.random() * this.tileKeys.length)];
-        tile.setTexture(newKey);
-        tile.body.updateFromGameObject();
-      }
-    }
+  update(_worldSpeed, _delta) {
+    // No-op. Ground się nie przewija (paralaksa robi to w tle).
   }
 }

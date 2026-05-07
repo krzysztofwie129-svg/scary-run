@@ -9,6 +9,7 @@
 
 import { ASSET_PATHS, CHARACTER_KEYS, ANIM_FRAME_COUNTS, LEVELS } from '../config.js';
 import { orientationGuard } from '../utils/OrientationGuard.js';
+import { canPlay } from '../utils/DeviceDetect.js';
 
 // Zero-pad number do 2 cyfr (CraftPix file naming).
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -59,16 +60,10 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('bg_layer_00', `${ASSET_PATHS.tileset.background}/layer_00.png`);
     this.load.image('bg_layer_01', `${ASSET_PATHS.tileset.background}/layer_01.png`);
 
-    // Ground tile'y — 13 podstawowych + 7 dodatkowych. Nazwy snake_case
-    // ze skopiowanego folderu (sesja 2). Klucze tekstur: ground_01..13,
-    // ground_add_01..07.
-    const pad = (n) => String(n).padStart(2, '0');
-    for (let i = 1; i <= 13; i++) {
-      this.load.image(`ground_${pad(i)}`, `${ASSET_PATHS.tileset.ground}/ground_${pad(i)}.png`);
-    }
-    for (let i = 1; i <= 7; i++) {
-      this.load.image(`ground_add_${pad(i)}`, `${ASSET_PATHS.tileset.ground}/ground_additional_${pad(i)}.png`);
-    }
+    // Sesja 7.4.3: ŻADNYCH ground tile'ów nie ładujemy. Player biega po
+    // niewidzialnych collider'ach (alpha 0 rectangles w Ground.js); visible
+    // ground = parallax warstwy levelu (CraftPix halloween_bg ma trawę
+    // wbudowaną w bottom layer). -20 HTTP requestów w preload.
 
     // Przeszkody naziemne — 4 typy.
     for (const o of ['spikes', 'stone', 'wooden_barrel', 'wooden_box']) {
@@ -112,16 +107,17 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create() {
-    // Aktywuj OrientationGuard DOPIERO TERAZ — assety załadowane, można
-    // oceniać czy gracz ma poprawną orientację. Jeśli portrait/desktop,
-    // start() wywoła scene.start('OrientationLockScene') i zatrzyma PreloadScene.
+    // Aktywuj OrientationGuard — assety załadowane. Jeśli canPlay=false
+    // (portrait / desktop), guard.start() wywoła scene.start('OrientationLockScene')
+    // i zatrzyma PreloadScene.
     orientationGuard.start();
 
-    // Jeśli gra może działać (mobile + landscape), start() nic nie zrobił —
-    // PreloadScene wciąż aktywne, ręcznie przechodzimy do MenuScene.
-    // Jeśli OrientationLock wystartował, ten scene już jest .stop()ed
-    // (przez OrientationGuard.check), więc isActive zwróci false.
-    if (this.scene.isActive('PreloadScene')) {
+    // Jeśli canPlay=true, guard nic nie zrobił — ręcznie przechodzimy do
+    // MenuScene. UWAGA: nie używamy `this.scene.isActive('PreloadScene')` jako
+    // gating — w trakcie własnego create() Phaser scene state to CREATING
+    // (nie RUNNING) i isActive może zwracać false. Bezpośredni canPlay() check
+    // jest jednoznaczny.
+    if (canPlay()) {
       this.scene.start('MenuScene');
     }
   }

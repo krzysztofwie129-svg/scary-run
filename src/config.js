@@ -277,20 +277,19 @@ export const OBSTACLE_TIERS = {
   low: {
     types: ['spikes', 'stone'],
     properties: {
-      // Większe scale niż wcześniej (~0.5 → 0.85+) — przeszkody lepiej
-      // widoczne, mniej trywialne. y = GROUND_Y, origin (0.5, 1) sadza spód
-      // na ziemi.
-      spikes: { y: GROUND_Y, scale: 0.9, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
-      stone:  { y: GROUND_Y, scale: 0.85, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
+      // y = GROUND_Y + 10 (sesja 7.4) — kompensuje grass-decoration top edge
+      // ground tile (visible "podłoga" zaczyna się ~10px poniżej top tile);
+      // origin (0.5, 1) → sprite bottom na visible ground line.
+      spikes: { y: GROUND_Y + 10, scale: 0.9, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
+      stone:  { y: GROUND_Y + 10, scale: 0.85, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
     },
   },
   mid: {
     types: ['wooden_box', 'wooden_barrel'],
     properties: {
-      // Mid przeszkody — można przeskoczyć LUB przeturlać (slide). Hitbox
-      // średniej wysokości daje fair grę dla obu opcji.
-      wooden_box:    { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_or_slide' },
-      wooden_barrel: { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_or_slide' },
+      // y = GROUND_Y + 10 (sesja 7.4) — visible ground alignment.
+      wooden_box:    { y: GROUND_Y + 10, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_or_slide' },
+      wooden_barrel: { y: GROUND_Y + 10, scale: 0.55, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_or_slide' },
     },
   },
   high: {
@@ -306,7 +305,7 @@ export const OBSTACLE_TIERS = {
   wall: {
     types: ['high_box_stack'],
     properties: {
-      high_box_stack: { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_only', stackHeight: 2, baseTexture: 'wooden_box' },
+      high_box_stack: { y: GROUND_Y + 10, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_only', stackHeight: 2, baseTexture: 'wooden_box' },
     },
   },
 };
