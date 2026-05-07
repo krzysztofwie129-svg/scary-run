@@ -50,15 +50,15 @@ export class PreloadScene extends Phaser.Scene {
       for (const [anim, count] of Object.entries(ANIM_FRAME_COUNTS)) {
         for (let i = 0; i < count; i++) {
           const textureKey = `${charKey}_${anim}_${pad2(i)}`;
-          const url = `${charPath}/${anim}/Character-${animFilePrefix(charKey, anim)}_${fileFramePad(anim, i)}.png`;
+          const url = `${charPath}/${anim}/Character-${animFilePrefix(charKey, anim)}_${fileFramePad(anim, i)}.webp`;
           this.load.image(textureKey, url);
         }
       }
     }
 
     // Tła paralaksy.
-    this.load.image('bg_layer_00', `${ASSET_PATHS.tileset.background}/layer_00.png`);
-    this.load.image('bg_layer_01', `${ASSET_PATHS.tileset.background}/layer_01.png`);
+    this.load.image('bg_layer_00', `${ASSET_PATHS.tileset.background}/layer_00.webp`);
+    this.load.image('bg_layer_01', `${ASSET_PATHS.tileset.background}/layer_01.webp`);
 
     // Sesja 7.4.3: ŻADNYCH ground tile'ów nie ładujemy. Player biega po
     // niewidzialnych collider'ach (alpha 0 rectangles w Ground.js); visible
@@ -67,25 +67,25 @@ export class PreloadScene extends Phaser.Scene {
 
     // Przeszkody naziemne — 4 typy.
     for (const o of ['spikes', 'stone', 'wooden_barrel', 'wooden_box']) {
-      this.load.image(o, `${ASSET_PATHS.tileset.obstacles}/${o}.png`);
+      this.load.image(o, `${ASSET_PATHS.tileset.obstacles}/${o}.webp`);
     }
 
     // Latająca dynia — z dekoracji, używana jako 'flying_pumpkin' obstacle.
     // Klucz textury 'flying_pumpkin' żeby zgadzał się z OBSTACLE_TYPES.
-    this.load.image('flying_pumpkin', `${ASSET_PATHS.tileset.decoration}/pumpkin.png`);
+    this.load.image('flying_pumpkin', `${ASSET_PATHS.tileset.decoration}/pumpkin.webp`);
     // 'pumpkin' (ten sam plik) jako dekoracja w LevelCompleteScene.
-    this.load.image('pumpkin', `${ASSET_PATHS.tileset.decoration}/pumpkin.png`);
+    this.load.image('pumpkin', `${ASSET_PATHS.tileset.decoration}/pumpkin.webp`);
 
     // === Sesja 4: collectables, audio, level backgrounds ===
 
     // Coiny — 6 klatek (CraftPix omija coin_04). Diamond — pojedynczy obrazek.
     // Animacja 'coin_spin' tworzona w Coin.js (raz, lazy).
     for (const k of ['coin_00', 'coin_01', 'coin_02', 'coin_03', 'coin_05', 'coin_06']) {
-      this.load.image(k, `${ASSET_PATHS.tileset.collectables}/${k}.png`);
+      this.load.image(k, `${ASSET_PATHS.tileset.collectables}/${k}.webp`);
     }
-    this.load.image('diamond', `${ASSET_PATHS.tileset.collectables}/diamond.png`);
+    this.load.image('diamond', `${ASSET_PATHS.tileset.collectables}/diamond.webp`);
     // 'life' używane przez HUD lives w GameScene.
-    this.load.image('life', `${ASSET_PATHS.tileset.collectables}/life.png`);
+    this.load.image('life', `${ASSET_PATHS.tileset.collectables}/life.webp`);
 
     // SFX (krótkie samples) — preload przez Phaser dla niskiego latency.
     // Muzyka menu (music_menu.mp3) NIE jest tutaj — ładowana streamowo
@@ -101,7 +101,7 @@ export class PreloadScene extends Phaser.Scene {
     // Backgrounds dla 4 leveli — każda warstwa pod kluczem 'bg_levelN_layerM'.
     for (const lvl of LEVELS) {
       for (let i = 1; i <= lvl.bgLayerCount; i++) {
-        this.load.image(`bg_${lvl.bgFolder}_layer${i}`, `assets/backgrounds/${lvl.bgFolder}/${i}.png`);
+        this.load.image(`bg_${lvl.bgFolder}_layer${i}`, `assets/backgrounds/${lvl.bgFolder}/${i}.webp`);
       }
     }
   }
