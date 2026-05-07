@@ -16,14 +16,11 @@ import { GameCompleteScene } from './scenes/GameCompleteScene.js';
 import { LeaderboardScene } from './scenes/LeaderboardScene.js';
 import { PlayerTurnSplashScene } from './scenes/PlayerTurnSplashScene.js';
 import { SessionResultsScene } from './scenes/SessionResultsScene.js';
-import { OrientationLockScene } from './scenes/OrientationLockScene.js';
-import { isMobile, isPortrait, onOrientationChange } from './utils/DeviceDetect.js';
+import { onOrientationChange } from './utils/DeviceDetect.js';
 
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
   backgroundColor: '#1a0a2e',
   scale: {
     mode: Phaser.Scale.FIT,
@@ -31,6 +28,7 @@ const config = {
     parent: 'game-container',
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
+    expandParent: false,
   },
   physics: {
     default: 'arcade',
@@ -56,23 +54,14 @@ const config = {
     GameCompleteScene,
     LeaderboardScene,
     SessionResultsScene,
-    OrientationLockScene,
   ],
 };
 
 const game = new Phaser.Game(config);
 
-// Orientation lock — overlay scene na portrait mobile.
-function checkOrientation() {
-  const shouldLock = isMobile() && isPortrait();
-  const isOrientationActive = game.scene.isActive('OrientationLockScene');
-  if (shouldLock && !isOrientationActive) {
-    game.scene.run('OrientationLockScene');
-  } else if (!shouldLock && isOrientationActive) {
-    game.scene.stop('OrientationLockScene');
-  }
-}
-
-// Initial check (po małym opóźnieniu — Phaser potrzebuje chwili na boot).
-setTimeout(checkOrientation, 200);
-onOrientationChange(checkOrientation);
+// Resize listener — gdy użytkownik obróci telefon, otworzy/zamknie devtools,
+// zmieni rozmiar okna, każ Phaserowi odświeżyć skalowanie. Mode FIT z
+// autoCenter sam sobie radzi z większością ale refresh() wymusza pewność.
+onOrientationChange(() => {
+  game.scale.refresh();
+});

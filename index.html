@@ -23,15 +23,38 @@
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
+
     #game-container {
       width: 100vw;
       height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
     }
+
+    /* Portrait mobile: obróć cały kontener o 90° w prawo. Telefon w pionie,
+       gra w landscape — bez "obróć telefon" splash. Wykrywanie:
+       (orientation: portrait)  — pionowy viewport
+       (hover: none)            — brak hover (telefon, nie desktop z myszką)
+       (pointer: coarse)        — palec, nie precyzyjny pointer
+    */
+    @media (orientation: portrait) and (hover: none) and (pointer: coarse) {
+      #game-container {
+        width: 100vh;
+        height: 100vw;
+        transform: rotate(90deg);
+        transform-origin: top left;
+        position: absolute;
+        top: 0;
+        left: 100vw;
+      }
+    }
+
     canvas {
-      display: block;
+      display: block !important;
+      max-width: 100%;
+      max-height: 100%;
     }
   </style>
 </head>
