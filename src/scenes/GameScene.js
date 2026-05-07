@@ -68,6 +68,9 @@ export class GameScene extends Phaser.Scene {
     // Reset idempotency flag — scene singleton instance persistuje między
     // restartami, bez tego po pierwszej śmierci handlePlayerDeath byłby zablokowany.
     this._deathHandled = false;
+    // Sesja 10: snapshot + deaths reset (idempotent per level, scene.restart
+    // po loseLife NIE resetuje deaths counter — patrz SessionManager.startLevel).
+    sessionManager.startLevel();
   }
 
   create() {
@@ -585,12 +588,22 @@ export class GameScene extends Phaser.Scene {
     // ukończony level (player.level) zanim go inkrementuje przy NEXT LEVEL.
     this.time.delayedCall(FINISH_SLOWMO_DURATION + 300, () => {
       const player = sessionManager.currentPlayer();
+      // Sesja 10: stats per-level dla LevelComplete (star rating, achievements).
+      const snap = player.levelStartSnapshot || { coins: 0, diamonds: 0, score: 0 };
+      const timeRemaining = Math.max(0, this.lvl.duration - this.elapsedSeconds);
+      const sceneData = {
+        deathsThisLevel: player.deathsThisLevel || 0,
+        timeRemainingPercent: timeRemaining / this.lvl.duration,
+        scoreThisLevel: Math.floor(player.score - snap.score),
+        coinsThisLevel: player.coins - snap.coins,
+        diamondsThisLevel: player.diamonds - snap.diamonds,
+      };
       // player.level jest tym levelem który właśnie ukończono (0-based).
       // LevelComplete pokaże stats; jeśli to był ostatni level — GameComplete.
       if (player.level >= LEVELS.length - 1) {
-        this.scene.start('GameCompleteScene');
+        this.scene.start('GameCompleteScene', sceneData);
       } else {
-        this.scene.start('LevelCompleteScene');
+        this.scene.start('LevelCompleteScene', sceneData);
       }
     });
   }

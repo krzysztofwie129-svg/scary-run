@@ -52,7 +52,33 @@ class SessionManager {
       level: 0,        // 0-based index
       lives: INITIAL_LIVES,
       finished: false,
+      // Sesja 10 — stats per-level + streak dla star rating + achievements.
+      consecutivePerfectLevels: 0,
+      // Snapshot przy starcie levelu (żeby liczyć delta coins/diamonds/score
+      // zebrane W TYM levelu — używane przez LevelComplete dla counter anim
+      // i achievements typu "5 diamonds in one level").
+      levelStartSnapshot: { coins: 0, diamonds: 0, score: 0 },
+      // Counter resetowany przy starcie levelu, increment per loseLife.
+      deathsThisLevel: 0,
     };
+  }
+
+  /** Sesja 10 — wywoływane przy startup levelu (init() w GameScene).
+   *  Idempotentne per level: snapshot + deathsThisLevel reset robi się
+   *  TYLKO gdy gracz świeżo wszedł na ten level (advanceLevel zwiększyło).
+   *  Scene.restart() po stracie życia też woła to, ale bez efektu — deaths
+   *  akumulowane między restartami żeby star rating był poprawny. */
+  startLevel() {
+    const p = this.currentPlayer();
+    if (!p) return;
+    if (p._snapshotForLevel === p.level) return; // już snapshotted dla tego levelu
+    p._snapshotForLevel = p.level;
+    p.levelStartSnapshot = {
+      coins: p.coins,
+      diamonds: p.diamonds,
+      score: p.score,
+    };
+    p.deathsThisLevel = 0;
   }
 
   setName(playerIndex, name) {
@@ -71,6 +97,8 @@ class SessionManager {
   loseLife() {
     const p = this.currentPlayer();
     p.lives = Math.max(0, p.lives - 1);
+    p.deathsThisLevel = (p.deathsThisLevel || 0) + 1;
+    p.consecutivePerfectLevels = 0; // reset streak
     return p.lives <= 0;
   }
 
@@ -100,7 +128,12 @@ class SessionManager {
   }
 
   advanceLevel() {
-    this.currentPlayer().level++;
+    const p = this.currentPlayer();
+    // Sesja 10: jeśli gracz nie zginął w ukończonym levelu, increment streaku.
+    if ((p.deathsThisLevel || 0) === 0) {
+      p.consecutivePerfectLevels = (p.consecutivePerfectLevels || 0) + 1;
+    }
+    p.level++;
   }
 
   finishCurrentPlayer() {
