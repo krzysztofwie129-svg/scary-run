@@ -266,37 +266,45 @@ export const LIFE_LOST_INVULN_MS = 0;
 //
 // y to środek X dla naziemnych (origin (0.5, 1) → bottom na GROUND_Y - margin),
 // dla floats y to baseY (origin 0.5, 0.5 → wycentrowane).
+// requiresAction:
+//   'jump_only'  — slide NIE pomaga (low/mid/wall na ziemi, ciało w slidzie
+//                  nadal dotyka). Single jump musi pokonać wysokość.
+//   'slide_only' — wysoka latająca przeszkoda; skok nie wystarczy by przejść
+//                  pod nią, slide jedyny ratunek.
+//   (jump_or_slide nie używamy — zbyt łatwy poziom).
 export const OBSTACLE_TIERS = {
   low: {
     types: ['spikes', 'stone'],
     properties: {
-      // y = GROUND_Y bo Obstacle.js dla non-floats ustawia origin (0.5, 1) —
-      // spód sprite'a leży dokładnie na ziemi (nie wisi w powietrzu).
-      spikes: { y: GROUND_Y, scale: 0.5, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_or_slide' },
-      stone:  { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_or_slide' },
+      // Większe scale niż wcześniej (~0.5 → 0.85+) — przeszkody lepiej
+      // widoczne, mniej trywialne. y = GROUND_Y, origin (0.5, 1) sadza spód
+      // na ziemi.
+      spikes: { y: GROUND_Y, scale: 0.9, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
+      stone:  { y: GROUND_Y, scale: 0.85, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
     },
   },
   mid: {
     types: ['wooden_box', 'wooden_barrel'],
     properties: {
-      wooden_box:    { y: GROUND_Y, scale: 0.65, hitboxRatio: 0.9, floats: false, requiresAction: 'jump' },
-      wooden_barrel: { y: GROUND_Y, scale: 0.65, hitboxRatio: 0.85, floats: false, requiresAction: 'jump' },
+      // Mid przeszkody — single jump musi wystarczyć (NIE double).
+      wooden_box:    { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_only' },
+      wooden_barrel: { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
     },
   },
   high: {
     types: ['flying_pumpkin'],
     properties: {
-      flying_pumpkin: { y: GROUND_Y - 110, scale: 0.5, hitboxRatio: 0.9, floats: true, requiresAction: 'slide_only' },
+      // Wysoka — slide tylko (skok nie wystarczy żeby pod nią przejść).
+      flying_pumpkin: { y: GROUND_Y - 200, scale: 0.5, hitboxRatio: 0.8, floats: true, requiresAction: 'slide_only' },
     },
   },
-  // 'wall' = nieprzeskakwalna single-jumpem ściana z 2 stacked wooden_box.
-  // Wymaga DOUBLE JUMP (drugi skok lżejszy daje ekstra wysokość).
-  // Body spans full stack height (2× wooden_box). Obstacle.js dodaje sibling
-  // sprite na top gdy stackHeight > 1.
+  // 'wall' = stack 2 wooden_box. Body spans full stack height. Wymaga skoku
+  // (single jumpa, ale na granicy — gracz może potrzebować double jumpa).
+  // Obstacle.js dodaje sibling sprite na top gdy stackHeight > 1.
   wall: {
     types: ['high_box_stack'],
     properties: {
-      high_box_stack: { y: GROUND_Y, scale: 0.65, hitboxRatio: 0.9, floats: false, requiresAction: 'double_jump_only', stackHeight: 2, baseTexture: 'wooden_box' },
+      high_box_stack: { y: GROUND_Y, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_only', stackHeight: 2, baseTexture: 'wooden_box' },
     },
   },
 };

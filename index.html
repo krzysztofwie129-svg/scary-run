@@ -24,8 +24,7 @@
       touch-action: none;
     }
 
-    /* Disable iOS Safari bounce scroll. position:fixed na body sprawia
-       że content nie reaguje na scroll-bounce gdy soft keyboard się wysuwa. */
+    /* Disable iOS Safari bounce scroll. */
     body {
       position: fixed;
       top: 0;
@@ -38,35 +37,26 @@
       font-size: 16px !important;
     }
 
+    /* Domyślnie kontener wypełnia viewport. Phaser scale FIT centeruje canvas. */
     #game-container {
       width: 100vw;
       height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
     }
 
-    /* Portrait mobile: obróć kontener tak, żeby gra renderowała się
-       w landscape mimo pionowo trzymanego telefonu.
-       Wzorzec center/center działa matematycznie poprawnie:
-         translate(-50%,-50%) najpierw przesuwa box żeby jego center pokrył się
-         z (50%, 50%) viewportu, potem rotate(90deg) wokół tego center.
-         Po rotacji box (100vh × 100vw) dokładnie wypełnia viewport (100vw × 100vh).
-       Wykrywanie:
-         orientation: portrait — pionowy viewport
-         hover: none + pointer: coarse — touch device (telefon, nie desktop)
-    */
-    @media (orientation: portrait) and (hover: none) and (pointer: coarse) {
-      #game-container {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        width: 100vh;
-        height: 100vw;
-        transform: translate(-50%, -50%) rotate(90deg);
-        transform-origin: center center;
-      }
+    /* Klasa dodawana z JS gdy mobile + portrait. JS-driven detection jest
+       niezawodne — DevTools emulacja często nie matche'uje
+       @media (hover:none) and (pointer:coarse). Wzorzec center/center
+       (translate-50 + rotate-90 wokół środka) matematycznie wypełnia
+       viewport bez offsetów. */
+    #game-container.rotated {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 100vh;
+      height: 100vw;
+      transform: translate(-50%, -50%) rotate(90deg);
+      transform-origin: center center;
     }
 
     canvas {

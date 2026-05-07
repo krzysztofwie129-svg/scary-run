@@ -16,7 +16,7 @@ import { GameCompleteScene } from './scenes/GameCompleteScene.js';
 import { LeaderboardScene } from './scenes/LeaderboardScene.js';
 import { PlayerTurnSplashScene } from './scenes/PlayerTurnSplashScene.js';
 import { SessionResultsScene } from './scenes/SessionResultsScene.js';
-import { onOrientationChange } from './utils/DeviceDetect.js';
+import { onOrientationChange, isMobile, isPortrait } from './utils/DeviceDetect.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -59,9 +59,25 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-// Resize listener — gdy użytkownik obróci telefon, otworzy/zamknie devtools,
-// zmieni rozmiar okna, każ Phaserowi odświeżyć skalowanie. Mode FIT z
-// autoCenter sam sobie radzi z większością ale refresh() wymusza pewność.
-onOrientationChange(() => {
+// JS-driven orientation handling. Dodajemy/usuwamy klasę .rotated na
+// kontenerze gry żeby CSS rotacji się odpalił dla mobile + portrait.
+// Dlaczego nie czysto CSS @media? — DevTools mobile emulation często nie
+// matche'uje (hover:none) and (pointer:coarse), przez co @media nie
+// odpalał na realnych telefonach które ich nie raportują. JS detection
+// (touch + window dimensions) jest niezawodne.
+function applyOrientationClass() {
+  const container = document.getElementById('game-container');
+  if (!container) return;
+  const shouldRotate = isMobile() && isPortrait();
+  if (shouldRotate) {
+    container.classList.add('rotated');
+  } else {
+    container.classList.remove('rotated');
+  }
+  // Phaser musi przeliczyć rozmiar canvasu po zmianie wymiarów rodzica.
   game.scale.refresh();
-});
+}
+
+// Initial — po Phaser boot, daj DOM chwilę.
+setTimeout(applyOrientationClass, 100);
+onOrientationChange(applyOrientationClass);

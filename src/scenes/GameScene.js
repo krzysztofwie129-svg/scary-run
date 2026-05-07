@@ -392,20 +392,26 @@ export class GameScene extends Phaser.Scene {
     // Survival score (10/s). Zapisujemy do sessionManager żeby przeżył restart.
     sessionManager.addSurvivalScore(SCORE_PER_SECOND * (delta / 1000));
 
-    // Manual AABB — obstacles vs player.
+    // Manual AABB — obstacles vs player. Slide-aware: jeśli gracz ślizga się
+    // i obstacle ma requiresAction 'slide_only', overlap NIE zabija
+    // (slide skutecznie omija). Reszta typów ('jump_only') zawsze zabija
+    // niezależnie od stanu gracza — slide nie pomaga przeciw naziemnym.
     const pb = this.player.body;
     if (pb && !this.player.isDead()) {
+      const isSliding = this.player.state_ === 'sliding';
       this.obstacles.children.iterate((o) => {
         if (!o || !o.active || !o.body) return true;
         const ob = o.body;
-        if (
+        const overlap =
           pb.x < ob.x + ob.width && pb.x + pb.width > ob.x &&
-          pb.y < ob.y + ob.height && pb.y + pb.height > ob.y
-        ) {
-          this.player.die();
-          return false;
+          pb.y < ob.y + ob.height && pb.y + pb.height > ob.y;
+        if (!overlap) return true;
+        const req = o.config_?.requiresAction;
+        if (isSliding && req === 'slide_only') {
+          return true; // slide pod latającą dynię — przeżyj
         }
-        return true;
+        this.player.die();
+        return false;
       });
     }
 
