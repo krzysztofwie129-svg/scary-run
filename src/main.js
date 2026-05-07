@@ -22,6 +22,7 @@ import { LeaderboardScene } from './scenes/LeaderboardScene.js';
 import { PlayerTurnSplashScene } from './scenes/PlayerTurnSplashScene.js';
 import { SessionResultsScene } from './scenes/SessionResultsScene.js';
 import { OrientationLockScene } from './scenes/OrientationLockScene.js';
+import InstallPromptScene from './scenes/InstallPromptScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -55,6 +56,7 @@ const config = {
     BootScene,
     PreloadScene,
     MenuScene,
+    InstallPromptScene,
     NameSplashScene,
     NameInputScene,
     CharSelectScene,

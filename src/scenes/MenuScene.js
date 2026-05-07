@@ -11,6 +11,8 @@ import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { isMobileDevice } from '../utils/DeviceDetect.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
+import { FullscreenManager } from '../utils/FullscreenManager.js';
+import { InstallPromptManager } from '../utils/InstallPromptManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -74,6 +76,14 @@ export class MenuScene extends Phaser.Scene {
         strokeThickness: 3,
       }).setOrigin(0.5).setDepth(10000);
     }
+
+    // Sesja P3.1: install prompt dla iPhone Safari (raz, jeśli nie zamknięty).
+    // 1s delay żeby najpierw było widoczne menu.
+    if (InstallPromptManager.shouldShow()) {
+      this.time.delayedCall(1000, () => {
+        this.scene.launch('InstallPromptScene');
+      });
+    }
   }
 
   destroyButtons() {
@@ -103,6 +113,8 @@ export class MenuScene extends Phaser.Scene {
       this.buttons.push(
         this.makeButton(GAME_WIDTH / 2, cy - 130, '▶ KONTYNUUJ', 0xffd93c, () => {
           this.audioManager?.playSfx('click');
+          FullscreenManager.enter();
+          FullscreenManager.keepAwake();
           this.continueGame();
         }),
       );
@@ -110,6 +122,8 @@ export class MenuScene extends Phaser.Scene {
     this.buttons.push(
       this.makeButton(GAME_WIDTH / 2, cy - 40 + offset, 'START GAME', 0x6b3eb6, () => {
         this.audioManager?.playSfx('click');
+        FullscreenManager.enter();
+        FullscreenManager.keepAwake();
         // Klik START GAME → świadomy nowy start, clear istniejącego save'a.
         GameStateStore.clear();
         sessionManager.setupSinglePlayer('');
@@ -117,6 +131,8 @@ export class MenuScene extends Phaser.Scene {
       }),
       this.makeButton(GAME_WIDTH / 2, cy + 50 + offset, 'MULTIPLAYER', 0x3e6bb6, () => {
         this.audioManager?.playSfx('click');
+        FullscreenManager.enter();
+        FullscreenManager.keepAwake();
         GameStateStore.clear();
         this.buildPlayerCountButtons();
       }),
@@ -132,8 +148,9 @@ export class MenuScene extends Phaser.Scene {
     this.menuState = 'mp_count';
     this.destroyButtons();
 
-    // Shift cy 40px up (sesja 7.1) — żeby BACK na cy+30+(MAX_PLAYERS-1)*70
-    // wylądował na GAME_HEIGHT - 180 (safe-zone iOS bottom).
+    // Shift cy 40px up (sesja 7.1) — żeby BACK wylądował w safe-zone iOS
+    // bottom. Spacing player buttons zmniejszony do 60px (z 70) żeby zrobić
+    // miejsce na większy BACK + extra gap (sesja P3.1+).
     const cy = GAME_HEIGHT / 2 - 70;
     this.add.text(GAME_WIDTH / 2, cy - 60, 'How many players?', {
       fontFamily: 'Arial Black, sans-serif',
@@ -154,13 +171,16 @@ export class MenuScene extends Phaser.Scene {
         }),
       );
     }
+    // BACK osobno — większy gap (90px zamiast 70) + większy rozmiar (380x84,
+    // font 32) żeby wizualnie odseparować od listy "N PLAYERS" (user request).
+    const lastPlayerY = cy + 30 + (MAX_PLAYERS - 2) * 70;
     this.buttons.push(
-      this.makeButton(GAME_WIDTH / 2, cy + 30 + (MAX_PLAYERS - 1) * 70, 'BACK', 0x4a4a6a, () => {
+      this.makeButton(GAME_WIDTH / 2, lastPlayerY + 90, 'BACK', 0x4a4a6a, () => {
         this.audioManager?.playSfx('click');
         const prompt = this.children.getByName('mp_prompt');
         if (prompt) prompt.destroy();
         this.buildMainButtons();
-      }),
+      }, { w: 380, h: 84, fontSize: '32px' }),
     );
     this.bindKeyboardNav();
   }
@@ -218,9 +238,10 @@ export class MenuScene extends Phaser.Scene {
     this.scene.start('GameScene');
   }
 
-  makeButton(centerX, centerY, label, fillColor, onClick) {
-    const w = 320;
-    const h = 70;
+  makeButton(centerX, centerY, label, fillColor, onClick, opts = {}) {
+    const w = opts.w ?? 320;
+    const h = opts.h ?? 70;
+    const fontSize = opts.fontSize ?? '28px';
     const x = centerX - w / 2;
     const y = centerY - h / 2;
 
@@ -237,7 +258,7 @@ export class MenuScene extends Phaser.Scene {
 
     const text = this.add.text(centerX, centerY, label, {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '28px',
+      fontSize,
       color: '#fff',
     }).setOrigin(0.5);
 

@@ -47,6 +47,7 @@ import { playFanfare } from '../utils/SuccessFanfare.js';
 import { InputHandler } from '../utils/InputHandler.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
 import { Haptic } from '../utils/Haptic.js';
+import { FullscreenManager } from '../utils/FullscreenManager.js';
 
 const SPARK_TEXTURE_KEY = '__spark_4x4';
 
@@ -148,6 +149,18 @@ export class GameScene extends Phaser.Scene {
       }
     };
     document.addEventListener('visibilitychange', this.visibilityHandler);
+
+    // === Sesja P3: Wake Lock — ekran nie gaśnie w trakcie levelu ===
+    FullscreenManager.keepAwake();
+
+    // Re-acquire gdy gracz wraca do tabu (wake lock wygasa przy hidden tab).
+    // OSOBNY listener od visibilityHandler (P1 pauza) — koegzystują bez kolizji.
+    this.wakeLockHandler = () => {
+      if (document.visibilityState === 'visible') {
+        FullscreenManager.reacquireIfNeeded();
+      }
+    };
+    document.addEventListener('visibilitychange', this.wakeLockHandler);
   }
 
   pauseGame() {
@@ -608,6 +621,10 @@ export class GameScene extends Phaser.Scene {
     if (this.visibilityHandler) {
       try { document.removeEventListener('visibilitychange', this.visibilityHandler); } catch (e) { /* ignore */ }
       this.visibilityHandler = null;
+    }
+    if (this.wakeLockHandler) {
+      try { document.removeEventListener('visibilitychange', this.wakeLockHandler); } catch (e) { /* ignore */ }
+      this.wakeLockHandler = null;
     }
   }
 }
