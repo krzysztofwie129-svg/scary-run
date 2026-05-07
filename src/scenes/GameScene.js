@@ -603,6 +603,11 @@ export class GameScene extends Phaser.Scene {
     this.emitParticles(this.player.x, this.player.y - 50, PARTICLE_CRASH_COLOR, PARTICLE_CRASH_COUNT);
 
     const gameOverForPlayer = sessionManager.loseLife();
+    // Bug fix: refresh HUD natychmiast po loseLife żeby user widział że
+    // znikło DOKŁADNIE 1 serce. Wcześniej HUD update czekał na scene.restart
+    // (1.2s później) — w tym czasie update() nic nie robi (player.isDead),
+    // więc visualnie wyglądało jak "skip" lub zniknięcie kilku serc naraz.
+    this.refreshLivesHUD();
 
     if (gameOverForPlayer) {
       // Wszystkie życia stracone — GameOverScene + clear save (sesja P1).

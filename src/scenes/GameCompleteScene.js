@@ -162,7 +162,7 @@ export class GameCompleteScene extends Phaser.Scene {
         player.coins = 0;
         player.diamonds = 0;
         player.level = 0;
-        player.lives = 3;
+        player.lives = 5;
         player.finished = false;
         this.scene.start('GameScene');
       }),
