@@ -131,15 +131,16 @@
   <input id="name-input-html" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" />
 
   <script>
-    // Detection: jeśli za 5s canvas nie istnieje (Phaser nie wystartował),
-    // pokaż browser-fallback. Dla bardzo starych browserów albo gdy ES
-    // modules nie wspierany.
+    // Detection: jeśli za 12s canvas nie istnieje (Phaser nie wystartował),
+    // pokaż browser-fallback. 12s żeby PWA Service Worker miał czas na
+    // pierwszy fetch + decode dużych assetów na wolnym 4G. Bardzo stare
+    // browsery łapią się szybciej przez noModule check niżej.
     setTimeout(function() {
       if (!document.querySelector('canvas')) {
         var fb = document.getElementById('browser-fallback');
         if (fb) fb.style.display = 'flex';
       }
-    }, 5000);
+    }, 12000);
 
     // Bezwarunkowo: brak noModule attribute = stary browser bez ES modules.
     if (!('noModule' in HTMLScriptElement.prototype)) {

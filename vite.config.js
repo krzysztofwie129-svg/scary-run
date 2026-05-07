@@ -49,6 +49,12 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,webp,png,opus,mp3,wav,m4a,ico,json}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Po deploy: nowy SW od razu przejmuje (bez czekania na zamknięcie
+        // tabu) i czyści stare cache. Bez tego stary index.html + nowy JS
+        // hash = 404 → canvas nie startuje → fallback "browser too old".
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: /\.(?:webp|png|jpg|jpeg|svg|opus|mp3|wav|m4a)$/i,
