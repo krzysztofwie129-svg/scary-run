@@ -54,7 +54,7 @@ export class LeaderboardScene extends Phaser.Scene {
       this.audioManager.playSfx('click');
       this.scene.start('MenuScene');
     };
-    const btnY = GAME_HEIGHT - 120;
+    const btnY = GAME_HEIGHT - 180;
     const btnX = GAME_WIDTH / 2;
     const btnW = 240;
     const btnH = 60;

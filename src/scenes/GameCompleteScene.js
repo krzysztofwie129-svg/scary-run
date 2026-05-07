@@ -115,7 +115,7 @@ export class GameCompleteScene extends Phaser.Scene {
   }
 
   makeButtons() {
-    const cy = GAME_HEIGHT - 140;
+    const cy = GAME_HEIGHT - 180;
     const left = GAME_WIDTH / 2 - 180;
     const right = GAME_WIDTH / 2 + 180;
 

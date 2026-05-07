@@ -41,7 +41,7 @@ export class SessionResultsScene extends Phaser.Scene {
 
     // Buttons.
     const buttons = [
-      this.makeButton(GAME_WIDTH / 2 - 180, GAME_HEIGHT - 140, 'PLAY AGAIN', 0x6b3eb6, () => {
+      this.makeButton(GAME_WIDTH / 2 - 180, GAME_HEIGHT - 180, 'PLAY AGAIN', 0x6b3eb6, () => {
         // Te same imiona, reset stats.
         const names = sessionManager.players.map((p) => p.name);
         if (sessionManager.isMultiplayer) sessionManager.setupMultiplayer(names.length);
@@ -49,7 +49,7 @@ export class SessionResultsScene extends Phaser.Scene {
         names.forEach((n, i) => sessionManager.setName(i, n));
         this.scene.start('CharSelectScene');
       }),
-      this.makeButton(GAME_WIDTH / 2 + 180, GAME_HEIGHT - 140, 'MAIN MENU', 0x3e6bb6, () => {
+      this.makeButton(GAME_WIDTH / 2 + 180, GAME_HEIGHT - 180, 'MAIN MENU', 0x3e6bb6, () => {
         sessionManager.reset();
         this.scene.start('MenuScene');
       }),

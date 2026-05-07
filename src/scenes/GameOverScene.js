@@ -100,7 +100,7 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   makeButtonsForFlow() {
-    const cy = GAME_HEIGHT - 130;
+    const cy = GAME_HEIGHT - 180;
     const left = GAME_WIDTH / 2 - 180;
     const right = GAME_WIDTH / 2 + 180;
 

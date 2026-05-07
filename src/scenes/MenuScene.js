@@ -114,7 +114,9 @@ export class MenuScene extends Phaser.Scene {
     this.menuState = 'mp_count';
     this.destroyButtons();
 
-    const cy = GAME_HEIGHT / 2 - 30;
+    // Shift cy 40px up (sesja 7.1) — żeby BACK na cy+30+(MAX_PLAYERS-1)*70
+    // wylądował na GAME_HEIGHT - 180 (safe-zone iOS bottom).
+    const cy = GAME_HEIGHT / 2 - 70;
     this.add.text(GAME_WIDTH / 2, cy - 60, 'How many players?', {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '32px',

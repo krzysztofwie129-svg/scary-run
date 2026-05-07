@@ -73,8 +73,9 @@ export class NameInputScene extends Phaser.Scene {
     }
 
     // Przycisk POTWIERDZ (alternatywa dla Enter — szczególnie ważne na mobile).
-    // y = GAME_HEIGHT - 140 = safe-zone (sesja 6.5).
-    const btnY = GAME_HEIGHT - 140;
+    // y = GAME_HEIGHT - 180 — bottom safe-area iOS Safari (sesja 7.1) zjada
+    // ~30-40px, więc -180 zapewnia widoczność klikalnej strefy.
+    const btnY = GAME_HEIGHT - 180;
     const confirmBtn = this.add.text(GAME_WIDTH / 2, btnY, 'POTWIERDZ', {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '36px',
