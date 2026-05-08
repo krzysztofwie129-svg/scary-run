@@ -1,13 +1,35 @@
 // ChestSelectScene — między LevelComplete a GameScene. Gracz wybiera 1 z 3
-// skrzynek; po wyborze: shake → flash → reward reveal → KONTYNUUJ → GameScene.
-// Instant rewards aplikowane tu (sessionManager). Pending zapisywane do
-// RewardStore i odczytywane na starcie GameScene (applyPendingReward).
+// skrzynek na postumencie, opens animation, reveal nagrody, KONTYNUUJ → next.
+//
+// Redesign (sesja ChestSelect): nowe assety z `public/assets/ui/`:
+//  - `chest_select_bg` (1280×720, tytuł "WYBIERZ SKRZYNIE" wbudowany)
+//  - `chest_pedestal` (postument pod skrzynię)
+//  - `chest_closed` / `chest_open` (przed/po otwarciu)
+//  - `chest_numbers` (spritesheet 900×300, 3 klatki 300×300 — cyfry 1/2/3)
+//
+// Logika nagród zachowana — RewardManager.random3Rewards / applyInstantReward
+// / RewardStore.setPending (instant vs pending z PowerUpManager + giant/destroyer).
 
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { RewardManager, REWARDS } from '../utils/RewardManager.js';
 import { RewardStore } from '../utils/RewardStore.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { Haptic } from '../utils/Haptic.js';
+
+const CHEST_POSITIONS = [
+  { x: GAME_WIDTH * 0.25, y: GAME_HEIGHT * 0.72 },
+  { x: GAME_WIDTH * 0.50, y: GAME_HEIGHT * 0.72 },
+  { x: GAME_WIDTH * 0.75, y: GAME_HEIGHT * 0.72 },
+];
+
+// Sprite scale dopasowany do gameplay area (nie zasłania tytułu z bg).
+const CHEST_SCALE = 0.55;
+const PEDESTAL_SCALE = 0.6;
+const NUMBER_SCALE = 0.5;
+
+const NUMBER_OFFSET_Y = -160;  // cyfra wysoko nad skrzynią
+const CHEST_OFFSET_Y = -10;    // skrzynia na postumencie
+const PEDESTAL_OFFSET_Y = 60;  // postument lekko niżej
 
 export class ChestSelectScene extends Phaser.Scene {
   constructor() {
@@ -17,252 +39,127 @@ export class ChestSelectScene extends Phaser.Scene {
   init(data) {
     this.nextScene = data?.nextScene || 'GameScene';
     this.nextSceneData = data?.nextSceneData || {};
-    // DEV: forceRewards = [type, type, type] dla testów (np. wszystkie 3 = GIGANT).
+    // DEV: forceRewards = [type, type, type] dla testów (?chest=giant itp.).
     this.forceRewards = Array.isArray(data?.forceRewards) ? data.forceRewards : null;
   }
 
   create() {
     Haptic.coin?.();
 
-    // Tło z gradientem (ciemny fiolet → ciemniejszy).
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0x2a1a4a, 0x2a1a4a, 0x1a0a2e, 0x1a0a2e, 1);
-    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    bg.setDepth(-100);
+    // Tło z całą grafiką (tytuł + tło sceny).
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'chest_select_bg')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
 
-    this.add.text(GAME_WIDTH / 2, 80, 'WYBIERZ SKRZYNIE!', {
-      fontSize: '48px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#ffd93c',
-      stroke: '#000',
-      strokeThickness: 6,
-      shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 8, fill: true },
-    }).setOrigin(0.5);
-
-    this.add.text(GAME_WIDTH / 2, 140, 'Tap jedna z trzech!', {
-      fontSize: '22px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-      stroke: '#000',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
-
-    // 3 random rewards (gracz nie wie które). DEV: forceRewards z URL ?chest=...
+    // Losuj 3 nagrody (lub forceRewards z DEV URL).
     this.rewards = this.forceRewards && this.forceRewards.length === 3
       ? this.forceRewards
       : RewardManager.random3Rewards();
 
-    const positions = [
-      { x: GAME_WIDTH * 0.25, y: GAME_HEIGHT * 0.55 },
-      { x: GAME_WIDTH * 0.50, y: GAME_HEIGHT * 0.55 },
-      { x: GAME_WIDTH * 0.75, y: GAME_HEIGHT * 0.55 },
-    ];
+    this.selectionLocked = false;
 
-    this.chests = [];
-    this.opened = false;
-    positions.forEach((pos, i) => {
-      this.chests.push(this.createChest(pos.x, pos.y, i));
-    });
+    // 3 skrzynie: container [pedestal, chest, number] + pulse na samej chest.
+    this.chestData = CHEST_POSITIONS.map((pos, index) => {
+      const container = this.add.container(pos.x, pos.y);
 
-    // Floating idle.
-    this.chests.forEach((chest, i) => {
-      this.tweens.add({
-        targets: chest.container,
-        y: chest.container.y - 8,
-        duration: 1500 + i * 200,
+      const pedestal = this.add.image(0, PEDESTAL_OFFSET_Y, 'chest_pedestal').setScale(PEDESTAL_SCALE);
+      const chest = this.add.image(0, CHEST_OFFSET_Y, 'chest_closed').setScale(CHEST_SCALE);
+      const number = this.add.sprite(0, NUMBER_OFFSET_Y, 'chest_numbers', index).setScale(NUMBER_SCALE);
+
+      container.add([pedestal, chest, number]);
+
+      // Hit zone — szeroki invisible rect nad/wokół chest+pedestal+number.
+      // Niezależny obiekt poza containerem (zoom container hit areas mają
+      // dziwne quirk'i w Phaser 3 — direct zone w world coords działa pewnie).
+      const hitW = 240;
+      const hitH = 380;
+      const hitZone = this.add.zone(pos.x, pos.y - 60, hitW, hitH)
+        .setInteractive({ useHandCursor: true });
+
+      // Pulse — tylko na samej skrzyni (pedestal + cyfra stabilne).
+      // Target = base scale × 1.05 dla subtle wave.
+      const pulseTween = this.tweens.add({
+        targets: chest,
+        scale: CHEST_SCALE * 1.05,
+        duration: 1200,
+        ease: 'Sine.easeInOut',
         yoyo: true,
         repeat: -1,
-        ease: 'Sine.easeInOut',
       });
+
+      hitZone.on('pointerup', () => this.openChest(index));
+
+      return { container, pedestal, chest, number, pulseTween, hitZone };
     });
   }
 
-  createChest(x, y, index) {
-    const container = this.add.container(x, y);
+  openChest(index) {
+    if (this.selectionLocked) return;
+    this.selectionLocked = true;
 
-    // Glow tła — pulsuje subtle.
-    const glow = this.add.circle(0, 0, 100, 0xffd93c, 0.12);
-    container.add(glow);
-    this.tweens.add({
-      targets: glow,
-      alpha: 0.28, scale: 1.15,
-      duration: 1200, yoyo: true, repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    const selected = this.chestData[index];
+    const rewardType = this.rewards[index];
+    const reward = REWARDS[rewardType];
 
-    // Drewniana skrzynia (graphics) — korpus + wieczko + okucia + kłódka.
-    const chest = this.add.graphics();
+    // Disable wszystkie hitZones + zatrzymaj pulse.
+    this.chestData.forEach((c) => c.hitZone.disableInteractive());
+    this.chestData.forEach((c) => c.pulseTween.stop());
 
-    // Korpus (dolna część) — ciemniejszy brąz.
-    chest.fillStyle(0x8b5a2b, 1);
-    chest.fillRoundedRect(-60, 5, 120, 55, 4);
-    chest.lineStyle(4, 0x3d2817, 1);
-    chest.strokeRoundedRect(-60, 5, 120, 55, 4);
-
-    // Pasy/panele drewna na korpusie (jaśniejszy brąz, gradient feel).
-    chest.fillStyle(0xa0703d, 1);
-    chest.fillRect(-56, 9, 112, 18);
-    chest.fillStyle(0xa0703d, 0.6);
-    chest.fillRect(-56, 30, 112, 18);
-
-    // Wieczko (górna część) — jaśniejsze drewno, lekko zaokrąglone u góry.
-    chest.fillStyle(0xa0703d, 1);
-    chest.fillRoundedRect(-60, -25, 120, 35, 6);
-    chest.lineStyle(4, 0x3d2817, 1);
-    chest.strokeRoundedRect(-60, -25, 120, 35, 6);
-
-    // Górny pasek wieczka (akcent jaśniejszy złoty).
-    chest.fillStyle(0xc9933d, 1);
-    chest.fillRect(-56, -22, 112, 6);
-
-    // Linia łączenia wieczka z korpusem.
-    chest.fillStyle(0x3d2817, 1);
-    chest.fillRect(-60, 5, 120, 4);
-
-    // Złote okucia po bokach (3D plates).
-    chest.fillStyle(0xffd93c, 1);
-    chest.fillRect(-66, -10, 8, 30);
-    chest.lineStyle(2, 0x3d2817, 1);
-    chest.strokeRect(-66, -10, 8, 30);
-    chest.fillStyle(0xffd93c, 1);
-    chest.fillRect(58, -10, 8, 30);
-    chest.lineStyle(2, 0x3d2817, 1);
-    chest.strokeRect(58, -10, 8, 30);
-
-    // Kłódka centralna — pionowy metalowy pasek.
-    chest.fillStyle(0xffd93c, 1);
-    chest.fillRect(-12, -25, 24, 38);
-    chest.lineStyle(2, 0x3d2817, 1);
-    chest.strokeRect(-12, -25, 24, 38);
-
-    // Kółko kłódki (środek).
-    chest.fillStyle(0x8b5a2b, 1);
-    chest.fillCircle(0, -5, 8);
-    chest.lineStyle(2, 0x3d2817, 1);
-    chest.strokeCircle(0, -5, 8);
-
-    // Dziurka na klucz (czarna).
-    chest.fillStyle(0x1a0a2e, 1);
-    chest.fillCircle(0, -6, 2.5);
-    chest.fillRect(-1.5, -5, 3, 5);
-
-    // Złote nity dekoracyjne na korpusie.
-    chest.fillStyle(0xffd93c, 0.85);
-    chest.fillCircle(-40, 18, 2.5);
-    chest.fillCircle(40, 18, 2.5);
-    chest.fillCircle(-30, 42, 2);
-    chest.fillCircle(30, 42, 2);
-
-    container.add(chest);
-
-    // Iskierki blasku wokół (3 statyczne kropki, mrugają).
-    const sparkle1 = this.add.circle(-50, -30, 2, 0xffff99, 0.85);
-    const sparkle2 = this.add.circle(45, -10, 1.5, 0xffff99, 0.7);
-    const sparkle3 = this.add.circle(-30, 50, 1.5, 0xffff99, 0.6);
-    container.add([sparkle1, sparkle2, sparkle3]);
-    this.tweens.add({
-      targets: [sparkle1, sparkle2, sparkle3],
-      alpha: 0.2,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-      delay: index * 200,
-    });
-
-    // Numer skrzynki nad.
-    const numberText = this.add.text(0, -85, `${index + 1}`, {
-      fontSize: '40px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#ffd93c',
-      stroke: '#000',
-      strokeThickness: 5,
-    }).setOrigin(0.5);
-    container.add(numberText);
-
-    // Hit zone.
-    const hit = this.add.rectangle(0, 0, 160, 140, 0xffffff, 0)
-      .setInteractive({ useHandCursor: true });
-    container.add(hit);
-
-    hit.on('pointerover', () => {
-      if (this.opened) return;
-      this.tweens.add({ targets: container, scale: 1.12, duration: 200, ease: 'Back.easeOut' });
-    });
-    hit.on('pointerout', () => {
-      if (this.opened) return;
-      this.tweens.add({ targets: container, scale: 1.0, duration: 200 });
-    });
-    hit.on('pointerup', () => {
-      if (this.opened) return;
-      this.openChest(index);
-    });
-
-    return { container, body: chest, glow, numberText, hit };
-  }
-
-  openChest(selectedIndex) {
-    this.opened = true;
-    // Disable hit zones.
-    this.chests.forEach((c) => c.hit.disableInteractive());
-    // Dim non-selected.
-    this.chests.forEach((c, i) => {
-      if (i !== selectedIndex) {
-        this.tweens.add({ targets: c.container, alpha: 0.3, scale: 0.8, duration: 400 });
+    // Pozostałe 2 — całkowicie znikają (alpha → 0). Wybranej zniknij tylko cyfra.
+    this.chestData.forEach((c, i) => {
+      if (i !== index) {
+        this.tweens.add({ targets: c.container, alpha: 0, duration: 250 });
+      } else {
+        this.tweens.add({ targets: c.number, alpha: 0, duration: 150 });
       }
     });
 
-    const selected = this.chests[selectedIndex];
-    const rewardType = this.rewards[selectedIndex];
-    const reward = REWARDS[rewardType];
-
     Haptic.crash?.();
 
-    // Shake ~2.4s + glow pulse.
+    // 1. Shake skrzynię ~600ms.
     this.tweens.add({
-      targets: selected.container,
-      x: selected.container.x + 8,
-      duration: 80,
+      targets: selected.chest,
+      x: { from: -8, to: 8 },
+      duration: 50,
       yoyo: true,
-      repeat: 14,
-      ease: 'Sine.easeInOut',
+      repeat: 5,
       onComplete: () => {
-        this.cameras.main.shake(300, 0.01);
-        this.cameras.main.flash(400, 255, 217, 60, false);
-        this.openReveal(selected, rewardType, reward);
-      },
-    });
-    this.tweens.add({
-      targets: selected.glow,
-      alpha: 0.8, scale: 1.5,
-      duration: 1200, yoyo: true, repeat: 1,
-    });
-  }
+        selected.chest.setX(0);
 
-  openReveal(selected, rewardType, reward) {
-    // Chest fade away.
-    this.tweens.add({
-      targets: selected.container,
-      scaleY: 0, alpha: 0,
-      duration: 400,
-      ease: 'Cubic.easeIn',
-      onComplete: () => this.showReward(rewardType, reward),
-    });
-    // Light beam.
-    const beam = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 250, GAME_HEIGHT, 0xffd93c, 0.4);
-    this.tweens.add({
-      targets: beam,
-      alpha: 0,
-      duration: 1000,
-      ease: 'Cubic.easeOut',
-      onComplete: () => beam.destroy(),
+        // 2. White flash full-screen.
+        const flash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xffffff, 0)
+          .setDepth(99990);
+        this.tweens.add({
+          targets: flash,
+          alpha: 0.8,
+          duration: 100,
+          yoyo: true,
+          onComplete: () => flash.destroy(),
+        });
+        this.cameras.main.flash(400, 255, 217, 60, false);
+
+        // 3. Podmiana sprite + scale punch (proporcjonalny do CHEST_SCALE).
+        this.time.delayedCall(100, () => {
+          selected.chest.setTexture('chest_open');
+          selected.chest.setScale(CHEST_SCALE);
+          this.tweens.add({
+            targets: selected.chest,
+            scale: { from: CHEST_SCALE, to: CHEST_SCALE * 1.2 },
+            duration: 150,
+            yoyo: true,
+            ease: 'Back.easeOut',
+          });
+        });
+
+        // 4. Reveal nagrody po 600ms.
+        this.time.delayedCall(600, () => this.showReward(rewardType, reward));
+      },
     });
   }
 
   showReward(rewardType, reward) {
     Haptic.gameComplete?.();
 
-    // Radial blask z centrum ekranu — znika po 1.2s.
+    // Radial blask z centrum ekranu.
     const blast = this.add.graphics();
     blast.fillStyle(0xffd93c, 0.35);
     blast.fillCircle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 600);
@@ -276,48 +173,48 @@ export class ChestSelectScene extends Phaser.Scene {
     });
 
     const cx = GAME_WIDTH / 2;
-    const cy = GAME_HEIGHT / 2 - 50;
+    // Centered between title (top) i chestów (~518) + 8px lower per user request.
+    const cy = (GAME_HEIGHT * 0.45) + 8;
     const c = this.add.container(cx, cy).setScale(0).setDepth(99999);
 
-    // Cartoon drop shadow + main bg z gradient + biały gruby border.
-    const bg = this.add.graphics();
-    bg.fillStyle(0x000000, 0.4);
-    bg.fillRoundedRect(-216, -96, 440, 200, 14);
-    bg.fillStyle(reward.color, 1);
-    bg.fillRoundedRect(-220, -100, 440, 200, 14);
-    bg.lineStyle(5, 0xffffff, 1);
-    bg.strokeRoundedRect(-220, -100, 440, 200, 14);
-    c.add(bg);
+    // Reward frame asset (cyan glow ramka). Display 720×180.
+    const frame = this.add.image(0, 0, 'reward_frame');
+    frame.setDisplaySize(720, 180);
+    c.add(frame);
 
-    // Ciemniejsza okrągła ramka pod ikoną (separuje wizualnie).
-    const iconBg = this.add.circle(-130, 0, 50, 0x000000, 0.25);
-    c.add(iconBg);
+    // Pokrycie baked content (diamond + "BONUS DIAMENTÓW") — pełny rect
+    // wewnątrz cyan ramki, alpha 0.95 dla mocnego ukrycia jasnego baked text.
+    const cover = this.add.rectangle(0, 0, 700, 170, 0x0a1428, 0.95);
+    c.add(cover);
 
+    // Reward icon — duża ikona po lewej (przykrywa baked diamond).
     let icon;
     if (reward.spriteKey && this.textures.exists(reward.spriteKey)) {
-      icon = this.add.image(-130, 0, reward.spriteKey);
-      icon.setDisplaySize(80, 80);
+      icon = this.add.image(-240, 0, reward.spriteKey);
+      icon.setDisplaySize(110, 110);
     } else {
-      icon = this.add.text(-130, 0, reward.spriteFallback || '🎁', { fontSize: '72px' }).setOrigin(0.5);
+      icon = this.add.text(-240, 0, reward.spriteFallback || '🎁', { fontSize: '90px' }).setOrigin(0.5);
     }
     c.add(icon);
 
-    const labelText = this.add.text(20, -25, reward.label, {
-      fontSize: '34px',
+    // Label (centrowany w prawej połowie) — przykrywa baked title.
+    const labelText = this.add.text(80, -18, reward.label, {
+      fontSize: '42px',
       fontFamily: 'Arial Black, sans-serif',
       color: '#ffffff',
-      stroke: '#000',
-      strokeThickness: 5,
-    }).setOrigin(0, 0.5);
+      stroke: '#1a0a2e',
+      strokeThickness: 6,
+    }).setOrigin(0.5, 0.5);
     c.add(labelText);
 
-    const descText = this.add.text(20, 22, reward.description, {
-      fontSize: '20px',
+    // Description (centrowane pod label) — przykrywa baked subtitle.
+    const descText = this.add.text(80, 32, reward.description, {
+      fontSize: '22px',
       fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-      stroke: '#000',
+      color: '#a8e0ff',
+      stroke: '#1a0a2e',
       strokeThickness: 3,
-    }).setOrigin(0, 0.5);
+    }).setOrigin(0.5, 0.5);
     c.add(descText);
 
     this.tweens.add({
@@ -337,7 +234,8 @@ export class ChestSelectScene extends Phaser.Scene {
       const size = Phaser.Math.Between(6, 10);
       const c = this.add.rectangle(x, y, size, size, colors[i % colors.length])
         .setStrokeStyle(2, 0x000000)
-        .setRotation(Phaser.Math.FloatBetween(0, Math.PI * 2));
+        .setRotation(Phaser.Math.FloatBetween(0, Math.PI * 2))
+        .setDepth(99998);
       this.tweens.add({
         targets: c,
         y: y + Phaser.Math.Between(200, 400),
@@ -353,28 +251,35 @@ export class ChestSelectScene extends Phaser.Scene {
   }
 
   showContinueButton(rewardType, reward) {
-    const btn = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 90, 'KONTYNUUJ ▶', {
-      fontSize: '32px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#1a0a2e',
-      backgroundColor: '#ffd93c',
-      padding: { x: 32, y: 12 },
-      stroke: '#000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    // KONTYNUUJ asset — green/gold button. Pozycja: pod skrzynią.
+    const btn = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT - 80, 'continue_button')
+      .setOrigin(0.5)
+      .setDisplaySize(360, 110)
+      .setDepth(99999)
+      .setInteractive({ useHandCursor: true });
 
-    btn.on('pointerover', () => btn.setScale(1.05));
-    btn.on('pointerout', () => btn.setScale(1.0));
-    btn.on('pointerup', () => this.applyAndContinue(rewardType, reward));
-
+    btn.setScale(0);
     this.tweens.add({
       targets: btn,
-      scale: 1.05,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
+      scale: 1.0,
+      duration: 300,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        // Idle pulse.
+        this.tweens.add({
+          targets: btn,
+          scale: 1.05,
+          duration: 800,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      },
     });
+
+    btn.on('pointerover', () => btn.setScale(1.08));
+    btn.on('pointerout', () => btn.setScale(1.0));
+    btn.on('pointerup', () => this.applyAndContinue(rewardType, reward));
   }
 
   applyAndContinue(rewardType, reward) {
@@ -388,6 +293,9 @@ export class ChestSelectScene extends Phaser.Scene {
         duration: reward.duration ?? null,
       });
     }
-    this.scene.start(this.nextScene, this.nextSceneData);
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start(this.nextScene, this.nextSceneData);
+    });
   }
 }

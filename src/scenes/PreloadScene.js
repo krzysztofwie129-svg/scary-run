@@ -60,6 +60,85 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('bg_layer_00', `${ASSET_PATHS.tileset.background}/layer_00.webp`);
     this.load.image('bg_layer_01', `${ASSET_PATHS.tileset.background}/layer_01.webp`);
 
+    // ChestSelect assets — bg + 3 sprite'y (postument, skrzynia zamkn./otwarta)
+    // + spritesheet z cyframi 1/2/3 (900×300 → 3 klatki 300×300).
+    this.load.image('chest_select_bg', 'assets/ui/chest_select_bg.webp');
+    this.load.image('chest_pedestal', 'assets/ui/chest_pedestal.webp');
+    this.load.image('chest_closed', 'assets/ui/chest_closed.webp');
+    this.load.image('chest_open', 'assets/ui/chest_open.webp');
+    this.load.spritesheet('chest_numbers', 'assets/ui/chest_numbers.webp', {
+      frameWidth: 300,
+      frameHeight: 300,
+    });
+    this.load.image('reward_frame', 'assets/ui/reward_frame.webp');
+    this.load.image('continue_button', 'assets/ui/continue_button.webp');
+
+    // MenuScene assets — nowy layout w stylu Subway Surfers (sesja 8.x).
+    // Wszystkie lossless WebP żeby uniknąć pixelizy na anti-alias.
+    this.load.image('menu_bg', 'assets/ui/menu_bg.webp');
+    // menu_logo ładowane w BootScene (używane też na progress barze).
+    this.load.image('menu_demon', 'assets/ui/menu_demon.webp');
+    this.load.image('menu_btn_kontynuuj', 'assets/ui/menu_btn_kontynuuj.webp');
+    this.load.image('menu_btn_graj', 'assets/ui/menu_btn_graj.webp');
+    this.load.image('menu_btn_multi', 'assets/ui/menu_btn_multi.webp');
+    this.load.image('menu_btn_ranking', 'assets/ui/menu_btn_ranking.webp');
+    this.load.image('menu_icons_row', 'assets/ui/menu_icons_row.webp');
+    this.load.image('menu_stat_bars', 'assets/ui/menu_stat_bars.webp');
+    this.load.image('menu_tap_text', 'assets/ui/menu_tap_text.webp');
+
+    // OrientationLockScene assets — portrait mode "OBRÓĆ TELEFON".
+    this.load.image('orientation_bg', 'assets/ui/orientation_bg.webp');
+    this.load.image('orientation_frame', 'assets/ui/orientation_frame.webp');
+    this.load.image('orientation_phone', 'assets/ui/orientation_phone.webp');
+    this.load.image('orientation_title', 'assets/ui/orientation_title.webp');
+    this.load.image('orientation_subtitle', 'assets/ui/orientation_subtitle.webp');
+
+    // LeaderboardScene assets — TOP 10 layout (sesja 8.x).
+    this.load.image('leaderboard_bg', 'assets/ui/leaderboard_bg.webp');
+    this.load.image('leaderboard_title', 'assets/ui/leaderboard_title.webp');
+    this.load.image('leaderboard_table', 'assets/ui/leaderboard_table.webp');
+    this.load.image('leaderboard_back', 'assets/ui/leaderboard_back.webp');
+
+    // NameInputScene assets — WPISZ IMIĘ layout (sesja 8.x).
+    this.load.image('nameinput_bg', 'assets/ui/nameinput_bg.webp');
+    this.load.image('nameinput_title', 'assets/ui/nameinput_title.webp');
+    this.load.image('nameinput_frame', 'assets/ui/nameinput_frame.webp');
+    this.load.image('nameinput_confirm', 'assets/ui/nameinput_confirm.webp');
+
+    // CharSelectScene assets — character cards (sesja 8.x).
+    this.load.image('charselect_bg', 'assets/ui/charselect_bg.webp');
+    this.load.image('charselect_title', 'assets/ui/charselect_title.webp');
+    this.load.image('charselect_subtitle', 'assets/ui/charselect_subtitle.webp');
+    this.load.image('charselect_back', 'assets/ui/charselect_back.webp');
+    this.load.image('charselect_card_char01', 'assets/ui/charselect_card_char01.webp');
+    this.load.image('charselect_card_char02', 'assets/ui/charselect_card_char02.webp');
+    this.load.image('charselect_card_char03', 'assets/ui/charselect_card_char03.webp');
+
+    // LevelCompleteScene assets — sesja 8.x.
+    this.load.image('levelcomplete_bg', 'assets/ui/levelcomplete_bg.webp');
+    this.load.image('levelcomplete_confetti', 'assets/ui/levelcomplete_confetti.webp');
+    this.load.image('levelcomplete_title', 'assets/ui/levelcomplete_title.webp');
+    this.load.image('levelcomplete_stars', 'assets/ui/levelcomplete_stars.webp');
+    this.load.image('levelcomplete_stat_frame', 'assets/ui/levelcomplete_stat_frame.webp');
+    this.load.image('levelcomplete_stat_icons', 'assets/ui/levelcomplete_stat_icons.webp');
+    this.load.image('levelcomplete_progress_frame', 'assets/ui/levelcomplete_progress_frame.webp');
+    this.load.image('levelcomplete_progress_fill', 'assets/ui/levelcomplete_progress_fill.webp');
+    this.load.image('levelcomplete_rank', 'assets/ui/levelcomplete_rank.webp');
+    this.load.image('levelcomplete_next', 'assets/ui/levelcomplete_next.webp');
+
+    // PauseScene assets — sesja 8.x.
+    this.load.image('pause_title', 'assets/ui/pause_title.webp');
+    this.load.image('pause_btn_resume', 'assets/ui/pause_btn_resume.webp');
+    this.load.image('pause_btn_menu', 'assets/ui/pause_btn_menu.webp');
+
+    // GameOverScene assets — sesja 8.x.
+    this.load.image('gameover_title', 'assets/ui/gameover_title.webp');
+    this.load.image('gameover_btn_restart', 'assets/ui/gameover_btn_restart.webp');
+    this.load.image('gameover_btn_menu', 'assets/ui/gameover_btn_menu.webp');
+    this.load.image('gameover_label_score', 'assets/ui/gameover_label_score.webp');
+    this.load.image('gameover_label_level', 'assets/ui/gameover_label_level.webp');
+    this.load.image('gameover_highscore', 'assets/ui/gameover_highscore.webp');
+
     // Sesja 7.4.3: ŻADNYCH ground tile'ów nie ładujemy. Player biega po
     // niewidzialnych collider'ach (alpha 0 rectangles w Ground.js); visible
     // ground = parallax warstwy levelu (CraftPix halloween_bg ma trawę
@@ -124,41 +203,71 @@ export class PreloadScene extends Phaser.Scene {
 
   drawProgressBar() {
     const { width, height } = this.scale;
-    const barWidth = 400;
-    const barHeight = 20;
-    const x = (width - barWidth) / 2;
-    const y = (height - barHeight) / 2;
 
-    const barBg = this.add.graphics();
-    barBg.fillStyle(0x2a1a3e, 1);
-    barBg.fillRoundedRect(x, y, barWidth, barHeight, 6);
+    // Tło — pełnoekranowa Halloween Night grafika.
+    if (this.textures.exists('loading_bg')) {
+      this.add.image(width / 2, height / 2, 'loading_bg').setDisplaySize(width, height);
+    }
 
-    const barFill = this.add.graphics();
+    // Logo gry — nad progress barem.
+    if (this.textures.exists('menu_logo')) {
+      this.add.image(width / 2, height / 2 - 130, 'menu_logo').setDisplaySize(540, 180);
+    }
 
-    const label = this.add.text(width / 2, y - 30, 'Wczytywanie…', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '20px',
+    // Tekst "Wczytywanie..." usunięty — sama ramka + procent wystarczą.
+    let label = null;
+
+    // Bar frame (gold ramka z skull-bat dekoracją na górze).
+    const barCenterX = width / 2;
+    const barCenterY = height / 2 + 20;
+    const barW = 720;
+    const barH = 80;
+
+    if (this.textures.exists('loading_bar_frame')) {
+      this.add.image(barCenterX, barCenterY, 'loading_bar_frame').setDisplaySize(barW, barH);
+    }
+
+    // Bar fill — sprite z origin (0, 0.5), scaleX 0→1 simulates rośnie od lewej.
+    // fillW wyraźnie mniejsze od barW żeby zostawić margines na złotą ramkę
+    // — bez tego fill przy 100% wycieka poza krawędź ramki.
+    const fillW = barW - 130; // 720 - 130 = 590 wewnętrzna szerokość
+    const fillH = barH - 38;  // 80 - 38 = 42 wewnętrzna wysokość
+    let fill = null;
+    let baseFillScaleX = 1;
+    if (this.textures.exists('loading_bar_fill')) {
+      fill = this.add.image(barCenterX - fillW / 2, barCenterY, 'loading_bar_fill')
+        .setOrigin(0, 0.5)
+        .setDisplaySize(fillW, fillH);
+      // NORMAL blend (zamiast ADD) — czystsze krawędzie, brak halo na anti-alias.
+      // Tło checkerboard z fuzz floodfill częściowo jeszcze przeszkadza —
+      // lossless WebP daje krzystszy bar.
+      // Bug fix: zapamiętaj scaleX PO setDisplaySize (= fillW / texture.width),
+      // PRZED zerowaniem. Bez tego progress=1 dawało scaleX=1 → sprite native
+      // size = 760px, dłuższy niż 590 fillW → wylazi poza ramkę.
+      baseFillScaleX = fill.scaleX;
+      fill.scaleX = 0; // start empty
+    } else {
+      fill = this.add.rectangle(barCenterX - fillW / 2, barCenterY, fillW, fillH, 0x9b6dff)
+        .setOrigin(0, 0.5);
+      baseFillScaleX = 1;
+      fill.scaleX = 0;
+    }
+
+    const percentText = this.add.text(width / 2, barCenterY + barH / 2 + 20, '0%', {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '16px',
       color: '#bdaee3',
-    }).setOrigin(0.5);
-
-    const percent = this.add.text(width / 2, y + barHeight + 20, '0%', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '14px',
-      color: '#7a6a9a',
+      stroke: '#000',
+      strokeThickness: 3,
     }).setOrigin(0.5);
 
     this.load.on('progress', (value) => {
-      barFill.clear();
-      barFill.fillStyle(0x9b6dff, 1);
-      barFill.fillRoundedRect(x, y, barWidth * value, barHeight, 6);
-      percent.setText(`${Math.round(value * 100)}%`);
+      // Skaluj fill X od 0 do baseFillScaleX*value (sprite pełen = baseFillScaleX).
+      fill.scaleX = baseFillScaleX * value;
+      percentText.setText(`${Math.round(value * 100)}%`);
     });
 
-    this.load.on('complete', () => {
-      barBg.destroy();
-      barFill.destroy();
-      label.destroy();
-      percent.destroy();
-    });
+    // Brak destroy w complete — Phaser czyści na scene shutdown.
+    // Bar fill na 100% widoczny aż do transition do MenuScene.
   }
 }

@@ -1,0 +1,11 @@
+import puppeteer from 'puppeteer';
+const browser = await puppeteer.launch();
+const page = await browser.newPage();
+page.on('console', (msg) => console.log('CONSOLE:', msg.type(), msg.text()));
+page.on('pageerror', (err) => console.log('PAGEERROR:', err.message));
+await page.setViewport({ width: 1280, height: 720 });
+await page.goto('http://localhost:5173/?desktop=1', { waitUntil: 'networkidle2', timeout: 30000 });
+await new Promise((r) => setTimeout(r, 5000));
+const html = await page.content();
+console.log('Has canvas:', html.includes('<canvas'));
+await browser.close();

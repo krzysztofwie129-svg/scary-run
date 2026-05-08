@@ -13,19 +13,19 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Tu wyłącznie minimalne assety — logo loadera, ewentualnie 1-2 ikonki.
-    // Pełen preload (postacie, tileset, audio) idzie w PreloadScene.
+    // Loading screen assets — tylko 4 lekkie pliki, ładowane PRZED PreloadScene
+    // żeby progress bar mógł użyć nowej grafiki Halloween Night.
+    this.load.image('loading_bg', 'assets/ui/loading_bg.webp');
+    this.load.image('loading_text', 'assets/ui/loading_text.webp');
+    this.load.image('loading_bar_frame', 'assets/ui/loading_bar_frame.webp');
+    this.load.image('loading_bar_fill', 'assets/ui/loading_bar_fill.webp');
+    // Logo gry — wyświetlane nad progress barem w PreloadScene + reused w MenuScene.
+    this.load.image('menu_logo', 'assets/ui/menu_logo.webp');
   }
 
   create() {
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Boot…', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '24px',
-      color: '#bdaee3',
-    }).setOrigin(0.5);
-
     // Krótki delay przed PreloadScene, żeby Boot nie błyskał na 1 frame.
-    this.time.delayedCall(100, () => {
+    this.time.delayedCall(50, () => {
       this.scene.start('PreloadScene');
     });
   }

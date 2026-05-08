@@ -44,10 +44,12 @@ const config = {
     },
   },
   // Mobile-only: keyboard + mouse OFF, tylko touch + multi-pointer.
+  // DEV: ?desktop=1 → włącz mouse (do testów na desktopie / puppeteer).
   input: {
     activePointers: 3,
     keyboard: false,
-    mouse: false,
+    mouse: typeof window !== 'undefined'
+      && new URLSearchParams(window.location.search).has('desktop'),
     touch: true,
   },
   // Phaser renderuje sceny w kolejności array — późniejsze NA WIERZCHU.

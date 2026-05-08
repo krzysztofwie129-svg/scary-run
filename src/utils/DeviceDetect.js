@@ -22,6 +22,10 @@ export function isPortrait() {
 
 /** Czy można grać? mobile + landscape. */
 export function canPlay() {
+  // DEV: ?desktop=1 omija mobile-only check (do testów na desktopie).
+  if (typeof window !== 'undefined' && window.location?.search) {
+    if (new URLSearchParams(window.location.search).has('desktop')) return true;
+  }
   return isMobileDevice() && isLandscape();
 }
 

@@ -1,6 +1,13 @@
-// MenuScene — entry point. Tytuł + 3 przyciski: START GAME (SP),
-// MULTIPLAYER (2-4 graczy), LEADERBOARD. Muzyka menu w tle.
-// Wybór postaci wydzielony do CharSelectScene (po NameInputScene).
+// MenuScene — entry point. Halloween Night layout (sesja 8.x):
+//   • full-screen BG (menu_bg)
+//   • Scary Run logo (menu_logo)
+//   • 4 image buttons KONTYNUUJ/GRAJ/MULTI/RANKING (menu_btn_*)
+//   • demon character decoration (menu_demon)
+//   • placeholder UI: stat bars top-left, icons row top-right
+//   • "Tap przycisk..." tekst u dołu (menu_tap_text)
+//
+// Stat bars + 4 round icons to placeholdery wizualne (per user — diamenty,
+// konto, gear nie mają jeszcze logiki).
 
 import {
   GAME_WIDTH,
@@ -9,7 +16,6 @@ import {
 } from '../config.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
-import { isMobileDevice } from '../utils/DeviceDetect.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
 import { FullscreenManager } from '../utils/FullscreenManager.js';
 import { InstallPromptManager } from '../utils/InstallPromptManager.js';
@@ -24,6 +30,31 @@ export class MenuScene extends Phaser.Scene {
     // DEV: ?chest=random|giant|destroyer → skip menu, idź prosto do ChestSelect
     // (z forceRewards=3× wybrana nagroda). Po KONTYNUUJ start GameScene
     // (level z ?level=N lub 0). Aplikuj raz na page load.
+    // DEV: ?levelcomplete=N → skip do LevelCompleteScene z mock data dla level N.
+    if (!MenuScene._lcApplied && typeof window !== 'undefined' && window.location?.search) {
+      const params = new URLSearchParams(window.location.search);
+      const lcParam = params.get('levelcomplete');
+      if (lcParam) {
+        MenuScene._lcApplied = true;
+        const lvl = Math.max(1, parseInt(lcParam, 10) || 1);
+        sessionManager.setupSinglePlayer('TEST');
+        sessionManager.setCharacter('char01');
+        const p = sessionManager.currentPlayer();
+        p.level = lvl - 1;
+        p.lives = 5;
+        p.coins = 20;
+        p.diamonds = 4;
+        this.scene.start('LevelCompleteScene', {
+          deathsThisLevel: 0,
+          timeRemainingPercent: 0.6,
+          scoreThisLevel: 894,
+          coinsThisLevel: 20,
+          diamondsThisLevel: 4,
+        });
+        return;
+      }
+    }
+
     if (!MenuScene._chestApplied && typeof window !== 'undefined' && window.location?.search) {
       const params = new URLSearchParams(window.location.search);
       const chestParam = params.get('chest');
@@ -35,7 +66,6 @@ export class MenuScene extends Phaser.Scene {
           destroyer: 'next_destroyer',
         };
         const forced = map[chestParam.toLowerCase()];
-        // Setup minimum sessionManager: SP + char01 + level z URL.
         const savedName = PlayerStore.getName() || 'TEST';
         sessionManager.setupSinglePlayer(savedName);
         sessionManager.setCharacter('char01');
@@ -44,7 +74,6 @@ export class MenuScene extends Phaser.Scene {
           sessionManager.currentPlayer().level = lvlParam - 1;
         }
         const forceRewards = forced ? [forced, forced, forced] : null;
-        // Random nie wymaga forceRewards — ChestSelect sam wylosuje 3 różne.
         this.scene.start('ChestSelectScene', {
           nextScene: 'GameScene',
           forceRewards,
@@ -53,14 +82,8 @@ export class MenuScene extends Phaser.Scene {
       }
     }
 
-    // Muzyka menu wyłączona (sesja 7.1).
     this.audioManager = new AudioManager(this);
-    // Audio unlock dla mobile — KLUCZOWE dla SFX. iOS Safari autoplay policy
-    // wymaga pierwszej próby play() na user gesture żeby odblokować audio
-    // dla całej strony. Wcześniejsza wersja używała playMusic('music_menu')
-    // jako "ofiarne" play żeby unlock — po wyłączeniu muzyki SFX przestały
-    // grać. Tu używamy this.sound.unlock() który robi to samo bez słyszalnego
-    // dźwięku (silent buffer pod spodem).
+    // iOS audio unlock — pierwszy pointerdown.
     if (this.sound.locked) {
       this.input.once('pointerdown', () => {
         try { this.sound.unlock(); } catch (e) { /* ignore */ }
@@ -68,89 +91,55 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // Tło: layer_00 z tileset/background.
-    if (this.textures.exists('bg_layer_00')) {
-      const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_layer_00');
-      bg.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+    // 1. Full-screen background.
+    if (this.textures.exists('menu_bg')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'menu_bg')
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+    } else if (this.textures.exists('bg_layer_00')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_layer_00')
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
     }
 
-    this.add.text(GAME_WIDTH / 2, 100, 'SCARY RUN', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '96px',
-      color: '#ffe066',
-      stroke: '#3a1d5a',
-      strokeThickness: 8,
-      shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 16, fill: true },
-    }).setOrigin(0.5);
+    // 2. Demon decoration (prawa strona, lekko za przyciskami).
+    if (this.textures.exists('menu_demon')) {
+      this.add.image(GAME_WIDTH - 160, GAME_HEIGHT / 2 + 90, 'menu_demon')
+        .setDisplaySize(320, 320);
+    }
 
-    this.add.text(GAME_WIDTH / 2, 180, 'Halloween Endless Runner', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '24px',
-      color: '#bdaee3',
-      fontStyle: 'italic',
-    }).setOrigin(0.5);
+    // 3. Logo — top-center.
+    if (this.textures.exists('menu_logo')) {
+      this.add.image(GAME_WIDTH / 2, 150, 'menu_logo')
+        .setDisplaySize(540, 180);
+    }
 
-    // Sesja Persistent Name — greeting + ikona edycji jeśli imię zapisane.
-    this.buildGreeting();
+    // 4. Stat bars (placeholder) — top-left.
+    if (this.textures.exists('menu_stat_bars')) {
+      this.add.image(150, 75, 'menu_stat_bars')
+        .setDisplaySize(260, 130);
+    }
 
-    // Stan menu — main lub multiplayer-count.
+    // 5. Icons row (placeholder) — top-right.
+    if (this.textures.exists('menu_icons_row')) {
+      this.add.image(GAME_WIDTH - 200, 70, 'menu_icons_row')
+        .setDisplaySize(360, 120);
+    }
+
+    // Build buttons (zależnie od hasSave).
     this.menuState = 'main';
     this.buildMainButtons();
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, 'Tap aby wybrac', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '14px',
-      color: '#bdaee3',
-    }).setOrigin(0.5);
-
-    if (isMobileDevice()) {
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'Tap GORA aby skoczyc  •  Tap DOL aby slizgac', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '18px',
-        color: '#ffd93c',
-        stroke: '#000',
-        strokeThickness: 3,
-      }).setOrigin(0.5).setDepth(10000);
+    // 6. Tap text u dołu.
+    if (this.textures.exists('menu_tap_text')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT - 28, 'menu_tap_text')
+        .setDisplaySize(440, 90);
     }
 
-    // Sesja P3.1: install prompt dla iPhone Safari (raz, jeśli nie zamknięty).
-    // 1s delay żeby najpierw było widoczne menu.
+    // 7. Install prompt (iOS).
     if (InstallPromptManager.shouldShow()) {
       this.time.delayedCall(1000, () => {
         this.scene.launch('InstallPromptScene');
       });
     }
-  }
-
-  buildGreeting() {
-    const savedName = PlayerStore.getName();
-    if (!savedName) return;
-
-    // y=230 — pod subtitle (180), nad CONTINUE/START (cy=290+).
-    const y = 230;
-    const greeting = this.add.text(GAME_WIDTH / 2 - 30, y, `Czesc, ${savedName}!`, {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '28px',
-      color: '#ffd93c',
-      stroke: '#000',
-      strokeThickness: 4,
-    }).setOrigin(0.5);
-
-    // ✏️ klikalny — edit mode prowadzi do NameInput, potem wraca tu.
-    const editIcon = this.add.text(greeting.x + greeting.width / 2 + 22, y, '✏️', {
-      fontSize: '26px',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    editIcon.on('pointerover', () => editIcon.setScale(1.2));
-    editIcon.on('pointerout', () => editIcon.setScale(1.0));
-    editIcon.on('pointerup', () => {
-      this.audioManager?.playSfx('click');
-      this.scene.start('NameInputScene', {
-        editMode: true,
-        playerIndex: 0,
-        numPlayers: 1,
-      });
-    });
   }
 
   destroyButtons() {
@@ -169,32 +158,47 @@ export class MenuScene extends Phaser.Scene {
     this.menuState = 'main';
     this.destroyButtons();
 
-    const cy = GAME_HEIGHT / 2;
     const hasSave = GameStateStore.hasSave();
-    // Layout: jeśli save istnieje, dodajemy CONTINUE jako pierwszy
-    // i przesuwamy resztę w dół o 90px (mieszczą się w safe-zone GAME_HEIGHT-180).
-    const offset = hasSave ? 90 : 0;
+    const cx = GAME_WIDTH / 2;
+    // 4 przyciski: y=320, 420, 520, 620 (gdy hasSave); 3: y=380, 490, 600.
+    // Ratio button image source: 900x300 = 3:1. Display 460×100 → lekkie
+    // squashy ale akceptowalne (~5:1 jak w wizji).
+    const btnW = 520;
+    const btnH = 100;
 
     this.buttons = [];
-    if (hasSave) {
-      this.buttons.push(
-        this.makeButton(GAME_WIDTH / 2, cy - 130, '▶ KONTYNUUJ', 0xffd93c, () => {
-          this.audioManager?.playSfx('click');
-          FullscreenManager.enter();
-          FullscreenManager.keepAwake();
-          this.continueGame();
-        }),
-      );
-    }
-    this.buttons.push(
-      this.makeButton(GAME_WIDTH / 2, cy - 40 + offset, 'START GAME', 0x6b3eb6, () => {
+    const items = [];
+    if (hasSave) items.push({ key: 'menu_btn_kontynuuj', action: 'continue' });
+    items.push({ key: 'menu_btn_graj', action: 'play' });
+    items.push({ key: 'menu_btn_multi', action: 'multi' });
+    items.push({ key: 'menu_btn_ranking', action: 'ranking' });
+
+    const totalH = items.length * btnH + (items.length - 1) * 5;
+    const startY = (GAME_HEIGHT - totalH) / 2 + btnH / 2 + 35;
+
+    items.forEach((item, idx) => {
+      const cy = startY + idx * (btnH + 5);
+      this.buttons.push(this.makeImageButton(cx, cy, item.key, btnW, btnH, () => {
         this.audioManager?.playSfx('click');
+        this.handleButtonAction(item.action);
+      }));
+    });
+
+    this.bindKeyboardNav();
+  }
+
+  handleButtonAction(action) {
+    switch (action) {
+      case 'continue': {
         FullscreenManager.enter();
         FullscreenManager.keepAwake();
-        // Klik START GAME → świadomy nowy start, clear istniejącego save'a.
+        this.continueGame();
+        break;
+      }
+      case 'play': {
+        FullscreenManager.enter();
+        FullscreenManager.keepAwake();
         GameStateStore.clear();
-        // Sesja Persistent Name: jeśli imię już zapisane → pomijamy NameInput,
-        // od razu CharSelect (klasyczny mobile UX, Subway Surfers style).
         const savedName = PlayerStore.getName();
         sessionManager.setupSinglePlayer(savedName || '');
         if (savedName) {
@@ -202,29 +206,27 @@ export class MenuScene extends Phaser.Scene {
         } else {
           this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: 1 });
         }
-      }),
-      this.makeButton(GAME_WIDTH / 2, cy + 50 + offset, 'MULTIPLAYER', 0x3e6bb6, () => {
-        this.audioManager?.playSfx('click');
+        break;
+      }
+      case 'multi': {
         FullscreenManager.enter();
         FullscreenManager.keepAwake();
         GameStateStore.clear();
         this.buildPlayerCountButtons();
-      }),
-      this.makeButton(GAME_WIDTH / 2, cy + 140 + offset, 'LEADERBOARD', 0x4ad8ff, () => {
-        this.audioManager?.playSfx('click');
+        break;
+      }
+      case 'ranking': {
         this.scene.start('LeaderboardScene');
-      }),
-    );
-    this.bindKeyboardNav();
+        break;
+      }
+      default: break;
+    }
   }
 
   buildPlayerCountButtons() {
     this.menuState = 'mp_count';
     this.destroyButtons();
 
-    // Shift cy 40px up (sesja 7.1) — żeby BACK wylądował w safe-zone iOS
-    // bottom. Spacing player buttons zmniejszony do 60px (z 70) żeby zrobić
-    // miejsce na większy BACK + extra gap (sesja P3.1+).
     const cy = GAME_HEIGHT / 2 - 70;
     this.add.text(GAME_WIDTH / 2, cy - 60, 'How many players?', {
       fontFamily: 'Arial Black, sans-serif',
@@ -238,18 +240,16 @@ export class MenuScene extends Phaser.Scene {
     for (let n = 2; n <= MAX_PLAYERS; n++) {
       const idx = n - 2;
       this.buttons.push(
-        this.makeButton(GAME_WIDTH / 2, cy + 30 + idx * 70, `${n} PLAYERS`, 0x6b3eb6, () => {
+        this.makeFallbackButton(GAME_WIDTH / 2, cy + 30 + idx * 70, `${n} PLAYERS`, 0x6b3eb6, () => {
           this.audioManager?.playSfx('click');
           sessionManager.setupMultiplayer(n);
           this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: n });
         }),
       );
     }
-    // BACK osobno — większy gap (90px zamiast 70) + większy rozmiar (380x84,
-    // font 32) żeby wizualnie odseparować od listy "N PLAYERS" (user request).
     const lastPlayerY = cy + 30 + (MAX_PLAYERS - 2) * 70;
     this.buttons.push(
-      this.makeButton(GAME_WIDTH / 2, lastPlayerY + 90, 'BACK', 0x4a4a6a, () => {
+      this.makeFallbackButton(GAME_WIDTH / 2, lastPlayerY + 90, 'BACK', 0x4a4a6a, () => {
         this.audioManager?.playSfx('click');
         const prompt = this.children.getByName('mp_prompt');
         if (prompt) prompt.destroy();
@@ -291,17 +291,14 @@ export class MenuScene extends Phaser.Scene {
     this.buttons?.forEach((b, i) => b.setFocused?.(i === this.focusedIndex));
   }
 
-  /** Sesja P1 — odtwarza stan z localStorage i przechodzi prosto do GameScene
-   *  (postać i imię już z save'a, NameInput/CharSelect pominięte). */
+  /** Sesja P1 — odtwarza stan z localStorage i przechodzi prosto do GameScene. */
   continueGame() {
     const data = GameStateStore.load();
     if (!data) {
-      // Save zniknął między pokazaniem buttona a kliknięciem (TTL?). Restart menu.
       this.scene.restart();
       return;
     }
     if (!sessionManager.deserialize(data.session)) {
-      // Malformed save — clear i refresh.
       GameStateStore.clear();
       this.scene.restart();
       return;
@@ -312,7 +309,47 @@ export class MenuScene extends Phaser.Scene {
     this.scene.start('GameScene');
   }
 
-  makeButton(centerX, centerY, label, fillColor, onClick, opts = {}) {
+  /** Image-based button — używa textury menu_btn_*. Hit area = setInteractive
+   *  na obrazku. Focus highlight = scale 1.05. */
+  makeImageButton(centerX, centerY, textureKey, w, h, onClick) {
+    const img = this.add.image(centerX, centerY, textureKey).setDisplaySize(w, h);
+    img.setInteractive({ useHandCursor: true });
+    let isFocused = false;
+    const baseScaleX = img.scaleX;
+    const baseScaleY = img.scaleY;
+
+    const apply = (focusedOrHover) => {
+      const k = focusedOrHover ? 1.05 : 1;
+      img.scaleX = baseScaleX * k;
+      img.scaleY = baseScaleY * k;
+    };
+
+    img.on('pointerover', () => apply(true));
+    img.on('pointerout', () => apply(isFocused));
+    img.on('pointerdown', () => {
+      img.scaleX = baseScaleX * 0.97;
+      img.scaleY = baseScaleY * 0.97;
+    });
+    img.on('pointerup', () => {
+      apply(isFocused);
+      onClick();
+    });
+
+    return {
+      onClick,
+      setFocused(focused) {
+        isFocused = focused;
+        apply(focused);
+      },
+      destroy() {
+        img.destroy();
+      },
+    };
+  }
+
+  /** Fallback button — Phaser graphics + text. Używany w mp_count gdzie nie
+   *  mamy gotowych grafik dla "2 PLAYERS"/"BACK" itd. */
+  makeFallbackButton(centerX, centerY, label, fillColor, onClick, opts = {}) {
     const w = opts.w ?? 320;
     const h = opts.h ?? 70;
     const fontSize = opts.fontSize ?? '28px';

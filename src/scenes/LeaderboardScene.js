@@ -1,6 +1,12 @@
-// LeaderboardScene — top 10 GLOBALNY (sesja 7.4.6). Fetch z /api/leaderboard
-// (CF Pages Function + KV); fallback localStorage gdy serwer offline.
-// RANK | NAME | SCORE | LEVEL | COINS | DATE.
+// LeaderboardScene — top 10 GLOBALNY z assetami portretowymi (sesja 8.x):
+//   • leaderboard_bg (Halloween cemetery)
+//   • leaderboard_title (TOP 10 z bat wings + skull)
+//   • leaderboard_table (gold-frame purple table z baked headers # GRACZ
+//     WYNIK POZIOM MONETY DATA)
+//   • leaderboard_back (WRÓĆ button z gold wings)
+//
+// Headers są baked w teksturze tabeli — overlay-ujemy tylko 10 wierszy danych
+// pod header bar.
 
 import {
   GAME_WIDTH,
@@ -19,27 +25,56 @@ export class LeaderboardScene extends Phaser.Scene {
   create() {
     this.audioManager = new AudioManager(this);
 
-    if (this.textures.exists('bg_level3_layer1')) {
-      const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_level3_layer1');
-      bg.setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.5);
+    // BG full-screen.
+    if (this.textures.exists('leaderboard_bg')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'leaderboard_bg')
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+    } else if (this.textures.exists('bg_level3_layer1')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_level3_layer1')
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+        .setAlpha(0.5);
     }
-    const overlay = this.add.graphics();
-    overlay.fillStyle(0x000000, 0.55);
-    overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    this.add.text(GAME_WIDTH / 2, 60, 'TOP 10', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '64px',
-      color: '#ffe066',
-      stroke: '#3a1d5a',
-      strokeThickness: 8,
-      shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 12, fill: true },
-    }).setOrigin(0.5);
+    // Title TOP 10 — top center.
+    if (this.textures.exists('leaderboard_title')) {
+      this.add.image(GAME_WIDTH / 2, 75, 'leaderboard_title').setDisplaySize(440, 195);
+    } else {
+      this.add.text(GAME_WIDTH / 2, 60, 'TOP 10', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '64px',
+        color: '#ffe066',
+        stroke: '#3a1d5a',
+        strokeThickness: 8,
+      }).setOrigin(0.5);
+    }
 
-    // Loading placeholder — pokazuje się dopóki async fetch nie wróci.
-    this.loadingText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Wczytywanie...', {
+    // Table frame — wysoka tabela tuż pod logo, prawie do WRÓĆ.
+    this.tableX = GAME_WIDTH / 2;
+    this.tableY = 420;
+    this.tableW = 1140;
+    this.tableH = 470;
+    if (this.textures.exists('leaderboard_table')) {
+      this.add.image(this.tableX, this.tableY, 'leaderboard_table')
+        .setDisplaySize(this.tableW, this.tableH);
+    }
+
+    // Back button — bottom.
+    const backBtnY = GAME_HEIGHT - 38;
+    if (this.textures.exists('leaderboard_back')) {
+      const btn = this.add.image(GAME_WIDTH / 2, backBtnY, 'leaderboard_back')
+        .setDisplaySize(280, 70)
+        .setInteractive({ useHandCursor: true });
+      btn.on('pointerover', () => btn.setScale(btn.scaleX * 1.05, btn.scaleY * 1.05));
+      btn.on('pointerout', () => btn.setScale(btn.scaleX / 1.05, btn.scaleY / 1.05));
+      btn.on('pointerup', () => this.handleBack());
+    } else {
+      this.buildFallbackBack(GAME_WIDTH / 2, backBtnY);
+    }
+
+    // Loading placeholder podczas async fetch.
+    this.loadingText = this.add.text(GAME_WIDTH / 2, this.tableY, 'Wczytywanie...', {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '28px',
+      fontSize: '24px',
       color: '#bdaee3',
       fontStyle: 'italic',
       stroke: '#000',
@@ -52,99 +87,92 @@ export class LeaderboardScene extends Phaser.Scene {
         this.loadingText = null;
       }
       if (entries.length === 0) {
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'No scores yet — play to be the first!', {
+        this.add.text(GAME_WIDTH / 2, this.tableY, 'No scores yet — play to be the first!', {
           fontFamily: 'Arial, sans-serif',
-          fontSize: '28px',
+          fontSize: '24px',
           color: '#bdaee3',
           fontStyle: 'italic',
           stroke: '#000',
           strokeThickness: 3,
         }).setOrigin(0.5);
       } else {
-        this.renderTable(entries);
+        this.renderRows(entries);
       }
     });
 
-    // BACK button.
-    const onBack = () => {
-      this.audioManager.playSfx('click');
-      this.scene.start('MenuScene');
-    };
-    const btnY = GAME_HEIGHT - 180;
-    const btnX = GAME_WIDTH / 2;
-    const btnW = 240;
-    const btnH = 60;
-    const gfx = this.add.graphics();
-    gfx.fillStyle(0x4a2796, 1);
-    gfx.fillRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 14);
-    gfx.lineStyle(3, 0xffe066, 1);
-    gfx.strokeRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 14);
-    this.add.text(btnX, btnY, 'BACK', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '26px',
-      color: '#fff',
-    }).setOrigin(0.5);
-    this.add.zone(btnX, btnY, btnW, btnH).setInteractive({ useHandCursor: true })
-      .on('pointerup', onBack);
-
-    this.input.keyboard?.on('keydown-ESC', onBack);
-    this.input.keyboard?.on('keydown-SPACE', onBack);
-    this.input.keyboard?.on('keydown-ENTER', onBack);
+    this.input.keyboard?.on('keydown-ESC', () => this.handleBack());
+    this.input.keyboard?.on('keydown-SPACE', () => this.handleBack());
+    this.input.keyboard?.on('keydown-ENTER', () => this.handleBack());
   }
 
-  renderTable(entries) {
-    // Nagłówki.
-    const headerY = 140;
-    const cols = [
-      { x: 80, label: '#' },
-      { x: 160, label: 'NAME' },
-      { x: 460, label: 'SCORE' },
-      { x: 660, label: 'LEVEL' },
-      { x: 850, label: 'COINS' },
-      { x: 1050, label: 'DATE' },
-    ];
-    const headerStyle = {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '20px',
-      color: '#ffd93c',
-      stroke: '#000',
-      strokeThickness: 3,
+  handleBack() {
+    this.audioManager?.playSfx('click');
+    this.scene.start('MenuScene');
+  }
+
+  renderRows(entries) {
+    // Source table image (1200×675 lossless): header bar y=90-140, data area
+    // y=140-595. Header occupies ~21% of height (to y=140/675), data area
+    // 67.4% (y=140 to y=595), 10 rows × 6.74% each.
+    const tableLeft = this.tableX - this.tableW / 2;
+    const tableTop = this.tableY - this.tableH / 2;
+    const headerBottomY = tableTop + this.tableH * 0.21;
+    const rowH = this.tableH * 0.0674;
+
+    // Column X positions — aligned z text labels w baked header (nie z ikonami,
+    // które są na lewo od labelu). Procenty kolumn: # 7%, GRACZ 25%, WYNIK 44%,
+    // POZIOM 60%, MONETY 76%, DATA 91%.
+    const cols = {
+      rank:  tableLeft + this.tableW * 0.07,
+      name:  tableLeft + this.tableW * 0.25,
+      score: tableLeft + this.tableW * 0.44,
+      level: tableLeft + this.tableW * 0.60,
+      coins: tableLeft + this.tableW * 0.76,
+      date:  tableLeft + this.tableW * 0.91,
     };
-    for (const col of cols) {
-      this.add.text(col.x, headerY, col.label, headerStyle);
-    }
 
-    // Linia pod nagłówkami.
-    const sep = this.add.graphics();
-    sep.lineStyle(2, 0xffd93c, 0.5);
-    sep.lineBetween(80, headerY + 30, GAME_WIDTH - 80, headerY + 30);
-
-    // Wiersze.
-    const rowStyle = {
-      fontFamily: 'Arial, sans-serif',
+    const baseStyle = {
+      fontFamily: 'Arial Black, sans-serif',
       fontSize: '20px',
       color: '#e8d8ff',
       stroke: '#000',
-      strokeThickness: 2,
+      strokeThickness: 3,
     };
-    const goldStyle = { ...rowStyle, color: '#ffd93c' };
-    const silverStyle = { ...rowStyle, color: '#cccccc' };
-    const bronzeStyle = { ...rowStyle, color: '#cd7f32' };
+    const goldStyle = { ...baseStyle, color: '#ffd93c' };
+    const silverStyle = { ...baseStyle, color: '#dadada' };
+    const bronzeStyle = { ...baseStyle, color: '#e89c5a' };
 
-    entries.forEach((e, i) => {
-      const y = headerY + 60 + i * 38;
-      let style = rowStyle;
+    entries.slice(0, 10).forEach((e, i) => {
+      const y = headerBottomY + rowH / 2 + i * rowH;
+      let style = baseStyle;
       if (i === 0) style = goldStyle;
       else if (i === 1) style = silverStyle;
       else if (i === 2) style = bronzeStyle;
 
       const levelLabel = e.level >= LEVELS.length ? 'ALL' : `${e.level}`;
-      this.add.text(cols[0].x, y, `${i + 1}.`, style);
-      this.add.text(cols[1].x, y, String(e.name).slice(0, 12), style);
-      this.add.text(cols[2].x, y, formatScore(e.score), style);
-      this.add.text(cols[3].x, y, levelLabel, style);
-      this.add.text(cols[4].x, y, String(e.coins ?? 0), style);
-      this.add.text(cols[5].x, y, Leaderboard.formatDate(e.date), style);
+      this.add.text(cols.rank, y, `${i + 1}.`, style).setOrigin(0.5);
+      this.add.text(cols.name, y, String(e.name).slice(0, 12), style).setOrigin(0.5);
+      this.add.text(cols.score, y, formatScore(e.score), style).setOrigin(0.5);
+      this.add.text(cols.level, y, levelLabel, style).setOrigin(0.5);
+      this.add.text(cols.coins, y, String(e.coins ?? 0), style).setOrigin(0.5);
+      this.add.text(cols.date, y, Leaderboard.formatDate(e.date), style).setOrigin(0.5);
     });
+  }
+
+  buildFallbackBack(x, y) {
+    const w = 240;
+    const h = 60;
+    const gfx = this.add.graphics();
+    gfx.fillStyle(0x4a2796, 1);
+    gfx.fillRoundedRect(x - w / 2, y - h / 2, w, h, 14);
+    gfx.lineStyle(3, 0xffe066, 1);
+    gfx.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 14);
+    this.add.text(x, y, 'WRÓĆ', {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '26px',
+      color: '#fff',
+    }).setOrigin(0.5);
+    this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true })
+      .on('pointerup', () => this.handleBack());
   }
 }

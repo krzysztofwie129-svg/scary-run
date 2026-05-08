@@ -1,7 +1,6 @@
-// GameOverScene — gracz stracił wszystkie życia.
-// SP: RESTART (ten sam level, fresh stats) + MAIN MENU.
-// MP: NEXT PLAYER (jeśli są kolejni) lub SHOW RESULTS.
-// Zapis do leaderboard zawsze (bez względu na SP/MP).
+// GameOverScene — gracz stracił wszystkie życia (redesign 8.x).
+// SP: RESTART (od L0) + MAIN MENU.
+// MP: NEXT PLAYER / SHOW RESULTS + MAIN MENU.
 
 import { GAME_WIDTH, GAME_HEIGHT, LEVELS } from '../config.js';
 import { sessionManager } from '../utils/SessionManager.js';
@@ -20,8 +19,6 @@ export class GameOverScene extends Phaser.Scene {
     this.player = player;
     sessionManager.finishCurrentPlayer();
 
-    // Sync local — żeby od razu pokazać "NEW HIGH SCORE!" jeśli rank w lokalnym
-    // top 10 (UX nie czeka na serwer).
     const localResult = Leaderboard._addLocal({
       name: player.name || 'Anon',
       score: Math.floor(player.score),
@@ -31,141 +28,191 @@ export class GameOverScene extends Phaser.Scene {
     this.rank = localResult.rank;
     this.isHighScore = this.rank >= 0;
 
-    // Async global — POST do /api/leaderboard. Fire-and-forget; jeśli rank
-    // globalny się różni od localnego, leaderboard sam się zaktualizuje
-    // przy następnej wizycie LeaderboardScene (która robi loadAsync).
     Leaderboard.addAsync({
       name: player.name || 'Anon',
       score: Math.floor(player.score),
       level: player.level + 1,
       coins: player.coins,
-    }).catch(() => { /* już ma fallback localStorage wewnątrz */ });
+    }).catch(() => { /* fallback w środku */ });
   }
 
   create() {
     this.audioManager = new AudioManager(this);
     Haptic.gameOver();
 
+    // BG (level1 layer + dark overlay).
     if (this.textures.exists('bg_layer_00')) {
-      const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_layer_00');
-      bg.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_layer_00')
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
     }
     const overlay = this.add.graphics();
-    overlay.fillStyle(0x000000, 0.6);
+    overlay.fillStyle(0x000000, 0.7);
     overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    this.add.text(GAME_WIDTH / 2, 130, 'GAME OVER', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '88px',
-      color: '#ff6b6b',
-      stroke: '#3a0a0a',
-      strokeThickness: 8,
-      shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 16, fill: true },
-    }).setOrigin(0.5);
+    // Title GAME OVER.
+    if (this.textures.exists('gameover_title')) {
+      this.add.image(GAME_WIDTH / 2, 130, 'gameover_title').setDisplaySize(540, 170);
+    } else {
+      this.add.text(GAME_WIDTH / 2, 130, 'GAME OVER', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '88px',
+        color: '#ff6b6b',
+        stroke: '#3a0a0a',
+        strokeThickness: 8,
+      }).setOrigin(0.5);
+    }
 
     if (sessionManager.isMultiplayer) {
-      this.add.text(GAME_WIDTH / 2, 200, `${this.player.name} (P${sessionManager.currentPlayerIndex + 1})`, {
+      this.add.text(GAME_WIDTH / 2, 230, `${this.player.name} (P${sessionManager.currentPlayerIndex + 1})`, {
         fontFamily: 'Arial Black, sans-serif',
-        fontSize: '32px',
+        fontSize: '28px',
         color: '#ffe066',
         stroke: '#000',
         strokeThickness: 4,
       }).setOrigin(0.5);
     }
 
-    const labelY = sessionManager.isMultiplayer ? 260 : 220;
-    this.add.text(GAME_WIDTH / 2, labelY, `Score: ${formatScore(this.player.score)}`, {
+    const labelY = sessionManager.isMultiplayer ? 280 : 250;
+
+    // "Score:" label image + value text.
+    if (this.textures.exists('gameover_label_score')) {
+      this.add.image(GAME_WIDTH / 2 - 100, labelY, 'gameover_label_score').setDisplaySize(180, 60);
+    } else {
+      this.add.text(GAME_WIDTH / 2 - 100, labelY, 'Score:', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '40px',
+        color: '#ffe066',
+        stroke: '#000',
+        strokeThickness: 5,
+      }).setOrigin(0.5);
+    }
+    this.add.text(GAME_WIDTH / 2 + 80, labelY, formatScore(this.player.score), {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '48px',
+      fontSize: '52px',
       color: '#ffe066',
       stroke: '#000',
       strokeThickness: 5,
     }).setOrigin(0.5);
 
-    const lvlReached = this.player.level + 1;
-    this.add.text(GAME_WIDTH / 2, labelY + 60, `Level reached: ${Math.min(lvlReached, LEVELS.length)} / ${LEVELS.length}`, {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '24px',
+    // "Level reached:" label image + value.
+    const lvlReached = Math.min(this.player.level + 1, LEVELS.length);
+    if (this.textures.exists('gameover_label_level')) {
+      this.add.image(GAME_WIDTH / 2 - 90, labelY + 70, 'gameover_label_level').setDisplaySize(220, 50);
+    } else {
+      this.add.text(GAME_WIDTH / 2 - 90, labelY + 70, 'Level reached:', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '24px',
+        color: '#bdaee3',
+        stroke: '#000',
+        strokeThickness: 3,
+      }).setOrigin(0.5);
+    }
+    this.add.text(GAME_WIDTH / 2 + 100, labelY + 70, `${lvlReached} / ${LEVELS.length}`, {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '30px',
       color: '#bdaee3',
       stroke: '#000',
       strokeThickness: 3,
     }).setOrigin(0.5);
 
+    // High score banner (image-based for rank #1, text fallback for #2-#10).
     if (this.isHighScore) {
-      const hs = this.add.text(GAME_WIDTH / 2, labelY + 110, `★ NEW HIGH SCORE — Rank #${this.rank + 1} ★`, {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '26px',
-        color: '#ffd93c',
-        stroke: '#000',
-        strokeThickness: 4,
-      }).setOrigin(0.5);
-      this.tweens.add({ targets: hs, scale: 1.1, duration: 600, yoyo: true, repeat: -1 });
+      if (this.rank === 0 && this.textures.exists('gameover_highscore')) {
+        const hs = this.add.image(GAME_WIDTH / 2, labelY + 145, 'gameover_highscore').setDisplaySize(560, 80);
+        this.tweens.add({
+          targets: hs,
+          scaleX: hs.scaleX * 1.06,
+          scaleY: hs.scaleY * 1.06,
+          duration: 600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      } else {
+        const hs = this.add.text(GAME_WIDTH / 2, labelY + 145, `★ NEW HIGH SCORE — Rank #${this.rank + 1} ★`, {
+          fontFamily: 'Arial Black, sans-serif',
+          fontSize: '26px',
+          color: '#ffd93c',
+          stroke: '#000',
+          strokeThickness: 4,
+        }).setOrigin(0.5);
+        this.tweens.add({ targets: hs, scale: 1.1, duration: 600, yoyo: true, repeat: -1 });
+      }
     }
 
     // Buttons.
     const buttons = this.makeButtonsForFlow();
     this.bindKbNav(buttons);
+  }
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, 'Tap przycisku aby wybrac', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '14px',
-      color: '#bdaee3',
-    }).setOrigin(0.5);
+  makeImageButton(x, y, textureKey, w, h, onClick, fallbackLabel, fallbackColor) {
+    if (this.textures.exists(textureKey)) {
+      const btn = this.add.image(x, y, textureKey).setDisplaySize(w, h);
+      const sx = btn.scaleX;
+      const sy = btn.scaleY;
+      btn.setInteractive({ useHandCursor: true });
+      btn.on('pointerover', () => btn.setScale(sx * 1.05, sy * 1.05));
+      btn.on('pointerout', () => btn.setScale(sx, sy));
+      btn.on('pointerdown', () => btn.setScale(sx * 0.95, sy * 0.95));
+      btn.on('pointerup', () => { btn.setScale(sx, sy); onClick(); });
+      return {
+        onClick,
+        setFocused(f) { btn.setScale(f ? sx * 1.05 : sx, f ? sy * 1.05 : sy); },
+      };
+    }
+    return this.makeFallbackButton(x, y, fallbackLabel, fallbackColor, onClick);
   }
 
   makeButtonsForFlow() {
-    const cy = GAME_HEIGHT - 180;
-    const left = GAME_WIDTH / 2 - 180;
-    const right = GAME_WIDTH / 2 + 180;
+    const cy = GAME_HEIGHT - 130;
+    const left = GAME_WIDTH / 2 - 200;
+    const right = GAME_WIDTH / 2 + 200;
+    const btnW = 340;
+    const btnH = 90;
 
     if (sessionManager.isMultiplayer) {
       if (sessionManager.hasNextPlayer()) {
         return [
-          this.makeButton(left, cy, 'NEXT PLAYER', 0x6b3eb6, () => {
+          this.makeFallbackButton(left, cy, 'NEXT PLAYER', 0x6b3eb6, () => {
             this.audioManager.playSfx('click');
             sessionManager.nextPlayer();
             this.scene.start('PlayerTurnSplashScene');
           }),
-          this.makeButton(right, cy, 'MAIN MENU', 0x3e6bb6, () => {
+          this.makeImageButton(right, cy, 'gameover_btn_menu', btnW, btnH, () => {
             this.audioManager.playSfx('click');
             sessionManager.reset();
             this.scene.start('MenuScene');
-          }),
+          }, 'MAIN MENU', 0x3e6bb6),
         ];
       }
       return [
-        this.makeButton(left, cy, 'SHOW RESULTS', 0x6b3eb6, () => {
+        this.makeFallbackButton(left, cy, 'SHOW RESULTS', 0x6b3eb6, () => {
           this.audioManager.playSfx('click');
           this.scene.start('SessionResultsScene');
         }),
-        this.makeButton(right, cy, 'MAIN MENU', 0x3e6bb6, () => {
+        this.makeImageButton(right, cy, 'gameover_btn_menu', btnW, btnH, () => {
           this.audioManager.playSfx('click');
           sessionManager.reset();
           this.scene.start('MenuScene');
-        }),
+        }, 'MAIN MENU', 0x3e6bb6),
       ];
     }
 
-    // Single player.
     return [
-      this.makeButton(left, cy, 'RESTART', 0x6b3eb6, () => {
+      this.makeImageButton(left, cy, 'gameover_btn_restart', btnW, btnH, () => {
         this.audioManager.playSfx('click');
-        // GameOver = stracone wszystkie życia → pełen restart od levelu 0.
-        // (Postać i imię pozostają — ten sam gracz.) NIE używamy
-        // restartCurrentPlayer (zachowuje level) — tylko z resetu od początku.
         sessionManager.restartCurrentPlayerFromLevel0();
         this.scene.start('GameScene');
-      }),
-      this.makeButton(right, cy, 'MAIN MENU', 0x3e6bb6, () => {
+      }, 'RESTART', 0x6b3eb6),
+      this.makeImageButton(right, cy, 'gameover_btn_menu', btnW, btnH, () => {
         this.audioManager.playSfx('click');
-        // Pełen reset sesji — usuwa imiona, postacie, multiplayer state.
         sessionManager.reset();
         this.scene.start('MenuScene');
-      }),
+      }, 'MAIN MENU', 0x3e6bb6),
     ];
   }
 
-  makeButton(centerX, centerY, label, fillColor, onClick) {
+  makeFallbackButton(centerX, centerY, label, fillColor, onClick) {
     const w = 280;
     const h = 70;
     const x = centerX - w / 2;
@@ -205,14 +252,14 @@ export class GameOverScene extends Phaser.Scene {
 
   bindKbNav(buttons) {
     let idx = 0;
-    const refresh = () => buttons.forEach((b, i) => b.setFocused(i === idx));
+    const refresh = () => buttons.forEach((b, i) => b.setFocused?.(i === idx));
     refresh();
     const move = (delta) => { idx = (idx + delta + buttons.length) % buttons.length; refresh(); };
     this.input.keyboard?.on('keydown-LEFT', () => move(-1));
     this.input.keyboard?.on('keydown-A', () => move(-1));
     this.input.keyboard?.on('keydown-RIGHT', () => move(1));
     this.input.keyboard?.on('keydown-D', () => move(1));
-    this.input.keyboard?.on('keydown-SPACE', () => buttons[idx].onClick());
-    this.input.keyboard?.on('keydown-ENTER', () => buttons[idx].onClick());
+    this.input.keyboard?.on('keydown-SPACE', () => buttons[idx]?.onClick?.());
+    this.input.keyboard?.on('keydown-ENTER', () => buttons[idx]?.onClick?.());
   }
 }

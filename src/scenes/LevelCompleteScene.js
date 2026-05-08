@@ -1,23 +1,23 @@
-// LevelCompleteScene — między levelami (sesja 10 redesign).
-// 3-sekundowy "show": tytuł, gwiazdki, animowane countery, progress bar,
-// motivation, achievement toasty. Logika nawigacji zachowana — NEXT LEVEL
-// klikalne dopiero po pełnej sekwencji animacji.
+// LevelCompleteScene — redesign sesja 8.x z baked assetami:
+//   • bg (purple confetti + spotlight) + confetti overlay
+//   • title image (LEVEL 1 COMPLETE) — overlay digit Phaser text dla
+//     dynamicznych leveli (covers baked "1")
+//   • 3 stars (gold + glow), revealed według StarRating
+//   • 4-cell stat frame: MONETY / DIAMENTY / ŻYCIA / WYNIK
+//   • progress frame + yellow fill (Level N of LEVELS_TOTAL)
+//   • MISTRZOWSKO! rank badge (renderowany według stars count)
+//   • NEXT LEVEL button
 //
-// Data przekazywane z GameScene (scene.start data):
-//   deathsThisLevel, timeRemainingPercent, scoreThisLevel,
-//   coinsThisLevel, diamondsThisLevel
+// Achievement toasts + fanfare zachowane.
 
-import { GAME_WIDTH, GAME_HEIGHT, LEVELS, COIN_SCORE, DIAMOND_SCORE } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, LEVELS } from '../config.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { playFanfare } from '../utils/SuccessFanfare.js';
 import { sessionManager } from '../utils/SessionManager.js';
-import { formatScore } from '../utils/format.js';
 import { Haptic } from '../utils/Haptic.js';
 import { AchievementManager } from '../utils/AchievementManager.js';
 import { StarRating } from '../utils/StarRating.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
-
-const SPARK_KEY = '__spark_4x4';
 
 export class LevelCompleteScene extends Phaser.Scene {
   constructor() {
@@ -26,7 +26,7 @@ export class LevelCompleteScene extends Phaser.Scene {
 
   init(data) {
     this.player = sessionManager.currentPlayer();
-    this.completedLevelIdx = this.player.level; // 0-based
+    this.completedLevelIdx = this.player.level;
     this.deathsThisLevel = data?.deathsThisLevel || 0;
     this.timeRemainingPercent = data?.timeRemainingPercent || 0;
     this.scoreThisLevel = data?.scoreThisLevel || 0;
@@ -39,57 +39,47 @@ export class LevelCompleteScene extends Phaser.Scene {
     Haptic.levelComplete();
     GameStateStore.clear();
 
-    const completedLvl = LEVELS[this.completedLevelIdx];
     const stars = StarRating.calculate(this.deathsThisLevel);
     this.stars = stars;
     this.nextReady = false;
+    const levelNumber = this.completedLevelIdx + 1;
 
-    // === T+0.0s — TŁO + bg z levelu ===
-    this.createBackground(completedLvl);
+    this.createBackground();
+    this.time.delayedCall(150, () => this.spawnConfetti());
+    this.time.delayedCall(300, () => this.showTitle(levelNumber));
+    this.time.delayedCall(700, () => this.showStars(stars));
+    this.time.delayedCall(1300, () => this.showStatsRow());
+    this.time.delayedCall(1900, () => this.showProgress(levelNumber, LEVELS.length));
+    this.time.delayedCall(2300, () => this.showRankAndNext(stars));
+    this.time.delayedCall(3000, () => this.checkAndShowAchievements());
 
-    // === T+0.2s — CONFETTI ===
-    this.time.delayedCall(200, () => this.spawnConfetti());
-
-    // === T+0.4s — TYTUŁ ===
-    this.time.delayedCall(400, () => this.showTitle(completedLvl));
-
-    // === T+0.8s — GWIAZDKI ===
-    this.time.delayedCall(800, () => this.showStars(stars));
-
-    // === T+1.6s — STATS COUNTERS ===
-    this.time.delayedCall(1600, () => this.showStatsCounters());
-
-    // === T+2.5s — PROGRESS BAR ===
-    this.time.delayedCall(2500, () => this.showProgress(this.completedLevelIdx + 1, LEVELS.length));
-
-    // === T+3.0s — NEXT LEVEL BUTTON + MOTIVATION ===
-    this.time.delayedCall(3000, () => this.showNextButton(stars));
-
-    // === T+3.5s — ACHIEVEMENT TOASTS ===
-    this.time.delayedCall(3500, () => this.checkAndShowAchievements());
-
-    try { playFanfare(); } catch (e) { /* ignore audio quirks */ }
+    try { playFanfare(); } catch (e) { /* ignore */ }
   }
 
-  createBackground(lvl) {
-    const bgKey = `bg_${lvl.bgFolder}_layer1`;
-    if (this.textures.exists(bgKey)) {
-      const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, bgKey);
-      bg.setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.4);
+  createBackground() {
+    if (this.textures.exists('levelcomplete_bg')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'levelcomplete_bg')
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+    } else {
+      const bg = this.add.graphics();
+      bg.fillGradientStyle(0x2a1248, 0x2a1248, 0x05030a, 0x05030a, 1);
+      bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
     }
-    // Gradient overlay (deep purple → near-black) dla czytelności tekstu.
-    const overlay = this.add.graphics();
-    overlay.fillGradientStyle(0x2a1248, 0x2a1248, 0x05030a, 0x05030a, 0.85);
-    overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    if (this.textures.exists('levelcomplete_confetti')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'levelcomplete_confetti')
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+        .setDepth(50);
+    }
   }
 
   spawnConfetti() {
+    // Phaser-side dynamic confetti (na górze baked confetti overlay).
     const colors = [0xffd93c, 0xff6b6b, 0x4ecdc4, 0xff8cc6, 0xa78bfa];
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 30; i++) {
       const x = Phaser.Math.Between(0, GAME_WIDTH);
       const color = colors[i % colors.length];
       const size = Phaser.Math.Between(6, 12);
-      const particle = this.add.rectangle(x, -20, size, size, color);
+      const particle = this.add.rectangle(x, -20, size, size, color).setDepth(60);
       particle.setRotation(Phaser.Math.FloatBetween(0, Math.PI * 2));
       this.tweens.add({
         targets: particle,
@@ -104,250 +94,231 @@ export class LevelCompleteScene extends Phaser.Scene {
     }
   }
 
-  showTitle(lvl) {
-    const title = this.add.text(GAME_WIDTH / 2, -100, `LEVEL ${lvl.id} COMPLETE`, {
-      fontSize: '72px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#ffd93c',
-      stroke: '#000000',
-      strokeThickness: 8,
-      shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 8, fill: true },
-    }).setOrigin(0.5);
-    this.tweens.add({
-      targets: title,
-      y: 100,
-      duration: 800,
-      ease: 'Bounce.easeOut',
-    });
+  showTitle(levelNumber) {
+    const titleX = GAME_WIDTH / 2;
+    const titleY = 130;
+    const titleW = 480;
+    const titleH = 320;
 
-    if (sessionManager.isMultiplayer && this.player?.name) {
-      this.add.text(GAME_WIDTH / 2, 160, this.player.name, {
+    if (this.textures.exists('levelcomplete_title')) {
+      const title = this.add.image(titleX, -100, 'levelcomplete_title')
+        .setDisplaySize(titleW, titleH)
+        .setDepth(100);
+      this.tweens.add({
+        targets: title,
+        y: titleY,
+        duration: 700,
+        ease: 'Bounce.easeOut',
+      });
+
+      // Digit overlay — covers baked "1" w title image. Position obliczone z
+      // source 1536x1024: "1" centered ~x=1300, y=400 → display proportional.
+      const digitX = titleX - titleW / 2 + (1300 / 1536) * titleW;
+      const digitY = titleY - titleH / 2 + (400 / 1024) * titleH;
+      const digit = this.add.text(digitX, -100, String(levelNumber), {
         fontFamily: 'Arial Black, sans-serif',
-        fontSize: '24px',
-        color: '#ffe066',
+        fontSize: '92px',
+        color: '#ffd93c',
+        stroke: '#3a1d5a',
+        strokeThickness: 10,
+        shadow: { offsetX: 0, offsetY: 6, color: '#000', blur: 4, fill: true },
+      }).setOrigin(0.5).setDepth(101);
+      this.tweens.add({
+        targets: digit,
+        y: digitY,
+        duration: 700,
+        ease: 'Bounce.easeOut',
+      });
+    } else {
+      this.add.text(titleX, titleY, `LEVEL ${levelNumber} COMPLETE`, {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '64px',
+        color: '#ffd93c',
         stroke: '#000',
-        strokeThickness: 4,
-      }).setOrigin(0.5);
+        strokeThickness: 8,
+      }).setOrigin(0.5).setDepth(100);
     }
   }
 
   showStars(stars) {
-    const starY = 200;
-    const spacing = 110;
-    const startX = GAME_WIDTH / 2 - spacing;
-    for (let i = 0; i < 3; i++) {
-      const x = startX + i * spacing;
-      const isLit = i < stars;
-      const star = this.add.text(x, starY, '★', {
-        fontSize: '90px',
-        color: isLit ? '#ffd93c' : '#444444',
-        stroke: '#000000',
-        strokeThickness: 4,
-      }).setOrigin(0.5).setScale(0);
-
-      this.tweens.add({
-        targets: star,
-        scale: 1,
-        duration: 400,
-        delay: i * 250,
-        ease: 'Back.easeOut',
-        onStart: () => {
-          if (isLit) this.audioManager?.playSfx('coin', { volume: 0.4 });
-        },
-      });
-
-      if (isLit) {
-        this.time.delayedCall(i * 250 + 400, () => {
-          this.tweens.add({
-            targets: star,
-            scale: 1.15,
-            duration: 600,
-            ease: 'Sine.easeInOut',
-            yoyo: true,
-            repeat: -1,
-          });
-        });
+    const starY = 290;
+    if (this.textures.exists('levelcomplete_stars')) {
+      // Stars asset shows 3 gold stars. Renderujemy obraz pełny dla stars=3,
+      // 2 stars dla stars=2 etc. — używamy crop X dla mniejszej liczby.
+      const starsImg = this.add.image(GAME_WIDTH / 2, starY, 'levelcomplete_stars')
+        .setDisplaySize(340, 114)
+        .setDepth(100);
+      // Capture scale po setDisplaySize żeby tween nie reset'ował do native size.
+      const targetScaleX = starsImg.scaleX;
+      const targetScaleY = starsImg.scaleY;
+      starsImg.setScale(0);
+      if (stars < 3) {
+        starsImg.setTint(stars === 0 ? 0x444444 : (stars === 1 ? 0x888888 : 0xcccccc));
       }
+      this.tweens.add({
+        targets: starsImg,
+        scaleX: targetScaleX,
+        scaleY: targetScaleY,
+        duration: 500,
+        ease: 'Back.easeOut',
+      });
     }
   }
 
-  showStatsCounters() {
-    // Sesja Score Breakdown — 3 podstawowe rzędy + separator + breakdown
-    // (survival/coins/diamonds) + total. Total scoreThisLevel JUŻ zawiera
-    // coin*COIN_SCORE i diamond*DIAMOND_SCORE (SessionManager dodaje na pickup),
-    // więc survival = total - coin*10 - diamond*12.
-    const coins = this.coinsThisLevel;
-    const diamonds = this.diamondsThisLevel;
-    const lives = this.player?.lives || 0;
-    const totalScore = this.scoreThisLevel;
-    const coinScore = coins * COIN_SCORE;
-    const diamondScore = diamonds * DIAMOND_SCORE;
-    const survivalScore = Math.max(0, totalScore - coinScore - diamondScore);
+  showStatsRow() {
+    // 4-cell frame: MONETY / DIAMENTY / ŻYCIA / WYNIK.
+    const frameY = 425;
+    const frameW = 566;
+    const frameH = 102;
+    const cells = 4;
+    const cellW = frameW / cells;
+    const startX = GAME_WIDTH / 2 - frameW / 2;
 
-    const labelX = GAME_WIDTH / 2 - 180;
-    const valueX = GAME_WIDTH / 2 + 140;
+    if (this.textures.exists('levelcomplete_stat_frame')) {
+      this.add.image(GAME_WIDTH / 2, frameY, 'levelcomplete_stat_frame')
+        .setDisplaySize(frameW, frameH)
+        .setDepth(100);
+    }
 
-    const mainStats = [
-      { sprite: 'coin_00', anim: 'coin_spin', label: 'Monety',   value: coins,    color: '#ffd93c' },
-      { sprite: 'diamond',                    label: 'Diamenty', value: diamonds, color: '#4ecdc4' },
-      { emoji: '❤️',                           label: 'Zycia',    value: lives,    color: '#ff6b6b' },
+    const stats = [
+      { label: 'MONETY',   value: this.coinsThisLevel,    color: '#ffd93c' },
+      { label: 'DIAMENTY', value: this.diamondsThisLevel, color: '#c266ff' },
+      { label: 'ZYCIA',    value: this.player?.lives || 0, color: '#ff5b5b' },
+      { label: 'WYNIK',    value: this.scoreThisLevel,   color: '#ffd93c' },
     ];
-    let y = 265;
-    mainStats.forEach((s, i) => {
-      // Icon: sprite z gameplay'u jeśli istnieje, fallback emoji.
-      if (s.sprite && this.textures.exists(s.sprite)) {
-        const ic = this.add.sprite(labelX + 14, y, s.sprite).setOrigin(0.5);
-        ic.setDisplaySize(28, 28);
-        if (s.anim && this.anims.exists(s.anim)) ic.play(s.anim);
-      } else if (s.emoji) {
-        this.add.text(labelX + 14, y, s.emoji, { fontSize: '24px' }).setOrigin(0.5);
-      }
-      this.add.text(labelX + 36, y, `${s.label}:`, {
-        fontSize: '22px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#cccccc',
-      }).setOrigin(0, 0.5);
-      const vt = this.add.text(valueX, y, '0', {
-        fontSize: '24px',
+
+    // Icon row — baked stat_icons asset (4 icons w jednym pasku).
+    if (this.textures.exists('levelcomplete_stat_icons')) {
+      this.add.image(GAME_WIDTH / 2, frameY - 30, 'levelcomplete_stat_icons')
+        .setDisplaySize(frameW * 0.85, frameH * 0.5)
+        .setDepth(101);
+    }
+
+    stats.forEach((s, idx) => {
+      const cellX = startX + idx * cellW + cellW / 2;
+      this.add.text(cellX, frameY + 18, s.label, {
         fontFamily: 'Arial Black, sans-serif',
+        fontSize: '20px',
+        color: '#ffffff',
+        stroke: '#000',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(102);
+
+      const vt = this.add.text(cellX, frameY + 50, '0', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '34px',
         color: s.color,
-      }).setOrigin(0, 0.5);
+        stroke: '#000',
+        strokeThickness: 4,
+      }).setOrigin(0.5).setDepth(102);
       const c = { v: 0 };
       this.tweens.add({
-        targets: c, v: s.value, duration: 600, delay: i * 130, ease: 'Cubic.easeOut',
+        targets: c, v: s.value, duration: 700, delay: idx * 120, ease: 'Cubic.easeOut',
         onUpdate: () => vt.setText(Math.floor(c.v).toString()),
         onComplete: () => vt.setText(s.value.toString()),
       });
-      y += 30;
-    });
-
-    // Separator.
-    y += 8;
-    const sep1 = this.add.graphics();
-    sep1.lineStyle(1, 0xffd93c, 0.4);
-    sep1.lineBetween(labelX, y, valueX + 60, y);
-    y += 10;
-
-    // Breakdown (małe linie).
-    const breakdown = [
-      { label: 'Czas + Akcja',          value: survivalScore, color: '#ffffff' },
-      { label: `${coins} monet x ${COIN_SCORE}`,    value: coinScore,     color: '#ffd93c' },
-      { label: `${diamonds} diam. x ${DIAMOND_SCORE}`, value: diamondScore, color: '#4ecdc4' },
-    ];
-    breakdown.forEach((s, i) => {
-      this.add.text(labelX, y, `${s.label}:`, {
-        fontSize: '17px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#aaaaaa',
-      }).setOrigin(0, 0.5);
-      const vt = this.add.text(valueX, y, '+0', {
-        fontSize: '19px',
-        fontFamily: 'Arial Black, sans-serif',
-        color: s.color,
-      }).setOrigin(0, 0.5);
-      const c = { v: 0 };
-      this.tweens.add({
-        targets: c, v: s.value, duration: 500, delay: 600 + i * 130, ease: 'Cubic.easeOut',
-        onUpdate: () => vt.setText('+' + Math.floor(c.v).toString()),
-        onComplete: () => vt.setText('+' + s.value.toString()),
-      });
-      y += 22;
-    });
-
-    // Separator.
-    y += 6;
-    const sep2 = this.add.graphics();
-    sep2.lineStyle(2, 0xffd93c, 0.6);
-    sep2.lineBetween(labelX, y, valueX + 60, y);
-    y += 14;
-
-    // TOTAL — wyróżniony, animacja dłuższa, pulsuje.
-    this.add.text(labelX, y, 'WYNIK:', {
-      fontSize: '26px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#ffffff',
-      stroke: '#000',
-      strokeThickness: 4,
-    }).setOrigin(0, 0.5);
-    const totalVT = this.add.text(valueX, y, '0', {
-      fontSize: '30px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#ffd93c',
-      stroke: '#000',
-      strokeThickness: 4,
-    }).setOrigin(0, 0.5);
-    const totalC = { v: 0 };
-    this.tweens.add({
-      targets: totalC, v: totalScore,
-      duration: 1100, delay: 1100, ease: 'Cubic.easeOut',
-      onUpdate: () => totalVT.setText(formatScore(Math.floor(totalC.v))),
-      onComplete: () => {
-        totalVT.setText(formatScore(totalScore));
-        this.tweens.add({
-          targets: totalVT, scale: 1.15, duration: 400, yoyo: true, repeat: 2, ease: 'Sine.easeInOut',
-        });
-      },
     });
   }
 
   showProgress(currentLevel, totalLevels) {
-    const y = 510;
-    const barW = 500;
-    const barH = 10;
-    this.add.text(GAME_WIDTH / 2, y - 24, `Level ${currentLevel} of ${totalLevels}`, {
-      fontSize: '18px',
+    const y = 555;
+    const barW = 480;
+    const barH = 28;
+
+    this.add.text(GAME_WIDTH / 2, y - 28, `Level ${currentLevel} of ${totalLevels}`, {
       fontFamily: 'Arial, sans-serif',
-      color: '#aaaaaa',
-    }).setOrigin(0.5);
-    this.add.rectangle(GAME_WIDTH / 2, y, barW, barH, 0x333333).setStrokeStyle(1, 0x555555);
-    const fillW = (currentLevel / totalLevels) * (barW - 2);
-    const fill = this.add.rectangle(GAME_WIDTH / 2 - barW / 2 + 1, y, 0, barH - 2, 0xffd93c).setOrigin(0, 0.5);
-    this.tweens.add({
-      targets: fill,
-      width: fillW,
-      duration: 600,
-      ease: 'Cubic.easeOut',
-    });
+      fontSize: '18px',
+      color: '#dddddd',
+      stroke: '#000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(100);
+
+    if (this.textures.exists('levelcomplete_progress_frame')) {
+      this.add.image(GAME_WIDTH / 2, y, 'levelcomplete_progress_frame')
+        .setDisplaySize(barW, barH)
+        .setDepth(100);
+    }
+
+    if (this.textures.exists('levelcomplete_progress_fill')) {
+      const fillW = barW - 70; // padding na arrow ends
+      const fillX = GAME_WIDTH / 2 - fillW / 2;
+      const fill = this.add.image(fillX, y, 'levelcomplete_progress_fill')
+        .setOrigin(0, 0.5)
+        .setDisplaySize(fillW, barH * 0.7)
+        .setDepth(101);
+      const baseScaleX = fill.scaleX;
+      fill.scaleX = 0;
+      this.tweens.add({
+        targets: fill,
+        scaleX: baseScaleX * (currentLevel / totalLevels),
+        duration: 700,
+        ease: 'Cubic.easeOut',
+      });
+    }
   }
 
-  showNextButton(stars) {
-    const motivation = StarRating.motivationFor(stars);
-    const motText = this.add.text(GAME_WIDTH / 2, 555, motivation, {
-      fontSize: '24px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#ffd93c',
-      stroke: '#000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setAlpha(0);
-    this.tweens.add({ targets: motText, alpha: 1, duration: 400 });
+  showRankAndNext(stars) {
+    // MISTRZOWSKO! rank badge — w środku dolnego obszaru.
+    if (this.textures.exists('levelcomplete_rank') && stars >= 2) {
+      const rank = this.add.image(GAME_WIDTH / 2, 590, 'levelcomplete_rank')
+        .setDisplaySize(360, 70)
+        .setDepth(100)
+        .setAlpha(0);
+      this.tweens.add({
+        targets: rank,
+        alpha: 1,
+        duration: 400,
+      });
+    } else {
+      // Fallback motivation text dla gorszych ratings.
+      const motivation = StarRating.motivationFor(stars);
+      this.add.text(GAME_WIDTH / 2, 590, motivation, {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '24px',
+        color: '#ffd93c',
+        stroke: '#000',
+        strokeThickness: 4,
+      }).setOrigin(0.5).setDepth(100);
+    }
 
+    // NEXT LEVEL button.
     const isLast = this.completedLevelIdx >= LEVELS.length - 1;
-    const buttonLabel = isLast ? '🏆 ZAKOŃCZ' : '▶ NEXT LEVEL';
-    const onClick = () => this.handleNext();
-
-    const button = this.add.text(GAME_WIDTH / 2, 640, buttonLabel, {
-      fontSize: '38px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#ffffff',
-      backgroundColor: '#5C3E70',
-      stroke: '#ffd93c',
-      strokeThickness: 3,
-      padding: { x: 40, y: 14 },
-      shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 8, fill: true },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setScale(0);
+    const buttonY = 655;
+    let button;
+    if (this.textures.exists('levelcomplete_next') && !isLast) {
+      button = this.add.image(GAME_WIDTH / 2, buttonY, 'levelcomplete_next')
+        .setDisplaySize(420, 80)
+        .setDepth(100);
+    } else {
+      button = this.add.text(GAME_WIDTH / 2, buttonY, isLast ? '🏆 ZAKOŃCZ' : '▶ NEXT LEVEL', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '32px',
+        color: '#fff',
+        backgroundColor: '#5C3E70',
+        stroke: '#ffd93c',
+        strokeThickness: 3,
+        padding: { x: 30, y: 12 },
+      }).setOrigin(0.5).setDepth(100);
+    }
+    const btnTargetScaleX = button.scaleX;
+    const btnTargetScaleY = button.scaleY;
+    button.setScale(0);
 
     this.tweens.add({
       targets: button,
-      scale: 1,
+      scaleX: btnTargetScaleX,
+      scaleY: btnTargetScaleY,
       duration: 400,
       ease: 'Back.easeOut',
       onComplete: () => {
         this.nextReady = true;
-        button.on('pointerup', onClick);
-        // Pulsowanie idle
+        button.setInteractive({ useHandCursor: true });
+        button.on('pointerup', () => this.handleNext());
+        // Pulsowanie idle (multiplikuje displaySize-derived scale).
         this.tweens.add({
           targets: button,
-          scale: 1.05,
+          scaleX: btnTargetScaleX * 1.05,
+          scaleY: btnTargetScaleY * 1.05,
           duration: 800,
           ease: 'Sine.easeInOut',
           yoyo: true,
@@ -360,7 +331,7 @@ export class LevelCompleteScene extends Phaser.Scene {
   checkAndShowAchievements() {
     const player = sessionManager.currentPlayer();
     if (!player) return;
-    const completedLevelId = this.completedLevelIdx + 1; // 1-based dla warunków
+    const completedLevelId = this.completedLevelIdx + 1;
 
     const stats = {
       totalCoinsLifetime: player.coins,
@@ -368,9 +339,9 @@ export class LevelCompleteScene extends Phaser.Scene {
       diamondsThisLevel: this.diamondsThisLevel,
       deathsThisLevel: this.deathsThisLevel,
       consecutivePerfectLevels: (player.consecutivePerfectLevels || 0)
-        + (this.deathsThisLevel === 0 ? 1 : 0), // ten level też się liczy
+        + (this.deathsThisLevel === 0 ? 1 : 0),
       timeRemainingPercent: this.timeRemainingPercent,
-      gameCompletedNoDeaths: false, // TODO: track w GameComplete
+      gameCompletedNoDeaths: false,
       currentLevel: completedLevelId,
       gameComplete: completedLevelId >= LEVELS.length,
       scoreThisLevel: this.scoreThisLevel,
@@ -384,7 +355,7 @@ export class LevelCompleteScene extends Phaser.Scene {
 
   showAchievementToast(achievement, index) {
     const y = 60 + index * 90;
-    const toast = this.add.container(GAME_WIDTH + 300, y);
+    const toast = this.add.container(GAME_WIDTH + 300, y).setDepth(5000);
     const bg = this.add.rectangle(0, 0, 340, 70, 0x1a0a2e).setStrokeStyle(3, 0xffd93c);
     const icon = this.add.text(-140, 0, achievement.icon, { fontSize: '36px' }).setOrigin(0.5);
     const titleText = this.add.text(-90, -12, '🏆 ACHIEVEMENT!', {
@@ -398,7 +369,6 @@ export class LevelCompleteScene extends Phaser.Scene {
       fontFamily: 'Arial Black, sans-serif',
     }).setOrigin(0, 0.5);
     toast.add([bg, icon, titleText, nameText]);
-    toast.setDepth(5000);
 
     try { this.audioManager?.playSfx('coin', { volume: 0.5 }); } catch (e) { /* ignore */ }
     Haptic.extraLife();
@@ -424,17 +394,13 @@ export class LevelCompleteScene extends Phaser.Scene {
   }
 
   handleNext() {
-    if (!this.nextReady) return; // guard przeciw spam-tap
+    if (!this.nextReady) return;
     this.audioManager?.playSfx('click');
     const isLast = this.completedLevelIdx >= LEVELS.length - 1;
     if (isLast) {
       this.scene.start('GameCompleteScene');
     } else {
-      // Sesja Reward Chests: advance + ChestSelectScene → wybiera nagrodę → GameScene.
       sessionManager.advanceLevel();
-      // Fallback: jeśli ChestSelectScene nie zarejestrowana (np. stała instancja
-      // Phaser sprzed dodania sceny — wymagałby hard reload), idź bezpośrednio
-      // do GameScene żeby gracz nie utknął.
       const hasChest = this.scene.manager?.getScene?.('ChestSelectScene');
       if (hasChest) {
         this.scene.start('ChestSelectScene', { nextScene: 'GameScene' });
