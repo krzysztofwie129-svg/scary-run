@@ -96,6 +96,8 @@ export class ChestSelectScene extends Phaser.Scene {
     if (this.selectionLocked) return;
     this.selectionLocked = true;
 
+    this.sound.play('chest_open', { volume: 0.7 });
+
     const selected = this.chestData[index];
     const rewardType = this.rewards[index];
     const reward = REWARDS[rewardType];
@@ -157,6 +159,7 @@ export class ChestSelectScene extends Phaser.Scene {
   }
 
   showReward(rewardType, reward) {
+    this.sound.play('chest_reveal', { volume: 0.6 });
     Haptic.gameComplete?.();
 
     // Radial blask z centrum ekranu.

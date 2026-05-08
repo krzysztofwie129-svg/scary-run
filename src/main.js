@@ -88,6 +88,32 @@ try {
   // wywoła `orientationGuard.start()` po complete eventcie ładowania.
   // Dzięki temu rotation overlay nie nakłada się na loading bar (sesja 7.3).
   orientationGuard.init(game);
+
+  // TEMP DEBUG: scene transitions log overlay (do diagnostyki boss → chest buga).
+  const debugEl = document.getElementById('debug-scene-log');
+  if (debugEl) {
+    const history = [];
+    let lastActive = '';
+    setInterval(() => {
+      const active = game.scene.scenes
+        .filter((s) => s.scene.isActive())
+        .map((s) => s.scene.key)
+        .join(',');
+      if (active !== lastActive) {
+        const t = new Date().toISOString().slice(11, 19);
+        history.push(`${t} ${active}`);
+        if (history.length > 8) history.shift();
+        lastActive = active;
+        debugEl.textContent = history.join('\n');
+      }
+    }, 100);
+    window.addEventListener('error', (e) => {
+      const t = new Date().toISOString().slice(11, 19);
+      history.push(`${t} ERR: ${e.message?.slice(0, 60)}`);
+      if (history.length > 8) history.shift();
+      debugEl.textContent = history.join('\n');
+    });
+  }
 } catch (e) {
   console.error('Game init failed:', e);
   const fallback = document.getElementById('browser-fallback');

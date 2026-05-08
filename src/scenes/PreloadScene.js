@@ -177,6 +177,14 @@ export class PreloadScene extends Phaser.Scene {
     this.load.audio('click', 'assets/audio/click.wav');
     this.load.audio('gameover', 'assets/audio/gameover.m4a');
 
+    // Sesja Audio SFX v1: chest, boss, power-up.
+    this.load.audio('chest_open', 'assets/audio/chest_open.mp3');
+    this.load.audio('chest_reveal', 'assets/audio/chest_reveal.mp3');
+    this.load.audio('boss_attack', 'assets/audio/boss_attack.mp3');
+    this.load.audio('boss_player_hit', 'assets/audio/boss_player_hit.mp3');
+    this.load.audio('powerup_pickup', 'assets/audio/powerup_pickup.mp3');
+    this.load.audio('boss_victory', 'assets/audio/boss_victory.mp3');
+
     // BossFightScene control buttons — JUMP (lewa) + ATTACK (prawa).
     this.load.image('boss_btn_jump', 'assets/ui/boss_btn_jump.webp');
     this.load.image('boss_btn_attack', 'assets/ui/boss_btn_attack.webp');

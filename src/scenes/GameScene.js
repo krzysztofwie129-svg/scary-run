@@ -793,6 +793,8 @@ export class GameScene extends Phaser.Scene {
     const cfg = POWER_UP_CONFIG[type];
     if (!cfg) return;
 
+    this.sound.play('powerup_pickup', { volume: 0.7 });
+
     powerUpManager.activate(type);
     this.applyPowerUpEffect(type);
 

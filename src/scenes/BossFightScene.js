@@ -495,6 +495,8 @@ export class BossFightScene extends Phaser.Scene {
     }
     this.lastAttackTime = now;
 
+    this.sound.play('boss_attack', { volume: 0.6 });
+
     // Anim hit może się przerwać kolejnym tapem (DPS player-controlled).
     const hitAnim = `${this.playerCharKey}_hit`;
     if (this.anims.exists(hitAnim)) {
@@ -700,6 +702,7 @@ export class BossFightScene extends Phaser.Scene {
       Haptic.coin?.();
       return;
     }
+    this.sound.play('boss_player_hit', { volume: 0.5 });
     this.playerHP = Math.max(0, this.playerHP - 1);
     this.refreshPlayerHearts();
 
@@ -745,6 +748,8 @@ export class BossFightScene extends Phaser.Scene {
     if (this.fightOver) return;
     this.fightOver = true;
     if (this.bossAttackTimer) { this.bossAttackTimer.destroy(); this.bossAttackTimer = null; }
+
+    this.sound.play('boss_victory', { volume: 0.8 });
 
     const fallAnim = `${this.bossCharKey}_fall`;
     if (this.anims.exists(fallAnim)) this.bossSprite.play(fallAnim);
