@@ -90,10 +90,26 @@ try {
   orientationGuard.init(game);
 
   // TEMP DEBUG: scene transitions log overlay (do diagnostyki boss → chest buga).
+  // Persistuje przez localStorage — przeżyje refresh / obrót telefonu.
   const debugEl = document.getElementById('debug-scene-log');
   if (debugEl) {
-    const history = [];
+    const DEBUG_KEY = 'scary_run_debug_log_v1';
+    const loadHistory = () => {
+      try { return JSON.parse(localStorage.getItem(DEBUG_KEY) || '[]'); } catch (e) { return []; }
+    };
+    const saveHistory = (h) => {
+      try { localStorage.setItem(DEBUG_KEY, JSON.stringify(h)); } catch (e) { /* ignore */ }
+    };
+    const history = loadHistory();
+    debugEl.textContent = history.join('\n');
     let lastActive = '';
+    const push = (line) => {
+      history.push(line);
+      while (history.length > 14) history.shift();
+      saveHistory(history);
+      debugEl.textContent = history.join('\n');
+    };
+    push(`-- ${new Date().toISOString().slice(11, 19)} pageload --`);
     setInterval(() => {
       const active = game.scene.scenes
         .filter((s) => s.scene.isActive())
@@ -101,17 +117,17 @@ try {
         .join(',');
       if (active !== lastActive) {
         const t = new Date().toISOString().slice(11, 19);
-        history.push(`${t} ${active}`);
-        if (history.length > 8) history.shift();
+        push(`${t} ${active}`);
         lastActive = active;
-        debugEl.textContent = history.join('\n');
       }
     }, 100);
     window.addEventListener('error', (e) => {
       const t = new Date().toISOString().slice(11, 19);
-      history.push(`${t} ERR: ${e.message?.slice(0, 60)}`);
-      if (history.length > 8) history.shift();
-      debugEl.textContent = history.join('\n');
+      push(`${t} ERR: ${e.message?.slice(0, 80)}`);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      const t = new Date().toISOString().slice(11, 19);
+      push(`${t} UNHANDLED: ${(e.reason?.message || String(e.reason)).slice(0, 80)}`);
     });
   }
 } catch (e) {
