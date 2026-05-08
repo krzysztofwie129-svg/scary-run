@@ -4,6 +4,7 @@
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { Haptic } from '../utils/Haptic.js';
+import { StatsTracker } from '../utils/StatsTracker.js';
 
 export class BossChoiceScene extends Phaser.Scene {
   constructor() {
@@ -76,6 +77,7 @@ export class BossChoiceScene extends Phaser.Scene {
       fallbackStroke: 0x4ecdc4,
       onClick: () => {
         this.audioManager?.playSfx('click');
+        StatsTracker.track('bossSkip', { fromLevel: this.fromLevel });
         this.scene.start('LevelCompleteScene', this.sceneData);
       },
     });

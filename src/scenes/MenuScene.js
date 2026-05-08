@@ -20,6 +20,7 @@ import { GameStateStore } from '../utils/GameStateStore.js';
 import { FullscreenManager } from '../utils/FullscreenManager.js';
 import { InstallPromptManager } from '../utils/InstallPromptManager.js';
 import { PlayerStore } from '../utils/PlayerStore.js';
+import { StatsTracker } from '../utils/StatsTracker.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -218,6 +219,7 @@ export class MenuScene extends Phaser.Scene {
         FullscreenManager.enter();
         FullscreenManager.keepAwake();
         GameStateStore.clear();
+        StatsTracker.track('gameStart', { mode: 'sp' });
         const savedName = PlayerStore.getName();
         sessionManager.setupSinglePlayer(savedName || '');
         if (savedName) {

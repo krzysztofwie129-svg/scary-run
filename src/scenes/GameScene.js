@@ -44,6 +44,7 @@ import { Coin } from '../entities/Coin.js';
 import { FinishLine } from '../entities/FinishLine.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
+import { StatsTracker } from '../utils/StatsTracker.js';
 import { formatScore, formatNumber } from '../utils/format.js';
 import { playFanfare } from '../utils/SuccessFanfare.js';
 import { InputHandler } from '../utils/InputHandler.js';
@@ -95,6 +96,8 @@ export class GameScene extends Phaser.Scene {
     const lvl = LEVELS[this.currentLevel];
     this.lvl = lvl;
     this.worldSpeed = lvl.worldSpeed;
+
+    StatsTracker.track('levelStart', { level: this.currentLevel + 1 });
 
     this.audioManager = new AudioManager(this);
     if (lvl.musicVolume === 0) {
@@ -1139,6 +1142,8 @@ export class GameScene extends Phaser.Scene {
         GameStateStore.clear(); // game complete, no save needed
       }
     }
+
+    StatsTracker.track('levelComplete', { level: (sessionManager.currentPlayer()?.level ?? 0) + 1 });
 
     // Po FINISH_SLOWMO_DURATION + 300ms przejście do LevelComplete.
     // advanceLevel() przeniesione do LevelComplete.create — tam ekran pokazuje

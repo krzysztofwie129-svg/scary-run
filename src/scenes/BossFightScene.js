@@ -13,6 +13,7 @@ import {
 } from '../config.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { Haptic } from '../utils/Haptic.js';
+import { StatsTracker } from '../utils/StatsTracker.js';
 
 const BOSS_HP_MAX = 100;
 const PLAYER_DAMAGE = 10;
@@ -765,6 +766,7 @@ export class BossFightScene extends Phaser.Scene {
     this.fightOver = true;
     if (this.bossAttackTimer) { this.bossAttackTimer.destroy(); this.bossAttackTimer = null; }
 
+    StatsTracker.track('bossWin', { fromLevel: this.fromLevel });
     this.sound.play('boss_victory', { volume: 0.8 });
 
     const fallAnim = `${this.bossCharKey}_fall`;
@@ -810,6 +812,8 @@ export class BossFightScene extends Phaser.Scene {
     if (this.fightOver) return;
     this.fightOver = true;
     if (this.bossAttackTimer) { this.bossAttackTimer.destroy(); this.bossAttackTimer = null; }
+
+    StatsTracker.track('bossDefeat', { fromLevel: this.fromLevel });
 
     const fallAnim = `${this.playerCharKey}_fall`;
     if (this.anims.exists(fallAnim)) this.playerSprite.play(fallAnim);

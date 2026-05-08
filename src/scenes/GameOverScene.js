@@ -6,6 +6,7 @@ import { GAME_WIDTH, GAME_HEIGHT, LEVELS } from '../config.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { Leaderboard } from '../utils/Leaderboard.js';
 import { AudioManager } from '../utils/AudioManager.js';
+import { StatsTracker } from '../utils/StatsTracker.js';
 import { formatScore } from '../utils/format.js';
 import { Haptic } from '../utils/Haptic.js';
 
@@ -18,6 +19,13 @@ export class GameOverScene extends Phaser.Scene {
     const player = sessionManager.currentPlayer();
     this.player = player;
     sessionManager.finishCurrentPlayer();
+
+    StatsTracker.track('gameOver', {
+      level: (player?.level ?? 0) + 1,
+      score: Math.floor(player?.score || 0),
+      coins: player?.coins || 0,
+      diamonds: player?.diamonds || 0,
+    });
 
     const localResult = Leaderboard._addLocal({
       name: player.name || 'Anon',

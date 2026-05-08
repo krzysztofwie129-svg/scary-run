@@ -13,6 +13,7 @@ import { sessionManager } from '../utils/SessionManager.js';
 import { Leaderboard } from '../utils/Leaderboard.js';
 import { formatScore } from '../utils/format.js';
 import { Haptic } from '../utils/Haptic.js';
+import { StatsTracker } from '../utils/StatsTracker.js';
 
 const SPARK_KEY = '__spark_4x4';
 
@@ -24,6 +25,12 @@ export class GameCompleteScene extends Phaser.Scene {
   init() {
     this.player = sessionManager.currentPlayer();
     sessionManager.finishCurrentPlayer();
+
+    StatsTracker.track('gameComplete', {
+      score: Math.floor(this.player?.score || 0),
+      coins: this.player?.coins || 0,
+      diamonds: this.player?.diamonds || 0,
+    });
 
     // Leaderboard z level = LEVELS.length (czyli "ALL").
     // Sync local dla natychmiastowego "NEW HIGH SCORE!" UX.
