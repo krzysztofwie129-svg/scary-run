@@ -1140,8 +1140,11 @@ export class GameScene extends Phaser.Scene {
       };
       // player.level jest tym levelem który właśnie ukończono (0-based).
       // LevelComplete pokaże stats; jeśli to był ostatni level — GameComplete.
+      // Sesja Boss V1: po L1 (level=0 0-based) → BossFightScene (test mechaniki).
       if (player.level >= LEVELS.length - 1) {
         this.scene.start('GameCompleteScene', sceneData);
+      } else if (player.level === 0) {
+        this.scene.start('BossFightScene', { fromLevel: 1, sceneData });
       } else {
         this.scene.start('LevelCompleteScene', sceneData);
       }

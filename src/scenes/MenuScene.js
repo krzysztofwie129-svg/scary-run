@@ -55,6 +55,27 @@ export class MenuScene extends Phaser.Scene {
       }
     }
 
+    // DEV: ?boss=1..10|char02|char03 → skip do BossFightScene (test).
+    // Numeryczne 1-10 mapuje na fromLevel → boss_bg_NN tło per boss.
+    if (!MenuScene._bossApplied && typeof window !== 'undefined' && window.location?.search) {
+      const params = new URLSearchParams(window.location.search);
+      const bossParam = params.get('boss');
+      if (bossParam) {
+        MenuScene._bossApplied = true;
+        const savedName = PlayerStore.getName() || 'TEST';
+        sessionManager.setupSinglePlayer(savedName);
+        sessionManager.setCharacter('char01');
+        const explicit = ['char02', 'char03'].includes(bossParam) ? bossParam : null;
+        const numeric = parseInt(bossParam, 10);
+        const fromLevel = Number.isFinite(numeric) && numeric >= 1 ? numeric : 1;
+        this.scene.start('BossFightScene', {
+          fromLevel,
+          bossCharKey: explicit,
+        });
+        return;
+      }
+    }
+
     if (!MenuScene._chestApplied && typeof window !== 'undefined' && window.location?.search) {
       const params = new URLSearchParams(window.location.search);
       const chestParam = params.get('chest');

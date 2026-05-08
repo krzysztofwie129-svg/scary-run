@@ -177,6 +177,15 @@ export class PreloadScene extends Phaser.Scene {
     this.load.audio('click', 'assets/audio/click.wav');
     this.load.audio('gameover', 'assets/audio/gameover.m4a');
 
+    // BossFightScene control buttons — JUMP (lewa) + ATTACK (prawa).
+    this.load.image('boss_btn_jump', 'assets/ui/boss_btn_jump.webp');
+    this.load.image('boss_btn_attack', 'assets/ui/boss_btn_attack.webp');
+    // Boss BGs — 1 per level (1-10). Cycle gdy level > 10.
+    for (let i = 1; i <= 10; i++) {
+      const key = `boss_bg_${String(i).padStart(2, '0')}`;
+      this.load.image(key, `assets/ui/${key}.webp`);
+    }
+
     // Backgrounds dla 4 leveli — każda warstwa pod kluczem 'bg_levelN_layerM'.
     for (const lvl of LEVELS) {
       for (let i = 1; i <= lvl.bgLayerCount; i++) {
