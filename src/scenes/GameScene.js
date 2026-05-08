@@ -1156,14 +1156,12 @@ export class GameScene extends Phaser.Scene {
         diamondsThisLevel: player.diamonds - snap.diamonds,
       };
       // player.level jest tym levelem który właśnie ukończono (0-based).
-      // LevelComplete pokaże stats; jeśli to był ostatni level — GameComplete.
-      // Sesja Boss V1: po L1 (level=0 0-based) → BossFightScene (test mechaniki).
+      // V6: boss po KAŻDYM levelu (cycle 10 boss BGs modulo, +15px size per level).
+      // Ostatni level → GameComplete bez boss fight.
       if (player.level >= LEVELS.length - 1) {
         this.scene.start('GameCompleteScene', sceneData);
-      } else if (player.level === 0) {
-        this.scene.start('BossFightScene', { fromLevel: 1, sceneData });
       } else {
-        this.scene.start('LevelCompleteScene', sceneData);
+        this.scene.start('BossFightScene', { fromLevel: player.level + 1, sceneData });
       }
     });
   }

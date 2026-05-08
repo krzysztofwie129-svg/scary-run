@@ -224,11 +224,19 @@ export class BossFightScene extends Phaser.Scene {
   createBoss() {
     // V5: y = GROUND_Y + scaled padding (boss 1.5× → padding × 1.5 też).
     const bossPad = SPRITE_BOTTOM_PADDING * BOSS_SCALE;
+    const baseScale = 0.5 * BOSS_SCALE;
     this.bossSprite = this.add.sprite(GAME_WIDTH - 220, GROUND_Y + bossPad, `${this.bossCharKey}_idle_00`)
       .setOrigin(0.5, 1)
-      .setScale(0.5 * BOSS_SCALE)
+      .setScale(baseScale)
       .setFlipX(true)
       .setDepth(100);
+    // V6: boss rośnie +15px wyższy per level (L1 = base, L2 = +15, L10 = +135).
+    const bonusPx = 15 * Math.max(0, this.fromLevel - 1);
+    if (bonusPx > 0) {
+      const baseH = this.bossSprite.displayHeight;
+      const finalScale = baseScale * (1 + bonusPx / baseH);
+      this.bossSprite.setScale(finalScale);
+    }
     this.bossSprite.play(`${this.bossCharKey}_idle`);
     // V5 Ground Fix: brutalne dosunięcie do ground.
     this.bossSprite.y = GROUND_Y + BOSS_Y_OFFSET;

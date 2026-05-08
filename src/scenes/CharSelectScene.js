@@ -104,12 +104,24 @@ export class CharSelectScene extends Phaser.Scene {
       this.cardImages.push({ card, baseScaleX, baseScaleY });
     });
 
-    // Last tween onComplete → włącz interakcję + zaznacz default selection.
+    // Last tween onComplete → włącz interakcję + zaznacz default selection + odpal pulsację kart.
     const lastTween = slideInTweens[slideInTweens.length - 1];
     lastTween.on('complete', () => {
       this.inputReady = true;
-      this.cardImages.forEach(({ card }) => card.setInteractive({ useHandCursor: true }));
-      // Brak refreshSelection — żadna karta nie jest pre-selected (selectedIndex=-1).
+      this.cardImages.forEach(({ card, baseScaleX, baseScaleY }, idx) => {
+        card.setInteractive({ useHandCursor: true });
+        // Idle pulse — fala od lewej do prawej. Stagger 300ms, breath 1.0 → 1.05.
+        this.tweens.add({
+          targets: card,
+          scaleX: baseScaleX * 1.05,
+          scaleY: baseScaleY * 1.05,
+          duration: 900,
+          delay: idx * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      });
     });
 
     // 5. Klawiatura. Pierwszy LEFT/RIGHT z selectedIndex=-1 jumps do 0.
