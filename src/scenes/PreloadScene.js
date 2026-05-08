@@ -194,8 +194,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('boss_choice_fight', 'assets/ui/boss_choice_fight.webp');
     this.load.image('boss_choice_skip', 'assets/ui/boss_choice_skip.webp');
 
-    // Reward popup v2 — cyan/blue ornate frame z skull + diamond ornaments.
-    this.load.image('reward_frame_v2', 'assets/ui/reward_frame_v2.webp');
+    // Reward popup v3 — czysta cyan/blue ornate frame (bez baked text). v3 = cache-bust po SW issue.
+    this.load.image('reward_frame_v3', 'assets/ui/reward_frame_v3.webp');
     // Boss BGs — 1 per level (1-10). Cycle gdy level > 10.
     for (let i = 1; i <= 10; i++) {
       const key = `boss_bg_${String(i).padStart(2, '0')}`;
