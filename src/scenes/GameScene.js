@@ -58,6 +58,19 @@ export class GameScene extends Phaser.Scene {
 
   init() {
     const player = sessionManager.currentPlayer();
+    // DEV: ?level=N w URL nadpisuje level (1-based, 1..LEVELS.length).
+    // Aplikujemy TYLKO RAZ na page load — bez tego po NEXT LEVEL z LevelComplete
+    // advanceLevel by zwiększył level do 7 (L8), a init przy starcie nowego
+    // GameScene znów ustawiałby level=6 (L7) → infinite loop na L7.
+    if (!GameScene._urlLevelApplied && typeof window !== 'undefined' && window.location?.search) {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('level');
+      const n = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(n) && n >= 1 && n <= LEVELS.length) {
+        player.level = n - 1;
+      }
+      GameScene._urlLevelApplied = true;
+    }
     this.selectedChar = player.character;
     this.currentLevel = player.level;
     this.elapsedSeconds = 0;

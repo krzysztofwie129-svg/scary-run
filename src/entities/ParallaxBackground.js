@@ -34,6 +34,12 @@ export class ParallaxBackground {
       const key = layerKeys[i];
       const speed = scrollSpeeds[i];
 
+      // Sesja A: alpha tint progressive — najdalsza warstwa 0.7, najbliższa 1.0.
+      // Zmniejsza kontrast dalszych planów → mniej vertigo razem ze ściśniętą
+      // krzywą speed (0.3..1.0 zamiast 0.05..1.0).
+      const depthRatio = count > 1 ? i / (count - 1) : 1;
+      const alpha = 0.7 + 0.3 * depthRatio;
+
       const a = scene.add.image(0, 0, key);
       const b = scene.add.image(GAME_WIDTH, 0, key);
       for (const img of [a, b]) {
@@ -41,6 +47,7 @@ export class ParallaxBackground {
         img.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
         img.setDepth(BASE_DEPTH + i); // -100 (najgłębsza) .. -100 + count-1 (najbliższa)
         img.setScrollFactor(0);
+        img.setAlpha(alpha);
       }
       this.layers.push({ a, b, speed });
     }
