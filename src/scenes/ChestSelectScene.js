@@ -189,10 +189,18 @@ export class ChestSelectScene extends Phaser.Scene {
     const cy = (GAME_HEIGHT * 0.45) + 8;
     const c = this.add.container(cx, cy).setScale(0).setDepth(99999);
 
-    // Tło popup'a — dark fill + cienka biała ramka.
-    const bg = this.add.rectangle(0, 0, 720, 180, 0x0a1428, 0.95)
-      .setStrokeStyle(2, 0xffffff, 1);
-    c.add(bg);
+    // Reward frame v2 — cyan/blue ornate frame z skull + diamond ornaments
+    // (source 2333×674, ratio ~3.46:1 → display 720×208 zachowuje proporcje).
+    if (this.textures.exists('reward_frame_v2')) {
+      const frame = this.add.image(0, 0, 'reward_frame_v2');
+      frame.setDisplaySize(720, 208);
+      c.add(frame);
+    } else {
+      // Fallback: dark fill + cienka biała ramka.
+      const bg = this.add.rectangle(0, 0, 720, 180, 0x0a1428, 0.95)
+        .setStrokeStyle(2, 0xffffff, 1);
+      c.add(bg);
+    }
 
     // Reward icon — duża ikona po lewej (przykrywa baked diamond).
     let icon;

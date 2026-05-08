@@ -188,6 +188,14 @@ export class PreloadScene extends Phaser.Scene {
     // BossFightScene control buttons — JUMP (lewa) + ATTACK (prawa).
     this.load.image('boss_btn_jump', 'assets/ui/boss_btn_jump.webp');
     this.load.image('boss_btn_attack', 'assets/ui/boss_btn_attack.webp');
+
+    // BossChoiceScene assets — banner BG + 2 buttony image-based.
+    this.load.image('boss_choice_bg', 'assets/ui/boss_choice_bg.webp');
+    this.load.image('boss_choice_fight', 'assets/ui/boss_choice_fight.webp');
+    this.load.image('boss_choice_skip', 'assets/ui/boss_choice_skip.webp');
+
+    // Reward popup v2 — cyan/blue ornate frame z skull + diamond ornaments.
+    this.load.image('reward_frame_v2', 'assets/ui/reward_frame_v2.webp');
     // Boss BGs — 1 per level (1-10). Cycle gdy level > 10.
     for (let i = 1; i <= 10; i++) {
       const key = `boss_bg_${String(i).padStart(2, '0')}`;
