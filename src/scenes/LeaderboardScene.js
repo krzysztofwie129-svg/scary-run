@@ -149,7 +149,7 @@ export class LeaderboardScene extends Phaser.Scene {
       else if (i === 1) style = silverStyle;
       else if (i === 2) style = bronzeStyle;
 
-      const levelLabel = e.level >= LEVELS.length ? 'ALL' : `${e.level}`;
+      const levelLabel = e.level > LEVELS.length ? 'ALL' : `${e.level}`;
       this.add.text(cols.rank, y, `${i + 1}.`, style).setOrigin(0.5);
       this.add.text(cols.name, y, String(e.name).slice(0, 12), style).setOrigin(0.5);
       this.add.text(cols.score, y, formatScore(e.score), style).setOrigin(0.5);

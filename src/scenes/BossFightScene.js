@@ -70,7 +70,9 @@ export class BossFightScene extends Phaser.Scene {
   }
 
   create() {
-    this.bossHP = BOSS_HP_MAX;
+    // V8: HP scaling per level — L1=100 (10 hits @10dmg), +20 per level (L2=120, L10=280).
+    this.bossHPMax = BOSS_HP_MAX + 20 * Math.max(0, this.fromLevel - 1);
+    this.bossHP = this.bossHPMax;
     this.playerHP = sessionManager.currentPlayer()?.lives || INITIAL_LIVES;
     this.fightOver = false;
     this.fightStarted = false; // V8: blokuje player attack/jump dopóki bos się nie aktywował (anti-spam-burst).
@@ -254,7 +256,7 @@ export class BossFightScene extends Phaser.Scene {
     this.add.rectangle(barX, barY, 320, 30, 0x000000, 0.7).setOrigin(0, 0.5).setDepth(1000);
     this.bossHPBar = this.add.rectangle(barX + 5, barY, 310, 22, 0xff3b3b, 1)
       .setOrigin(0, 0.5).setDepth(1001);
-    this.bossHPText = this.add.text(barX + 160, barY, `BOSS ${this.bossHP}/100`, {
+    this.bossHPText = this.add.text(barX + 160, barY, `BOSS ${this.bossHP}/${this.bossHPMax}`, {
       fontSize: '18px',
       fontFamily: 'Arial Black, sans-serif',
       color: '#ffffff',
@@ -613,9 +615,9 @@ export class BossFightScene extends Phaser.Scene {
   }
 
   refreshBossHP() {
-    const ratio = this.bossHP / BOSS_HP_MAX;
+    const ratio = this.bossHP / this.bossHPMax;
     this.bossHPBar.scaleX = Math.max(0, ratio);
-    this.bossHPText.setText(`BOSS ${this.bossHP}/100`);
+    this.bossHPText.setText(`BOSS ${this.bossHP}/${this.bossHPMax}`);
     if (ratio > 0.5) this.bossHPBar.setFillStyle(0xff3b3b);
     else if (ratio > 0.25) this.bossHPBar.setFillStyle(0xffa500);
     else this.bossHPBar.setFillStyle(0xffd93c);
@@ -825,13 +827,10 @@ export class BossFightScene extends Phaser.Scene {
       this.tweens.add({ targets: banner, scale: 1.2, duration: 400, ease: 'Back.easeOut' });
 
       this.time.delayedCall(2500, () => {
-        // Restart L1: reset lives + level=0.
+        // V8: prawdziwy game over po przegranej z bossem (zamiast restart L1).
         const player = sessionManager.currentPlayer();
-        if (player) {
-          player.lives = INITIAL_LIVES;
-          player.level = 0;
-        }
-        this.scene.start('GameScene');
+        if (player) player.lives = 0;
+        this.scene.start('GameOverScene');
       });
     });
   }

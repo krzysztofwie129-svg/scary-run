@@ -30,7 +30,7 @@ export class GameCompleteScene extends Phaser.Scene {
     const lbPayload = {
       name: this.player.name || 'Anon',
       score: Math.floor(this.player.score),
-      level: LEVELS.length,
+      level: LEVELS.length + 1, // sentinel "ALL" — odróżnia full game complete od śmierci na L11.
       coins: this.player.coins,
     };
     this.rank = Leaderboard._addLocal(lbPayload).rank;
