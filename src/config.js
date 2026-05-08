@@ -327,8 +327,8 @@ export const LEVELS = [
 ];
 
 // Coin / diamond.
-export const COIN_SCORE = 1;
-export const DIAMOND_SCORE = 5;
+export const COIN_SCORE = 10;
+export const DIAMOND_SCORE = 12;
 export const COIN_PICKUP_PITCH = 1.0;
 export const DIAMOND_PICKUP_PITCH = 1.5;
 export const COIN_Y_RANGE = [GROUND_Y - 250, GROUND_Y - 80];
