@@ -11,3 +11,9 @@ pages_build_output_dir = "dist"
 [[kv_namespaces]]
 binding = "LEADERBOARD"
 id = "83036e57dbb2427b998052e43f8a7696"
+
+# Stats per-device tracking (sesja Stats Backend MVP).
+# Namespace ID z `wrangler kv namespace create scary-run-stats`.
+[[kv_namespaces]]
+binding = "STATS"
+id = "82c1ba346a8c4a68bce0377dafcae406"
