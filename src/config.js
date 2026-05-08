@@ -159,14 +159,14 @@ export const OBSTACLE_TYPES = {};
 // (player body Y 530-630 vs pumpkin Y 404-436), tylko skok blisko pumpkin
 // = ryzyko kolizji w fazie wznoszenia. Pumpkin staje się "nie skacz tutaj".
 export const LEVELS = [
-  // L1 — tutorial
+  // L1 — tutorial. TEST: nowe pojedyncze tło (level1_test) zamiast 9-warstwowej parallaksy.
   {
     id: 1,
     name: 'Graveyard',
     duration: 30,
-    bgFolder: 'level1',
-    bgLayerCount: 9,
-    parallaxSpeeds: [0.55, 0.62, 0.68, 0.74, 0.80, 0.85, 0.90, 0.95, 1.0],
+    bgFolder: 'level1_test',
+    bgLayerCount: 1,
+    parallaxSpeeds: [1.0],
     obstacleMix: { low: 1.0, mid: 0.0, high: 0.0, wall: 0.0 },
     obstacleSpawnRate: { min: 1.8, max: 2.6 },
     coinSpawnRate: { min: 0.7, max: 1.5 },
