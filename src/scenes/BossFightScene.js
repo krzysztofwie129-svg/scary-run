@@ -91,64 +91,42 @@ export class BossFightScene extends Phaser.Scene {
 
     this.time.delayedCall(800, () => this.showIntroBanner());
     this.time.delayedCall(2200, () => this.startFight());
-    this.time.delayedCall(2200, () => this.showControlHints());
+    this.createControlButtons();
   }
 
-  showControlHints() {
-    // V4: lewa cyan = JUMP, prawa pink = ATAK + swipe down hint.
-    const leftHint = this.add.container(GAME_WIDTH * 0.25, GAME_HEIGHT * 0.85).setDepth(99990);
-    const leftBg = this.add.rectangle(0, 0, 220, 50, 0x4ecdc4, 0.85).setStrokeStyle(3, 0x000000);
-    const leftText = this.add.text(0, 0, '👈 TAP = JUMP', {
-      fontSize: '20px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#000000',
-    }).setOrigin(0.5);
-    leftHint.add([leftBg, leftText]);
+  createControlButtons() {
+    // JUMP + ATTACK ikonki TYLKO jako visual hint (NIE klikalne).
+    // Klikalność: lewa połowa ekranu = JUMP, prawa = ATTACK (createInputHandlers).
+    const btnSize = 150;
+    const margin = 95;
 
-    const rightHint = this.add.container(GAME_WIDTH * 0.75, GAME_HEIGHT * 0.85).setDepth(99990);
-    const rightBg = this.add.rectangle(0, 0, 220, 50, 0xff6b9d, 0.85).setStrokeStyle(3, 0x000000);
-    const rightText = this.add.text(0, 0, 'TAP = ATAK 👉', {
-      fontSize: '20px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#000000',
-    }).setOrigin(0.5);
-    rightHint.add([rightBg, rightText]);
+    const makeHintIcon = (x, key) => {
+      if (!this.textures.exists(key)) return null;
+      return this.add.image(x, GAME_HEIGHT - margin, key)
+        .setDisplaySize(btnSize, btnSize)
+        .setDepth(99990)
+        .setAlpha(0.85);
+    };
 
-    const swipeHint = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, 'SWIPE DOWN = SLIDE', {
-      fontSize: '14px',
-      fontFamily: 'Arial Black, sans-serif',
-      color: '#ffffff',
-      stroke: '#000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(99990).setAlpha(0.75);
-
-    this.tweens.add({
-      targets: [leftHint, rightHint],
-      scale: 1.05,
-      duration: 600,
-      yoyo: true,
-      repeat: 3,
-      ease: 'Sine.easeInOut',
-    });
-
-    this.time.delayedCall(5000, () => {
-      this.tweens.add({
-        targets: [leftHint, rightHint, swipeHint],
-        alpha: 0,
-        duration: 600,
-        onComplete: () => {
-          try { leftHint.destroy(); rightHint.destroy(); swipeHint.destroy(); } catch (e) { /* ignore */ }
-        },
-      });
-    });
+    this.jumpButton = makeHintIcon(margin, 'boss_btn_jump');
+    this.attackButton = makeHintIcon(GAME_WIDTH - margin, 'boss_btn_attack');
   }
 
   createBackground() {
-    // 1. Gradient bg.
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0x2a1a4a, 0x2a1a4a, 0x1a0a2e, 0x1a0a2e, 1);
-    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    bg.setDepth(-100);
+    // 1. Bg per level: boss_bg_01..10 (cycle modulo 10 dla level > 10).
+    // fromLevel jest 1-based, więc index = (fromLevel-1) % 10 + 1.
+    const bgNum = ((this.fromLevel - 1) % 10) + 1;
+    const bgKey = `boss_bg_${String(bgNum).padStart(2, '0')}`;
+    if (this.textures.exists(bgKey)) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, bgKey)
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+        .setDepth(-100);
+    } else {
+      const bg = this.add.graphics();
+      bg.fillGradientStyle(0x2a1a4a, 0x2a1a4a, 0x1a0a2e, 0x1a0a2e, 1);
+      bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      bg.setDepth(-100);
+    }
 
     // 2. Drewniany ground pomost + 4 pasy drewna + ostry top edge.
     const groundY = GROUND_Y + 30;
@@ -368,14 +346,14 @@ export class BossFightScene extends Phaser.Scene {
       const SWIPE_MAX_DUR = 600;
       const isSwipe = dist > SWIPE_THRESHOLD && dur < SWIPE_MAX_DUR;
 
-      // V4: swipe DOWN nadal = slide (jedyny swipe).
+      // Swipe DOWN = slide.
       if (isSwipe && dy > SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
         this.swipeStartY = null;
         this.swipeStartX = null;
         return this.playerSlide();
       }
 
-      // V4: tap zone — LEWA połowa = JUMP, PRAWA połowa = ATAK.
+      // Tap zone — LEWA połowa = JUMP, PRAWA połowa = ATAK.
       const tapX = pointer.x;
       const screenW = this.scale.gameSize.width;
       if (tapX < screenW * 0.5) {

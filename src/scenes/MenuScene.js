@@ -34,9 +34,12 @@ export class MenuScene extends Phaser.Scene {
         sessionManager.setupSinglePlayer(savedName);
         sessionManager.setCharacter('char01');
         const explicit = ['char02', 'char03'].includes(bossParam) ? bossParam : null;
+        // Numeryczny ?boss=N (1-10) → fromLevel=N → boss_bg_NN tło per boss.
+        const numeric = parseInt(bossParam, 10);
+        const fromLevel = Number.isFinite(numeric) && numeric >= 1 ? numeric : 1;
         this.scene.start('BossFightScene', {
-          fromLevel: 1,
-          bossCharKey: explicit, // null → random char z BossFight init()
+          fromLevel,
+          bossCharKey: explicit,
         });
         return;
       }
