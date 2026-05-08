@@ -73,6 +73,7 @@ export class BossFightScene extends Phaser.Scene {
     this.bossHP = BOSS_HP_MAX;
     this.playerHP = sessionManager.currentPlayer()?.lives || INITIAL_LIVES;
     this.fightOver = false;
+    this.fightStarted = false; // V8: blokuje player attack/jump dopóki bos się nie aktywował (anti-spam-burst).
     this.playerInvulnerable = false; // V2: jump/slide ustawia true podczas trwania.
     this.lastAttackTime = 0; // V3: cooldown 600ms między atakami.
     this.activeProjectiles = []; // V3: physics-based pociski.
@@ -321,6 +322,10 @@ export class BossFightScene extends Phaser.Scene {
 
   startFight() {
     if (this.fightOver) return;
+    this.fightStarted = true;
+    // V8: pierwszy atak natychmiast po starcie (zamiast czekać BOSS_ATTACK_INTERVAL),
+    // żeby gracz nie mógł spamować ataków podczas "lagu" startu (~3s wcześniej).
+    this.bossWindUpAndAttack();
     this.bossAttackTimer = this.time.addEvent({
       delay: BOSS_ATTACK_INTERVAL,
       callback: () => this.bossWindUpAndAttack(),
@@ -489,6 +494,7 @@ export class BossFightScene extends Phaser.Scene {
   }
 
   playerAttack() {
+    if (!this.fightStarted) return; // V8: blokuj atak dopóki bos się nie odezwie.
     // V3: cooldown 600ms — spam-tap = mały shake postaci, brak ataku.
     const now = this.time.now;
     if (this.lastAttackTime && (now - this.lastAttackTime) < 600) {
