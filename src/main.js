@@ -24,6 +24,7 @@ import { SessionResultsScene } from './scenes/SessionResultsScene.js';
 import { OrientationLockScene } from './scenes/OrientationLockScene.js';
 import InstallPromptScene from './scenes/InstallPromptScene.js';
 import { ChestSelectScene } from './scenes/ChestSelectScene.js';
+import { BossFightScene } from './scenes/BossFightScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -67,6 +68,7 @@ const config = {
     GameOverScene,
     LevelCompleteScene,
     ChestSelectScene,
+    BossFightScene,
     GameCompleteScene,
     LeaderboardScene,
     SessionResultsScene,
