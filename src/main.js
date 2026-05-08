@@ -45,6 +45,14 @@ const config = {
       debug: false,
     },
   },
+  // Quality: WebGL antialiasing ON dla downscaled images (LevelComplete UI 900×300
+  // → display ~420×120 wymaga LINEAR filtering żeby nie wyglądało pikselowato).
+  render: {
+    antialias: true,
+    antialiasGL: true,
+    pixelArt: false,
+    roundPixels: false,
+  },
   // Mobile-only: keyboard + mouse OFF, tylko touch + multi-pointer.
   // DEV: ?desktop=1 → włącz mouse (do testów na desktopie / puppeteer).
   input: {

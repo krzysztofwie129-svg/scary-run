@@ -188,10 +188,12 @@ export class LevelCompleteScene extends Phaser.Scene {
       { label: 'WYNIK',    value: this.scoreThisLevel,   color: '#ffd93c' },
     ];
 
-    // Icon row — baked stat_icons asset (4 icons w jednym pasku).
+    // Icon row — baked stat_icons asset (source 1100×275 = 4:1, zachowaj proporcje).
     if (this.textures.exists('levelcomplete_stat_icons')) {
-      this.add.image(GAME_WIDTH / 2, frameY - 30, 'levelcomplete_stat_icons')
-        .setDisplaySize(frameW * 0.85, frameH * 0.5)
+      const iconsW = frameW * 0.85;
+      const iconsH = iconsW / 4; // 4:1 ratio z source — bez squasha.
+      this.add.image(GAME_WIDTH / 2, frameY - 50, 'levelcomplete_stat_icons')
+        .setDisplaySize(iconsW, iconsH)
         .setDepth(101);
     }
 
@@ -222,9 +224,9 @@ export class LevelCompleteScene extends Phaser.Scene {
   }
 
   showProgress(currentLevel, totalLevels) {
-    const y = 555;
+    const y = 545;
     const barW = 480;
-    const barH = 28;
+    const barH = 50; // grubszy bar żeby było widoczne (było 28 — pikselowato).
 
     this.add.text(GAME_WIDTH / 2, y - 28, `Level ${currentLevel} of ${totalLevels}`, {
       fontFamily: 'Arial, sans-serif',
@@ -245,7 +247,7 @@ export class LevelCompleteScene extends Phaser.Scene {
       const fillX = GAME_WIDTH / 2 - fillW / 2;
       const fill = this.add.image(fillX, y, 'levelcomplete_progress_fill')
         .setOrigin(0, 0.5)
-        .setDisplaySize(fillW, barH * 0.7)
+        .setDisplaySize(fillW, barH * 0.6)
         .setDepth(101);
       const baseScaleX = fill.scaleX;
       fill.scaleX = 0;
@@ -259,10 +261,10 @@ export class LevelCompleteScene extends Phaser.Scene {
   }
 
   showRankAndNext(stars) {
-    // MISTRZOWSKO! rank badge — w środku dolnego obszaru.
+    // MISTRZOWSKO! rank badge — source 900×225 (4:1), display 320×80 dla zachowania proporcji.
     if (this.textures.exists('levelcomplete_rank') && stars >= 2) {
       const rank = this.add.image(GAME_WIDTH / 2, 590, 'levelcomplete_rank')
-        .setDisplaySize(360, 70)
+        .setDisplaySize(320, 80)
         .setDepth(100)
         .setAlpha(0);
       this.tweens.add({
@@ -282,13 +284,13 @@ export class LevelCompleteScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(100);
     }
 
-    // NEXT LEVEL button.
+    // NEXT LEVEL button — source 900×300 (3:1), display 360×120 dla zachowania proporcji.
     const isLast = this.completedLevelIdx >= LEVELS.length - 1;
-    const buttonY = 655;
+    const buttonY = 660;
     let button;
     if (this.textures.exists('levelcomplete_next') && !isLast) {
       button = this.add.image(GAME_WIDTH / 2, buttonY, 'levelcomplete_next')
-        .setDisplaySize(420, 80)
+        .setDisplaySize(360, 120)
         .setDepth(100);
     } else {
       button = this.add.text(GAME_WIDTH / 2, buttonY, isLast ? '🏆 ZAKOŃCZ' : '▶ NEXT LEVEL', {
