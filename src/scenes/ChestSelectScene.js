@@ -195,6 +195,11 @@ export class ChestSelectScene extends Phaser.Scene {
       const frame = this.add.image(0, 0, 'reward_frame_v2');
       frame.setDisplaySize(720, 208);
       c.add(frame);
+      // Zakrywamy baked tekst "+50 MONET / Bonus 500 punktów!" wewnątrz frame'a
+      // (każda nagroda renderuje SWOJE label/description, więc baked tekst
+      // duplikował się z dynamicznym). Cover trochę mniejszy niż frame interior.
+      const cover = this.add.rectangle(80, 0, 540, 150, 0x0a1428, 0.95);
+      c.add(cover);
     } else {
       // Fallback: dark fill + cienka biała ramka.
       const bg = this.add.rectangle(0, 0, 720, 180, 0x0a1428, 0.95)

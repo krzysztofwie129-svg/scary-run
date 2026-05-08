@@ -99,47 +99,7 @@ try {
   // Dzięki temu rotation overlay nie nakłada się na loading bar (sesja 7.3).
   orientationGuard.init(game);
 
-  // TEMP DEBUG: scene transitions log overlay (do diagnostyki boss → chest buga).
-  // Persistuje przez localStorage — przeżyje refresh / obrót telefonu.
-  const debugEl = document.getElementById('debug-scene-log');
-  if (debugEl) {
-    const DEBUG_KEY = 'scary_run_debug_log_v1';
-    const loadHistory = () => {
-      try { return JSON.parse(localStorage.getItem(DEBUG_KEY) || '[]'); } catch (e) { return []; }
-    };
-    const saveHistory = (h) => {
-      try { localStorage.setItem(DEBUG_KEY, JSON.stringify(h)); } catch (e) { /* ignore */ }
-    };
-    const history = loadHistory();
-    debugEl.textContent = history.join('\n');
-    let lastActive = '';
-    const push = (line) => {
-      history.push(line);
-      while (history.length > 14) history.shift();
-      saveHistory(history);
-      debugEl.textContent = history.join('\n');
-    };
-    push(`-- ${new Date().toISOString().slice(11, 19)} pageload --`);
-    setInterval(() => {
-      const active = game.scene.scenes
-        .filter((s) => s.scene.isActive())
-        .map((s) => s.scene.key)
-        .join(',');
-      if (active !== lastActive) {
-        const t = new Date().toISOString().slice(11, 19);
-        push(`${t} ${active}`);
-        lastActive = active;
-      }
-    }, 100);
-    window.addEventListener('error', (e) => {
-      const t = new Date().toISOString().slice(11, 19);
-      push(`${t} ERR: ${e.message?.slice(0, 80)}`);
-    });
-    window.addEventListener('unhandledrejection', (e) => {
-      const t = new Date().toISOString().slice(11, 19);
-      push(`${t} UNHANDLED: ${(e.reason?.message || String(e.reason)).slice(0, 80)}`);
-    });
-  }
+  // Debug scene-log overlay usunięty po diagnostyce iOS reload buga.
 } catch (e) {
   console.error('Game init failed:', e);
   const fallback = document.getElementById('browser-fallback');
