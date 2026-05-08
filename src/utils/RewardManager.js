@@ -21,22 +21,22 @@ export const REWARD_TYPES = {
 
 export const REWARDS = {
   [REWARD_TYPES.COINS_50]: {
-    label: '+50 MONET', description: 'Bonus 500 punktow!',
+    label: '+50 MONET', description: 'Bonus 500 punktów!',
     spriteKey: 'coin_00', spriteFallback: '🪙', color: 0xffd93c,
     weight: 25, instant: true,
   },
   [REWARD_TYPES.DIAMONDS_5]: {
-    label: '+5 DIAMENTOW', description: 'Bonus 60 punktow!',
+    label: '+5 DIAMENTÓW', description: 'Bonus 60 punktów!',
     spriteKey: 'diamond', spriteFallback: '💎', color: 0x4ecdc4,
     weight: 20, instant: true,
   },
   [REWARD_TYPES.POINTS_200]: {
-    label: '+200 PUNKTOW', description: 'Score boost!',
+    label: '+200 PUNKTÓW', description: 'Score boost!',
     spriteKey: null, spriteFallback: '⭐', color: 0xffd93c,
     weight: 15, instant: true,
   },
   [REWARD_TYPES.HEART]: {
-    label: '+1 ZYCIE', description: 'Extra zycie!',
+    label: '+1 ŻYCIE', description: 'Extra życie!',
     spriteKey: null, spriteFallback: '❤️', color: 0xff5757,
     weight: 10, instant: true,
   },
@@ -47,7 +47,7 @@ export const REWARDS = {
     pendingPowerUp: POWER_UP_TYPES.MAGNET, duration: 10000,
   },
   [REWARD_TYPES.NEXT_SHIELD]: {
-    label: 'TARCZA START', description: 'Nast. level z tarcza!',
+    label: 'TARCZA START', description: 'Nast. level z tarczą!',
     spriteKey: null, spriteFallback: '🛡️', color: 0x4ecdc4,
     weight: 6, instant: false,
     pendingPowerUp: POWER_UP_TYPES.SHIELD, duration: -1,
@@ -65,7 +65,7 @@ export const REWARDS = {
     pendingPowerUp: POWER_UP_TYPES.DOUBLE_COINS, duration: 15000,
   },
   [REWARD_TYPES.NEXT_GIANT]: {
-    label: 'GIGANT', description: 'Postac +40% rozmiar!',
+    label: 'GIGANT', description: 'Postać +40% rozmiar!',
     spriteKey: null, spriteFallback: '🦣', color: 0xffa500,
     weight: 4, instant: false, pendingMod: 'giant',
   },
