@@ -1157,11 +1157,12 @@ export class GameScene extends Phaser.Scene {
       };
       // player.level jest tym levelem który właśnie ukończono (0-based).
       // V6: boss po KAŻDYM levelu (cycle 10 boss BGs modulo, +15px size per level).
+      // V7: gracz wybiera czy walczyć (BossChoiceScene). Skip → bezpośrednio LC bez boss bonusu.
       // Ostatni level → GameComplete bez boss fight.
       if (player.level >= LEVELS.length - 1) {
         this.scene.start('GameCompleteScene', sceneData);
       } else {
-        this.scene.start('BossFightScene', { fromLevel: player.level + 1, sceneData });
+        this.scene.start('BossChoiceScene', { fromLevel: player.level + 1, sceneData });
       }
     });
   }

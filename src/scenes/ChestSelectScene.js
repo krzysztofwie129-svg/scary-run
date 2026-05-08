@@ -44,6 +44,15 @@ export class ChestSelectScene extends Phaser.Scene {
   }
 
   create() {
+    // Sesja Rotation Fix: jeśli gracz już wybrał skrzynię w tym levelu
+    // (np. obrót telefonu zrestartował OrientationLock → ChestSelect re-init),
+    // skip natychmiast do nextScene żeby nie pozwolić na drugą wybor + double reward.
+    const _player = sessionManager.currentPlayer();
+    if (_player && _player.chestUsedAtLevel === _player.level) {
+      this.scene.start(this.nextScene, this.nextSceneData);
+      return;
+    }
+
     Haptic.coin?.();
 
     // Tło z całą grafiką (tytuł + tło sceny).
@@ -291,6 +300,10 @@ export class ChestSelectScene extends Phaser.Scene {
         duration: reward.duration ?? null,
       });
     }
+    // Mark chest as used for this level — prevents double-reward exploit
+    // jeśli scene re-init nastąpi (rotacja telefonu, OrientationLock).
+    const _player = sessionManager.currentPlayer();
+    if (_player) _player.chestUsedAtLevel = _player.level;
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start(this.nextScene, this.nextSceneData);

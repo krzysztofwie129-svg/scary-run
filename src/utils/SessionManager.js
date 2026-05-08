@@ -79,6 +79,8 @@ class SessionManager {
       score: p.score,
     };
     p.deathsThisLevel = 0;
+    // Reset chest "already-picked-for-this-level" flag.
+    p.chestUsedAtLevel = -1;
   }
 
   setName(playerIndex, name) {
