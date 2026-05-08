@@ -189,11 +189,10 @@ export class ChestSelectScene extends Phaser.Scene {
     const cy = (GAME_HEIGHT * 0.45) + 8;
     const c = this.add.container(cx, cy).setScale(0).setDepth(99999);
 
-    // Reward frame v3 — czysta cyan/blue ornate ramka (puste wnętrze) z skull
-    // + diamond ornaments. Source 2172×724 (~3:1) → display 720×240.
-    // v3 (rename z v2) busted SW precache lock na non-hashed public asset.
-    if (this.textures.exists('reward_frame_v3')) {
-      const frame = this.add.image(0, 0, 'reward_frame_v3');
+    // Reward frame v4 — czysta cyan/blue ornate ramka z proper alpha (floodfilled).
+    // Source 2172×724 (~3:1) → display 720×240.
+    if (this.textures.exists('reward_frame_v4')) {
+      const frame = this.add.image(0, 0, 'reward_frame_v4');
       frame.setDisplaySize(720, 240);
       c.add(frame);
     } else {
