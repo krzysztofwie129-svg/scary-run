@@ -189,17 +189,12 @@ export class ChestSelectScene extends Phaser.Scene {
     const cy = (GAME_HEIGHT * 0.45) + 8;
     const c = this.add.container(cx, cy).setScale(0).setDepth(99999);
 
-    // Reward frame v2 — cyan/blue ornate frame z skull + diamond ornaments
-    // (source 2333×674, ratio ~3.46:1 → display 720×208 zachowuje proporcje).
+    // Reward frame v2 — czysta cyan/blue ornate ramka (puste wnętrze) z skull
+    // + diamond ornaments. Source 2172×724 (~3:1) → display 720×240.
     if (this.textures.exists('reward_frame_v2')) {
       const frame = this.add.image(0, 0, 'reward_frame_v2');
-      frame.setDisplaySize(720, 208);
+      frame.setDisplaySize(720, 240);
       c.add(frame);
-      // Zakrywamy baked tekst "+50 MONET / Bonus 500 punktów!" wewnątrz frame'a
-      // (każda nagroda renderuje SWOJE label/description, więc baked tekst
-      // duplikował się z dynamicznym). Cover trochę mniejszy niż frame interior.
-      const cover = this.add.rectangle(80, 0, 540, 150, 0x0a1428, 0.95);
-      c.add(cover);
     } else {
       // Fallback: dark fill + cienka biała ramka.
       const bg = this.add.rectangle(0, 0, 720, 180, 0x0a1428, 0.95)
