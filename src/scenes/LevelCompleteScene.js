@@ -37,7 +37,8 @@ export class LevelCompleteScene extends Phaser.Scene {
   create() {
     this.audioManager = new AudioManager(this);
     Haptic.levelComplete();
-    GameStateStore.clear();
+    // Sesja DangerWindow Fix: NIE clear save tutaj — handleFinishLineCrossed
+    // już zapisał save z level+1 dla recovery przy iOS reload.
 
     const stars = StarRating.calculate(this.deathsThisLevel);
     this.stars = stars;

@@ -1121,9 +1121,24 @@ export class GameScene extends Phaser.Scene {
     // Fanfara — static import (był dynamic, jeden powód mniej do failu).
     try { playFanfare(); } catch (e) { /* ignore audio quirks */ }
 
-    // Sesja P1: clear save — gracz świadomie przeszedł level, "Continue"
-    // by wracał do tego samego startu zamiast kontynuować nową progresję.
-    GameStateStore.clear();
+    // Sesja DangerWindow Fix: zapisz save z level+1 zamiast clear().
+    // iOS Safari potrafi reloadować tab podczas chest→game transition (SW
+    // skipWaiting/clientsClaim + memory pressure). Bez save'a po reloadzie
+    // user widzi MenuScene 3-button (brak KONTYNUUJ) → traci progress boss
+    // bonusu i musi grać L1 od nowa. Save z level+1 pozwala KONTYNUUJ
+    // odzyskać następny level bezpośrednio.
+    {
+      const _player = sessionManager.currentPlayer();
+      const _nextLevel = (_player?.level ?? 0) + 1;
+      if (_nextLevel < LEVELS.length) {
+        GameStateStore.save({
+          session: sessionManager.serialize(),
+          currentLevel: _nextLevel,
+        });
+      } else {
+        GameStateStore.clear(); // game complete, no save needed
+      }
+    }
 
     // Po FINISH_SLOWMO_DURATION + 300ms przejście do LevelComplete.
     // advanceLevel() przeniesione do LevelComplete.create — tam ekran pokazuje
