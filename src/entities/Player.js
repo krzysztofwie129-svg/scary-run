@@ -48,6 +48,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // states: running | jumping | falling | dead
     this.state_ = 'running';
 
+    // Sesja C — flagi power-up'ów. Faktyczne efekty w GameScene; tutaj tylko
+    // boolean state żeby inne systemy mogły szybko sprawdzić (np. anim tint).
+    this.shieldActive = false;
+    this.speedBoostActive = false;
+
     // Double jump — reset przy lądowaniu, dekrement w jump().
     this.jumpsRemaining = 2;
 

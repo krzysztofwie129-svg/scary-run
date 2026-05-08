@@ -13,6 +13,7 @@ import { isMobileDevice } from '../utils/DeviceDetect.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
 import { FullscreenManager } from '../utils/FullscreenManager.js';
 import { InstallPromptManager } from '../utils/InstallPromptManager.js';
+import { PlayerStore } from '../utils/PlayerStore.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -57,6 +58,9 @@ export class MenuScene extends Phaser.Scene {
       fontStyle: 'italic',
     }).setOrigin(0.5);
 
+    // Sesja Persistent Name — greeting + ikona edycji jeśli imię zapisane.
+    this.buildGreeting();
+
     // Stan menu — main lub multiplayer-count.
     this.menuState = 'main';
     this.buildMainButtons();
@@ -84,6 +88,37 @@ export class MenuScene extends Phaser.Scene {
         this.scene.launch('InstallPromptScene');
       });
     }
+  }
+
+  buildGreeting() {
+    const savedName = PlayerStore.getName();
+    if (!savedName) return;
+
+    // y=230 — pod subtitle (180), nad CONTINUE/START (cy=290+).
+    const y = 230;
+    const greeting = this.add.text(GAME_WIDTH / 2 - 30, y, `Czesc, ${savedName}!`, {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '28px',
+      color: '#ffd93c',
+      stroke: '#000',
+      strokeThickness: 4,
+    }).setOrigin(0.5);
+
+    // ✏️ klikalny — edit mode prowadzi do NameInput, potem wraca tu.
+    const editIcon = this.add.text(greeting.x + greeting.width / 2 + 22, y, '✏️', {
+      fontSize: '26px',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    editIcon.on('pointerover', () => editIcon.setScale(1.2));
+    editIcon.on('pointerout', () => editIcon.setScale(1.0));
+    editIcon.on('pointerup', () => {
+      this.audioManager?.playSfx('click');
+      this.scene.start('NameInputScene', {
+        editMode: true,
+        playerIndex: 0,
+        numPlayers: 1,
+      });
+    });
   }
 
   destroyButtons() {
@@ -126,8 +161,15 @@ export class MenuScene extends Phaser.Scene {
         FullscreenManager.keepAwake();
         // Klik START GAME → świadomy nowy start, clear istniejącego save'a.
         GameStateStore.clear();
-        sessionManager.setupSinglePlayer('');
-        this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: 1 });
+        // Sesja Persistent Name: jeśli imię już zapisane → pomijamy NameInput,
+        // od razu CharSelect (klasyczny mobile UX, Subway Surfers style).
+        const savedName = PlayerStore.getName();
+        sessionManager.setupSinglePlayer(savedName || '');
+        if (savedName) {
+          this.scene.start('CharSelectScene');
+        } else {
+          this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: 1 });
+        }
       }),
       this.makeButton(GAME_WIDTH / 2, cy + 50 + offset, 'MULTIPLAYER', 0x3e6bb6, () => {
         this.audioManager?.playSfx('click');

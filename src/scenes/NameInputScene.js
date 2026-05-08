@@ -4,6 +4,7 @@
 
 import { GAME_WIDTH, GAME_HEIGHT, NAME_MAX_LENGTH } from '../config.js';
 import { sessionManager } from '../utils/SessionManager.js';
+import { PlayerStore } from '../utils/PlayerStore.js';
 
 export class NameInputScene extends Phaser.Scene {
   constructor() {
@@ -14,6 +15,8 @@ export class NameInputScene extends Phaser.Scene {
     this.playerIndex = data?.playerIndex ?? 0;
     this.numPlayers = data?.numPlayers ?? 1;
     this.skipSplash = data?.skipSplash === true;
+    // Sesja Persistent Name: editMode=true → wraca do MenuScene (nie do gry).
+    this.editMode = data?.editMode === true;
   }
 
   create() {
@@ -58,7 +61,12 @@ export class NameInputScene extends Phaser.Scene {
     // Natywny HTML input z index.html.
     this.htmlInput = document.getElementById('name-input-html');
     if (this.htmlInput) {
-      this.htmlInput.value = '';
+      // Sesja Persistent Name: prefill w trybie edycji + dla Player 1 w MP.
+      let prefill = '';
+      if (this.editMode || (this.numPlayers > 1 && this.playerIndex === 0)) {
+        prefill = PlayerStore.getName() || '';
+      }
+      this.htmlInput.value = prefill;
       this.htmlInput.classList.add('active');
       // Mała chwila opóźnienia żeby DOM się zsynchronizował, potem focus
       // (mobile soft keyboard wstaje).
@@ -125,7 +133,18 @@ export class NameInputScene extends Phaser.Scene {
     }
 
     sessionManager.setName(this.playerIndex, sanitized);
+    // Persistuj imię TYLKO gdy: single mode, edit z menu, lub Player 1 MP
+    // (P2/P3/P4 to dodatkowe imiona w sesji — nie nadpisują głównego usera).
+    if (this.numPlayers === 1 || this.editMode || (this.numPlayers > 1 && this.playerIndex === 0)) {
+      PlayerStore.saveName(sanitized);
+    }
     this.cleanup();
+
+    if (this.editMode) {
+      // Zmiana z menu — wracamy do MenuScene, NIE do gry.
+      this.scene.start('MenuScene');
+      return;
+    }
 
     if (this.playerIndex < this.numPlayers - 1) {
       this.scene.start('NameInputScene', {
