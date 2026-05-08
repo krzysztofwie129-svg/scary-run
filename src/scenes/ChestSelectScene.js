@@ -180,15 +180,10 @@ export class ChestSelectScene extends Phaser.Scene {
     const cy = (GAME_HEIGHT * 0.45) + 8;
     const c = this.add.container(cx, cy).setScale(0).setDepth(99999);
 
-    // Reward frame asset (cyan glow ramka). Display 720×180.
-    const frame = this.add.image(0, 0, 'reward_frame');
-    frame.setDisplaySize(720, 180);
-    c.add(frame);
-
-    // Pokrycie baked content (diamond + "BONUS DIAMENTÓW") — pełny rect
-    // wewnątrz cyan ramki, alpha 0.95 dla mocnego ukrycia jasnego baked text.
-    const cover = this.add.rectangle(0, 0, 700, 170, 0x0a1428, 0.95);
-    c.add(cover);
+    // Tło popup'a — dark fill + cienka biała ramka.
+    const bg = this.add.rectangle(0, 0, 720, 180, 0x0a1428, 0.95)
+      .setStrokeStyle(2, 0xffffff, 1);
+    c.add(bg);
 
     // Reward icon — duża ikona po lewej (przykrywa baked diamond).
     let icon;

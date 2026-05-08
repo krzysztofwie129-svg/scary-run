@@ -181,11 +181,9 @@ export class MenuScene extends Phaser.Scene {
 
     const hasSave = GameStateStore.hasSave();
     const cx = GAME_WIDTH / 2;
-    // 4 przyciski: y=320, 420, 520, 620 (gdy hasSave); 3: y=380, 490, 600.
-    // Ratio button image source: 900x300 = 3:1. Display 460×100 → lekkie
-    // squashy ale akceptowalne (~5:1 jak w wizji).
-    const btnW = 520;
-    const btnH = 100;
+    // Source button image: 900×300 (3:1). Display zachowuje proporcje.
+    const btnW = 390;
+    const btnH = 130;
 
     this.buttons = [];
     const items = [];
