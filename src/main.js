@@ -23,6 +23,7 @@ import { PlayerTurnSplashScene } from './scenes/PlayerTurnSplashScene.js';
 import { SessionResultsScene } from './scenes/SessionResultsScene.js';
 import { OrientationLockScene } from './scenes/OrientationLockScene.js';
 import InstallPromptScene from './scenes/InstallPromptScene.js';
+import { ChestSelectScene } from './scenes/ChestSelectScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -65,6 +66,7 @@ const config = {
     PauseScene,
     GameOverScene,
     LevelCompleteScene,
+    ChestSelectScene,
     GameCompleteScene,
     LeaderboardScene,
     SessionResultsScene,

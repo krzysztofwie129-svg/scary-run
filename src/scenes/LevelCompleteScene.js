@@ -430,8 +430,17 @@ export class LevelCompleteScene extends Phaser.Scene {
     if (isLast) {
       this.scene.start('GameCompleteScene');
     } else {
+      // Sesja Reward Chests: advance + ChestSelectScene → wybiera nagrodę → GameScene.
       sessionManager.advanceLevel();
-      this.scene.start('GameScene');
+      // Fallback: jeśli ChestSelectScene nie zarejestrowana (np. stała instancja
+      // Phaser sprzed dodania sceny — wymagałby hard reload), idź bezpośrednio
+      // do GameScene żeby gracz nie utknął.
+      const hasChest = this.scene.manager?.getScene?.('ChestSelectScene');
+      if (hasChest) {
+        this.scene.start('ChestSelectScene', { nextScene: 'GameScene' });
+      } else {
+        this.scene.start('GameScene');
+      }
     }
   }
 }

@@ -21,6 +21,38 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    // DEV: ?chest=random|giant|destroyer → skip menu, idź prosto do ChestSelect
+    // (z forceRewards=3× wybrana nagroda). Po KONTYNUUJ start GameScene
+    // (level z ?level=N lub 0). Aplikuj raz na page load.
+    if (!MenuScene._chestApplied && typeof window !== 'undefined' && window.location?.search) {
+      const params = new URLSearchParams(window.location.search);
+      const chestParam = params.get('chest');
+      if (chestParam) {
+        MenuScene._chestApplied = true;
+        const map = {
+          random: null,
+          giant: 'next_giant',
+          destroyer: 'next_destroyer',
+        };
+        const forced = map[chestParam.toLowerCase()];
+        // Setup minimum sessionManager: SP + char01 + level z URL.
+        const savedName = PlayerStore.getName() || 'TEST';
+        sessionManager.setupSinglePlayer(savedName);
+        sessionManager.setCharacter('char01');
+        const lvlParam = parseInt(params.get('level'), 10);
+        if (Number.isFinite(lvlParam) && lvlParam >= 1) {
+          sessionManager.currentPlayer().level = lvlParam - 1;
+        }
+        const forceRewards = forced ? [forced, forced, forced] : null;
+        // Random nie wymaga forceRewards — ChestSelect sam wylosuje 3 różne.
+        this.scene.start('ChestSelectScene', {
+          nextScene: 'GameScene',
+          forceRewards,
+        });
+        return;
+      }
+    }
+
     // Muzyka menu wyłączona (sesja 7.1).
     this.audioManager = new AudioManager(this);
     // Audio unlock dla mobile — KLUCZOWE dla SFX. iOS Safari autoplay policy

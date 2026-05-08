@@ -52,6 +52,7 @@ import { Haptic } from '../utils/Haptic.js';
 import { FullscreenManager } from '../utils/FullscreenManager.js';
 import { PowerUp } from '../entities/PowerUp.js';
 import { powerUpManager, POWER_UP_TYPES, POWER_UP_CONFIG, PowerUpManager } from '../utils/PowerUpManager.js';
+import { RewardStore } from '../utils/RewardStore.js';
 
 const SPARK_TEXTURE_KEY = '__spark_4x4';
 
@@ -121,6 +122,10 @@ export class GameScene extends Phaser.Scene {
     this.doubleCoinsActive = false;
     this.player.shieldActive = false;
     this.player.speedBoostActive = false;
+    // Sesja Reward Chests: reset mods + apply pending reward (one-shot).
+    this.destroyerActive = false;
+    this.giantActive = false;
+    this.applyPendingReward();
 
     this.ensureSparkTexture();
     this.particles = this.add.particles(0, 0, SPARK_TEXTURE_KEY, {
@@ -630,6 +635,11 @@ export class GameScene extends Phaser.Scene {
           pb.y < ob.y + ob.height && pb.y + pb.height > ob.y;
         if (!overlap) return true;
 
+        // Sesja Reward Chests: NISZCZYCIEL niszczy każdą przeszkodę z explosion.
+        if (this.destroyerActive) {
+          this.destroyObstacleWithExplosion(o);
+          return true;
+        }
         if (powerUpManager.isActive(POWER_UP_TYPES.SPEED)) {
           // SPEED = invulnerable, niszcz przeszkodę i kontynuuj.
           o.destroy();
@@ -944,6 +954,105 @@ export class GameScene extends Phaser.Scene {
     this.speedTrail.setDepth(this.player.depth - 1);
   }
 
+  // === Sesja Reward Chests: pending reward apply + giant/destroyer modes ===
+
+  applyPendingReward() {
+    const pending = RewardStore.getPending();
+    if (!pending) return;
+    if (pending.powerUpType) {
+      powerUpManager.activate(pending.powerUpType);
+      this.applyPowerUpEffect(pending.powerUpType);
+    }
+    if (pending.modType === 'giant') {
+      this.activateGiantMode();
+    } else if (pending.modType === 'destroyer') {
+      this.activateDestroyerMode();
+    }
+    RewardStore.clearPending(); // one-shot
+  }
+
+  activateGiantMode() {
+    if (!this.player) return;
+    this.giantActive = true;
+    // Save oryginalnych body wymiarów ŻEBY hitbox został normalny.
+    if (this.player.body) {
+      this._giantOrigW = this.player.body.width;
+      this._giantOrigH = this.player.body.height;
+    }
+    const baseScale = this.player.scaleX || 1;
+    this._giantBaseScale = baseScale;
+    this.player.setScale(baseScale * 1.4);
+    // Phaser arcade body skalowanie: explicitly setSize żeby hitbox został oryginalny.
+    if (this.player.body && this._giantOrigW) {
+      this.player.body.setSize(this._giantOrigW, this._giantOrigH);
+    }
+    this.player.setTint(0xffa500);
+    this.showModeToast('🦣 GIGANT', 'Postac +40%, hitbox normalny');
+  }
+
+  activateDestroyerMode() {
+    this.destroyerActive = true;
+    if (this.player) this.player.setTint(0xff3300);
+    this.showModeToast('💥 NISZCZYCIEL', 'Niszczy wszystkie przeszkody!');
+  }
+
+  showModeToast(label, description) {
+    const toast = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 100).setDepth(99999);
+    const bg = this.add.rectangle(0, 0, 500, 100, 0xff6b00, 0.95).setStrokeStyle(4, 0xffffff);
+    const labelText = this.add.text(0, -16, label, {
+      fontSize: '32px',
+      fontFamily: 'Arial Black, sans-serif',
+      color: '#ffffff',
+      stroke: '#000',
+      strokeThickness: 4,
+    }).setOrigin(0.5);
+    const descText = this.add.text(0, 22, description, {
+      fontSize: '18px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      stroke: '#000',
+      strokeThickness: 2,
+    }).setOrigin(0.5);
+    toast.add([bg, labelText, descText]);
+    toast.setScale(0);
+    this.tweens.add({ targets: toast, scale: 1.0, duration: 300, ease: 'Back.easeOut' });
+    this.time.delayedCall(2500, () => {
+      this.tweens.add({
+        targets: toast, alpha: 0, duration: 400,
+        onComplete: () => toast.destroy(),
+      });
+    });
+  }
+
+  destroyObstacleWithExplosion(obstacle) {
+    const ox = obstacle.x;
+    const oy = obstacle.y;
+    const colors = [0xff6b00, 0xff3300, 0xffaa00, 0xffffff];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const distance = Phaser.Math.Between(40, 80);
+      const tx = ox + Math.cos(angle) * distance;
+      const ty = oy + Math.sin(angle) * distance;
+      const particle = this.add.circle(ox, oy, Phaser.Math.Between(4, 7), colors[i % colors.length])
+        .setDepth(99998);
+      this.tweens.add({
+        targets: particle,
+        x: tx, y: ty,
+        alpha: 0, scale: 0.3,
+        duration: 400,
+        ease: 'Cubic.easeOut',
+        onComplete: () => particle.destroy(),
+      });
+    }
+    const flash = this.add.circle(ox, oy, 30, 0xffaa00, 0.6).setDepth(99997);
+    this.tweens.add({
+      targets: flash, scale: 2.5, alpha: 0,
+      duration: 200, onComplete: () => flash.destroy(),
+    });
+    this.cameras.main.shake(80, 0.003);
+    try { obstacle.destroy(); } catch (e) { /* ignore */ }
+  }
+
   createHeartFloatAnimation() {
     // Serce pojawia się na pozycji gracza, leci do HUD lives (lewy-góra).
     const heart = this.add.text(this.player.x, this.player.y - 40, '❤️', {
@@ -1091,6 +1200,13 @@ export class GameScene extends Phaser.Scene {
     if (this.shieldAura) { try { this.shieldAura.destroy(); } catch (e) { /* ignore */ } this.shieldAura = null; }
     if (this.magnetRing) { try { this.magnetRing.destroy(); } catch (e) { /* ignore */ } this.magnetRing = null; }
     if (this.speedTrail) { try { this.speedTrail.destroy(); } catch (e) { /* ignore */ } this.speedTrail = null; }
+    // Sesja Reward Chests: reset modów na shutdown sceny.
+    this.destroyerActive = false;
+    this.giantActive = false;
+    if (this.player) {
+      try { this.player.clearTint(); } catch (e) { /* ignore */ }
+      if (this._giantBaseScale) this.player.setScale(this._giantBaseScale);
+    }
     if (this.parallax) { this.parallax.destroy(); this.parallax = null; }
     if (this.inputHandler) { this.inputHandler.destroy(); this.inputHandler = null; }
     if (this.saveStateTimer) { this.saveStateTimer.remove(); this.saveStateTimer = null; }
