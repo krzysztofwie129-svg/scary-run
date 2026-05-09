@@ -432,7 +432,7 @@ export const NAME_ALLOWED_CHARS_REGEX = /^[A-Za-z0-9 ]*$/;
 
 // Leaderboard.
 export const LEADERBOARD_KEY = 'scary_run_leaderboard_v1';
-export const LEADERBOARD_MAX_ENTRIES = 10;
+export const LEADERBOARD_MAX_ENTRIES = 50;
 
 // HUD.
 export const HUD_LIFE_ICON_SIZE = 28;

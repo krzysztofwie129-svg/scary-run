@@ -21,6 +21,7 @@
 
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { sessionManager } from '../utils/SessionManager.js';
+import { Leaderboard } from '../utils/Leaderboard.js';
 
 const FONT_TITLE = '"Luckiest Guy", "Bangers", "Arial Black", sans-serif';
 const FONT_BIG = '"Baloo 2", "Fredoka", "Arial Black", sans-serif';
@@ -69,10 +70,14 @@ export class DeathScene extends Phaser.Scene {
     if (this.textures.exists('death_screen_bg')) {
       this.add.image(cx, GAME_HEIGHT / 2, 'death_screen_bg').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(0);
     } else {
-      // Fallback: solid dark BG.
       this.add.rectangle(cx, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x1a0a2e).setDepth(0);
     }
     this._duckMusic();
+
+    // Submit do globalnego leaderboardu — fire-and-forget. W "1 życie 1 szansa"
+    // każda śmierć/boss-defeat ląduje tu (NIE w GameOverScene), więc to JEDYNE
+    // miejsce gdzie wyniki idą do top 50.
+    this._submitLeaderboard();
 
     // WRÓĆ button (lewy górny) → MenuScene. Ten sam asset co w ShopScene.
     if (this.textures.exists('shop_btn_back')) {
@@ -298,6 +303,20 @@ export class DeathScene extends Phaser.Scene {
   _openRanking() {
     this._restoreMusic();
     this.scene.start('LeaderboardScene');
+  }
+
+  _submitLeaderboard() {
+    try {
+      const player = sessionManager.currentPlayer();
+      if (!player) return;
+      const name = (player.name || 'ANON').toString();
+      const score = Math.floor(this.payload.rankingScore || 0);
+      const level = Math.max(1, this.payload.level || this.payload.fromLevel || 1);
+      const coins = Math.floor(player.coins || 0);
+      if (score <= 0) return;
+      Leaderboard.addAsync({ name, score, level, coins })
+        .catch(() => { /* fallback inside util */ });
+    } catch (e) { /* ignore */ }
   }
 
   _duckMusic() {

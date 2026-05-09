@@ -17,7 +17,7 @@
 // utrata wpisu. OK dla low-traffic leaderboard gry indie.
 
 const KV_KEY = 'leaderboard';
-const MAX_ENTRIES = 10;
+const MAX_ENTRIES = 50;
 const NAME_MAX = 12;
 const SCORE_MAX = 10_000_000;
 
