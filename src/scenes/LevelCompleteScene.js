@@ -18,6 +18,8 @@ import { Haptic } from '../utils/Haptic.js';
 import { AchievementManager } from '../utils/AchievementManager.js';
 import { StarRating } from '../utils/StarRating.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
+import { ScoreSystem } from '../systems/ScoreSystem.js';
+import { RankingSystem } from '../systems/RankingSystem.js';
 
 export class LevelCompleteScene extends Phaser.Scene {
   constructor() {
@@ -44,6 +46,15 @@ export class LevelCompleteScene extends Phaser.Scene {
     this.stars = stars;
     this.nextReady = false;
     const levelNumber = this.completedLevelIdx + 1;
+
+    // GameScene.handleFinishLineCrossed już zapisał per-level bestScore z
+    // poprawną delta levelu. NIE liczymy tu ponownie z cumulative player.score
+    // — nadpisałoby to GameScene's record (większy cumulative > mniejsza delta).
+    // Zostawiamy tylko unlock następnego levelu (idempotent).
+    {
+      RankingSystem.unlock(levelNumber + 1);
+      this._runResult = { rankingScore: 0, isNewRecord: false };
+    }
 
     this.createBackground();
     this.time.delayedCall(150, () => this.spawnConfetti());

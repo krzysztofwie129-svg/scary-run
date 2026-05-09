@@ -5,12 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Scary Run" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#1a0a2e" />
 
   <!-- PWA — Vite PWA plugin sam wstawia <link rel="manifest"> i SW register. -->
+  <!-- iOS apple-touch-icon — iOS NIE czyta manifest.json dla ikon, wymaga
+       tych linków bezpośrednio w HTML (per rozmiar + fallback bez sizes). -->
+  <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+
+  <!-- Google Fonts dla DeathScene redesign (Luckiest Guy / Baloo 2 / Montserrat / Nunito Sans). -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@800&family=Montserrat:wght@800&family=Nunito+Sans:wght@600&display=swap" rel="stylesheet">
 
   <!-- SEO -->
   <meta name="description" content="Scary Run to gra runner w stylu halloween. Tap UP żeby skoczyć, tap DOWN żeby uniknąć latających dyni. Multiplayer 1-4 graczy, 4 levele, ranking top 10." />

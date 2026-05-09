@@ -362,7 +362,7 @@ export const HI_TOTAL_SCORE_KEY = 'scary_run_hi_total_score';
 // === Sesja 5: życia, multiplayer, leaderboard ===
 
 // Życia. Strata = restart tego samego levelu z 1 życiem mniej (NIE od początku).
-export const INITIAL_LIVES = 5;
+export const INITIAL_LIVES = 1; // 1 życie 1 szansa.
 export const MAX_LIVES = 9;
 export const COINS_PER_EXTRA_LIFE = 50;
 export const LIFE_LOST_INVULN_MS = 0;

@@ -5,6 +5,7 @@ node_modules/
 
 # Build output
 dist/
+dist-prod/
 .vite/
 
 # Logs
@@ -36,3 +37,4 @@ _assets-raw/
 
 # Project session prompts (internal notes)
 _session_*.md
+_analiza_*.md

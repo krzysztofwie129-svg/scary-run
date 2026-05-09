@@ -14,10 +14,17 @@ import {
 } from '../config.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
+import { GameStateStore } from '../utils/GameStateStore.js';
 
 export class CharSelectScene extends Phaser.Scene {
   constructor() {
     super({ key: 'CharSelectScene' });
+  }
+
+  init(data) {
+    // Tryb "POSTAĆ" z menu (gdy hasSave) — po wybraniu postaci nie zaczynamy
+    // od L1, tylko kontynuujemy ostatni level z save'a.
+    this.resumeFromSave = !!data?.resumeFromSave;
   }
 
   create() {
@@ -154,8 +161,19 @@ export class CharSelectScene extends Phaser.Scene {
   confirm() {
     if (this.selectedIndex < 0) return; // nic nie wybrane → nic nie rób
     const charKey = CHARACTER_INFO[this.selectedIndex].key;
-    sessionManager.setCharacter(charKey);
     this.audioManager?.playSfx('click');
+
+    if (this.resumeFromSave) {
+      // POSTAĆ flow: restoruj save (level + score), potem nadpisz character.
+      const data = GameStateStore.load();
+      if (data && sessionManager.deserialize(data.session)) {
+        if (typeof data.currentLevel === 'number') {
+          sessionManager.currentPlayer().level = data.currentLevel;
+        }
+      }
+    }
+
+    sessionManager.setCharacter(charKey);
     this.scene.start('GameScene');
   }
 }

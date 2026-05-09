@@ -120,11 +120,12 @@ export class PowerUpManager {
     });
   }
 
-  /** Wybór losowy ważony. excludeTypes — typy aktualnie aktywne (nie spawnuj duplikatu). */
+  /** Wybór losowy ważony. excludeTypes — typy aktualnie aktywne (nie spawnuj duplikatu).
+   *  HEART wykluczony zawsze (1 życie 1 szansa = nie ma extra żyć nigdzie). */
   static randomType(excludeTypes = []) {
     const candidates = Object.entries(POWER_UP_CONFIG)
-      .filter(([type]) => !excludeTypes.includes(type));
-    if (candidates.length === 0) return POWER_UP_TYPES.HEART;
+      .filter(([type]) => type !== POWER_UP_TYPES.HEART && !excludeTypes.includes(type));
+    if (candidates.length === 0) return POWER_UP_TYPES.MAGNET;
     const total = candidates.reduce((s, [, c]) => s + c.weight, 0);
     let r = Math.random() * total;
     for (const [type, c] of candidates) {

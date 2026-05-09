@@ -5,12 +5,13 @@
 // dostosowane do naszego SessionManager: coins/diamonds/score (NIE totalCoins).
 
 import { POWER_UP_TYPES } from './PowerUpManager.js';
+import { addCoins, addDiamonds } from './storage.js';
 
 export const REWARD_TYPES = {
   COINS_50:        'coins_50',
   DIAMONDS_5:      'diamonds_5',
   POINTS_200:      'points_200',
-  HEART:           'heart',
+  // HEART removed (1 życie 1 szansa).
   NEXT_MAGNET:     'next_magnet',
   NEXT_SHIELD:     'next_shield',
   NEXT_SPEED:      'next_speed',
@@ -35,11 +36,7 @@ export const REWARDS = {
     spriteKey: null, spriteFallback: '⭐', color: 0xffd93c,
     weight: 15, instant: true,
   },
-  [REWARD_TYPES.HEART]: {
-    label: '+1 ŻYCIE', description: 'Extra życie!',
-    spriteKey: null, spriteFallback: '❤️', color: 0xff5757,
-    weight: 10, instant: true,
-  },
+  // HEART reward usunięty (1 życie 1 szansa — bonus życia bez efektu).
   [REWARD_TYPES.NEXT_MAGNET]: {
     label: 'MAGNES START', description: 'Nast. level z magnesem!',
     spriteKey: null, spriteFallback: '🧲', color: 0xff6b9d,
@@ -105,18 +102,17 @@ export const RewardManager = {
       case REWARD_TYPES.COINS_50:
         player.coins = (player.coins || 0) + 50;
         player.score = (player.score || 0) + 500;
+        addCoins(50); // persistent wallet — chest reward zostaje po śmierci.
         return '+50 monet, +500 pkt';
       case REWARD_TYPES.DIAMONDS_5:
         player.diamonds = (player.diamonds || 0) + 5;
         player.score = (player.score || 0) + 60;
+        addDiamonds(5); // persistent wallet.
         return '+5 diam., +60 pkt';
       case REWARD_TYPES.POINTS_200:
         player.score = (player.score || 0) + 200;
         return '+200 pkt';
-      case REWARD_TYPES.HEART:
-        // Spec: cap przy 5 dla nagrody HEART (oddzielnie od MAX_LIVES).
-        player.lives = Math.min((player.lives || 0) + 1, 5);
-        return '+1 zycie';
+      // HEART case usunięty — reward type wycofany.
       default:
         return null;
     }

@@ -21,6 +21,7 @@ import { FullscreenManager } from '../utils/FullscreenManager.js';
 import { InstallPromptManager } from '../utils/InstallPromptManager.js';
 import { PlayerStore } from '../utils/PlayerStore.js';
 import { StatsTracker } from '../utils/StatsTracker.js';
+import { getWallet, getRankingScore } from '../utils/storage.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -134,16 +135,82 @@ export class MenuScene extends Phaser.Scene {
         .setDisplaySize(540, 180);
     }
 
-    // 4. Stat bars (placeholder) — top-left.
+    // 4. Stat bars (placeholder) — top-left. Przesunięte w dół żeby zmieścić
+    // PKT pill nad nimi (3-wierszowy stack: PKT / coins / diamonds).
     if (this.textures.exists('menu_stat_bars')) {
-      this.add.image(150, 75, 'menu_stat_bars')
+      this.add.image(150, 110, 'menu_stat_bars')
         .setDisplaySize(260, 130);
+      const _wallet = getWallet();
+      const _statTextStyle = {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '20px',
+        color: '#ffffff',
+        stroke: '#000',
+        strokeThickness: 4,
+      };
+      this.add.text(160, 84, String(_wallet.coins ?? 0), _statTextStyle).setOrigin(0.5).setDepth(10);
+      this.add.text(160, 138, String(_wallet.diamonds ?? 0), _statTextStyle).setOrigin(0.5).setDepth(10);
+
+      // PKT pill — Phaser-drawn, styl matchujący baked menu_stat_bars
+      // (rounded pill, czarne wnętrze, purple ramka). Pokazuje ranking_score.
+      const _pktX = 150, _pktY = 30, _pktW = 240, _pktH = 38;
+      const _pktBg = this.add.graphics().setDepth(8);
+      _pktBg.fillStyle(0x140422, 0.95);
+      _pktBg.fillRoundedRect(_pktX - _pktW / 2, _pktY - _pktH / 2, _pktW, _pktH, 19);
+      _pktBg.lineStyle(3, 0x6b4ea0, 1);
+      _pktBg.strokeRoundedRect(_pktX - _pktW / 2, _pktY - _pktH / 2, _pktW, _pktH, 19);
+      this.add.text(_pktX - _pktW / 2 + 26, _pktY, 'PKT', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '16px',
+        color: '#ffd93c',
+        stroke: '#000',
+        strokeThickness: 3,
+      }).setOrigin(0, 0.5).setDepth(10);
+      this.add.text(_pktX + _pktW / 2 - 14, _pktY, String(getRankingScore()), {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '20px',
+        color: '#ffffff',
+        stroke: '#000',
+        strokeThickness: 4,
+      }).setOrigin(1, 0.5).setDepth(10);
     }
 
     // 5. Icons row (placeholder) — top-right.
     if (this.textures.exists('menu_icons_row')) {
       this.add.image(GAME_WIDTH - 200, 70, 'menu_icons_row')
         .setDisplaySize(360, 120);
+    }
+
+    // SKLEP button — image z death_screen mockup'a (sklep kiosk + "SKLEP").
+    // Pozycja: centrowany pod sekcją diamentu w stat_bars (cały dolny bar).
+    const shopBtnX = 150; // = stat_bars center X
+    const shopBtnY = 205; // przesunięte z 175 — stat_bars przesunięte w dół o 35.
+    const shopBtnW = 180;
+    const shopBtnH = 50;
+    if (this.textures.exists('menu_btn_shop')) {
+      const shopBtn = this.add.image(shopBtnX, shopBtnY, 'menu_btn_shop').setDisplaySize(shopBtnW, shopBtnH);
+      const baseScaleX = shopBtn.scaleX;
+      const baseScaleY = shopBtn.scaleY;
+      shopBtn.setInteractive({ useHandCursor: true });
+      shopBtn.on('pointerover', () => shopBtn.setScale(baseScaleX * 1.05, baseScaleY * 1.05));
+      shopBtn.on('pointerout', () => shopBtn.setScale(baseScaleX, baseScaleY));
+      shopBtn.on('pointerup', () => {
+        this.audioManager?.playSfx('click');
+        this.scene.start('ShopScene');
+      });
+    } else {
+      // Fallback Phaser graphics jeśli asset nie wczytany.
+      const shopBg = this.add.rectangle(shopBtnX, shopBtnY, shopBtnW, shopBtnH, 0x3a1d5a, 0.95).setStrokeStyle(2, 0xffd93c);
+      const shopLabel = this.add.text(shopBtnX, shopBtnY, '🛒 SKLEP', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '20px',
+        color: '#ffd93c',
+      }).setOrigin(0.5);
+      shopBg.setInteractive({ useHandCursor: true });
+      shopBg.on('pointerup', () => {
+        this.audioManager?.playSfx('click');
+        this.scene.start('ShopScene');
+      });
     }
 
     // Build buttons (zależnie od hasSave).
@@ -188,13 +255,17 @@ export class MenuScene extends Phaser.Scene {
 
     this.buttons = [];
     const items = [];
-    if (hasSave) items.push({ key: 'menu_btn_kontynuuj', action: 'continue' });
-    items.push({ key: 'menu_btn_graj', action: 'play' });
-    items.push({ key: 'menu_btn_multi', action: 'multi' });
+    if (hasSave) {
+      // Save istnieje: tylko KONTYNUUJ (gracz już wybrał postać na początku gry).
+      items.push({ key: 'menu_btn_kontynuuj', action: 'continue' });
+    } else {
+      items.push({ key: 'menu_btn_graj', action: 'play' });
+    }
     items.push({ key: 'menu_btn_ranking', action: 'ranking' });
 
     const totalH = items.length * btnH + (items.length - 1) * 5;
-    const startY = (GAME_HEIGHT - totalH) / 2 + btnH / 2 + 35;
+    // Obniżenie sekcji od logo po usunięciu MULTI (offset 35 → 75 = +40px niżej).
+    const startY = (GAME_HEIGHT - totalH) / 2 + btnH / 2 + 75;
 
     items.forEach((item, idx) => {
       const cy = startY + idx * (btnH + 5);
@@ -224,6 +295,20 @@ export class MenuScene extends Phaser.Scene {
         sessionManager.setupSinglePlayer(savedName || '');
         if (savedName) {
           this.scene.start('CharSelectScene');
+        } else {
+          this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: 1 });
+        }
+        break;
+      }
+      case 'character': {
+        // POSTAĆ button (wyświetlany gdy hasSave) — wybór postaci, start gry kontynuuj.
+        FullscreenManager.enter();
+        FullscreenManager.keepAwake();
+        // NIE clear save'a — CharSelectScene użyje go po wyborze.
+        const savedName = PlayerStore.getName();
+        sessionManager.setupSinglePlayer(savedName || '');
+        if (savedName) {
+          this.scene.start('CharSelectScene', { resumeFromSave: true });
         } else {
           this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: 1 });
         }

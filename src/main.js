@@ -3,6 +3,14 @@
 // OrientationGuard pilnuje czy gracz na telefonie + landscape — jeśli nie,
 // pokazuje OrientationLockScene.
 
+import { initSentry } from './utils/SentryInit.js';
+import { attachGlobalErrorHandlers } from './utils/ErrorOverlay.js';
+import { initialLoad as playerSyncInitialLoad } from './utils/PlayerSync.js';
+initSentry();
+attachGlobalErrorHandlers();
+// Hybrid backup gracza — async, fire-and-forget. Phaser startuje równolegle.
+playerSyncInitialLoad();
+
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, PHYSICS_GRAVITY } from './config.js';
 import { orientationGuard } from './utils/OrientationGuard.js';
@@ -26,6 +34,8 @@ import InstallPromptScene from './scenes/InstallPromptScene.js';
 import { ChestSelectScene } from './scenes/ChestSelectScene.js';
 import { BossFightScene } from './scenes/BossFightScene.js';
 import { BossChoiceScene } from './scenes/BossChoiceScene.js';
+import { DeathScene } from './scenes/DeathScene.js';
+import { ShopScene } from './scenes/ShopScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -76,6 +86,7 @@ const config = {
     PlayerTurnSplashScene,
     GameScene,
     PauseScene,
+    DeathScene,
     GameOverScene,
     LevelCompleteScene,
     ChestSelectScene,
@@ -83,6 +94,7 @@ const config = {
     BossFightScene,
     GameCompleteScene,
     LeaderboardScene,
+    ShopScene,
     SessionResultsScene,
     OrientationLockScene,
   ],

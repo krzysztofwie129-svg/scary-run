@@ -45,6 +45,13 @@ import { FinishLine } from '../entities/FinishLine.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { StatsTracker } from '../utils/StatsTracker.js';
+import { addCoins, addDiamonds } from '../utils/storage.js';
+import { ScoreSystem } from '../systems/ScoreSystem.js';
+import { RankingSystem } from '../systems/RankingSystem.js';
+import { getEquippedSkinSync, getActivePowerupSync, consumePowerupSync } from '../data/playerStorage.js';
+import { getSkinById, getEffectiveCharKey, getEffectiveTint, getEffectiveAlpha } from '../data/skins.js';
+import { getPowerupById } from '../data/powerups.js';
+// DeathScene rejestrowane w main.js (scene config) — bez lazy import.
 import { formatScore, formatNumber } from '../utils/format.js';
 import { playFanfare } from '../utils/SuccessFanfare.js';
 import { InputHandler } from '../utils/InputHandler.js';
@@ -99,6 +106,14 @@ export class GameScene extends Phaser.Scene {
 
     StatsTracker.track('levelStart', { level: this.currentLevel + 1 });
 
+    // Snapshot do delta walleta (pickups w tym levelu).
+    const _player = sessionManager.currentPlayer();
+    this._levelStartCoins = _player?.coins || 0;
+    this._levelStartDiamonds = _player?.diamonds || 0;
+    // Snapshot score → HUD wyświetla tylko delta tego levelu (od zera).
+    // Underlying player.score wciąż akumuluje dla rankingu/score multiplier'a.
+    this._levelStartScore = _player?.score || 0;
+
     this.audioManager = new AudioManager(this);
     if (lvl.musicVolume === 0) {
       this.audioManager.stopMusic();
@@ -112,9 +127,24 @@ export class GameScene extends Phaser.Scene {
     this.parallax = new ParallaxBackground(this, layerKeys, lvl.parallaxSpeeds);
 
     this.ground = new Ground(this);
-    this.player = new Player(this, PLAYER_START_X, PLAYER_START_Y, this.selectedChar);
+
+    // Apply equipped skin: full-sprite swap (char04-07), tint, lub default.
+    let _effectiveCharKey = this.selectedChar;
+    let _skinTint = null;
+    let _skinAlpha = 1.0;
+    try {
+      const _skin = getSkinById(getEquippedSkinSync());
+      _effectiveCharKey = getEffectiveCharKey(_skin, this.selectedChar);
+      _skinTint = getEffectiveTint(_skin);
+      _skinAlpha = getEffectiveAlpha(_skin);
+    } catch (e) { /* ignore — skin opcjonalny */ }
+
+    this.player = new Player(this, PLAYER_START_X, PLAYER_START_Y, _effectiveCharKey);
     this.player.setDepth(100);
     this.physics.add.collider(this.player, this.ground.group);
+
+    if (_skinTint != null) this.player.setTint(_skinTint);
+    if (_skinAlpha !== 1.0) this.player.setAlpha(_skinAlpha);
 
     this.obstacles = this.add.group();
     this.coins = this.add.group();
@@ -129,6 +159,7 @@ export class GameScene extends Phaser.Scene {
     this.destroyerActive = false;
     this.giantActive = false;
     this.applyPendingReward();
+    this.applyShopActivePowerup();
 
     this.ensureSparkTexture();
     this.particles = this.add.particles(0, 0, SPARK_TEXTURE_KEY, {
@@ -161,16 +192,25 @@ export class GameScene extends Phaser.Scene {
 
     // === Sesja P1: Pause + Save + Tab Blur ===
 
-    // PAUSE button — prawy górny róg, pod Score (Score Y=16, Pause Y=80
-    // żeby nie kolidowały).
-    const pauseBtn = this.add.text(GAME_WIDTH - 30, 80, '⏸', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '40px',
-      color: '#ffffff',
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      padding: { x: 12, y: 6 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true })
-      .setDepth(10000).setScrollFactor(0);
+    // PAUSE button — image-based btn_pause (purple-gold round) lub fallback Phaser text.
+    let pauseBtn;
+    if (this.textures.exists('btn_pause')) {
+      pauseBtn = this.add.image(GAME_WIDTH - 30, 80, 'btn_pause')
+        .setOrigin(1, 0)
+        .setDisplaySize(60, 60)
+        .setScrollFactor(0)
+        .setDepth(10000)
+        .setInteractive({ useHandCursor: true });
+    } else {
+      pauseBtn = this.add.text(GAME_WIDTH - 30, 80, '⏸', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '40px',
+        color: '#ffffff',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        padding: { x: 12, y: 6 },
+      }).setOrigin(1, 0).setInteractive({ useHandCursor: true })
+        .setDepth(10000).setScrollFactor(0);
+    }
     pauseBtn.on('pointerdown', () => this.pauseGame());
 
     // Auto-save state co 2 sekundy.
@@ -245,9 +285,6 @@ export class GameScene extends Phaser.Scene {
     };
 
     // Lewy górny: ikony serc — DYNAMICZNE.
-    // Stary kod tworzył MAX_LIVES (5) ikon i wyszarzał nieaktywne. Gracze
-    // mylili to z "max 5 życ" zamiast "aktualnie 3 życia". Teraz tylko
-    // aktywne czerwone serca; refreshLivesHUD destroy'uje + recreate.
     this.lifeIcons = [];
     this.refreshLivesHUD();
 
@@ -255,7 +292,6 @@ export class GameScene extends Phaser.Scene {
     this.timeText = this.add.text(20, 95, 'Time: 0:30', subStyle).setDepth(1000).setScrollFactor(0);
 
     // Środek górny: animowana ikona coin (sprite) + licznik, diament + licznik.
-    // Coin spin anim — tworzymy raz, używamy w Coin.js i tutaj.
     if (!this.anims.exists('coin_spin')) {
       this.anims.create({
         key: 'coin_spin',
@@ -267,7 +303,7 @@ export class GameScene extends Phaser.Scene {
     }
     const cx = GAME_WIDTH / 2;
     this.coinIcon = this.add.sprite(cx - 100, 28, 'coin_00').setOrigin(0.5);
-    const coinScale = HUD_COIN_ICON_SIZE / 100; // textury są ~100x100
+    const coinScale = HUD_COIN_ICON_SIZE / 100;
     this.coinIcon.setScale(coinScale);
     this.coinIcon.setDepth(1000).setScrollFactor(0);
     this.coinIcon.play('coin_spin');
@@ -286,7 +322,7 @@ export class GameScene extends Phaser.Scene {
 
     // Prawy górny: SCORE + (jeśli MP) imię gracza.
     const rightX = GAME_WIDTH - 20;
-    this.scoreText = this.add.text(rightX, 16, `Score: ${formatScore(player.score)}`, { ...fontStyle, color: '#ffe066' })
+    this.scoreText = this.add.text(rightX, 16, `Score: ${formatScore(0)}`, { ...fontStyle, color: '#ffe066' })
       .setOrigin(1, 0).setDepth(1000).setScrollFactor(0);
     if (sessionManager.isMultiplayer) {
       this.add.text(rightX, 50, `${player.name} (P${sessionManager.currentPlayerIndex + 1})`, subStyle)
@@ -367,19 +403,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   refreshLivesHUD() {
-    // Destroy old icons.
     if (this.lifeIcons) {
       for (const icon of this.lifeIcons) {
         try { icon.destroy(); } catch (e) { /* ignore */ }
       }
     }
     this.lifeIcons = [];
-    const lives = sessionManager.currentPlayer().lives;
+    // 1 życie 1 szansa: zawsze 1 ikona, żaden power-up tego nie zmienia.
+    const lives = 1;
     for (let i = 0; i < lives; i++) {
       const x = 24 + i * (HUD_LIFE_ICON_SIZE + 6);
       const heart = this.add.image(x, 30, 'life').setOrigin(0, 0.5);
       heart.setDisplaySize(HUD_LIFE_ICON_SIZE, HUD_LIFE_ICON_SIZE);
-      heart.setTint(0xff3030); // jasna czerwień (nadpisuje natywny kolor textury)
+      heart.setTint(0xff3030);
       heart.setDepth(1000).setScrollFactor(0);
       this.lifeIcons.push(heart);
     }
@@ -393,11 +429,8 @@ export class GameScene extends Phaser.Scene {
     this.timeText.setText(`Time: ${m}:${s.toString().padStart(2, '0')}`);
     this.coinCountText.setText(formatNumber(player.coins));
     this.diamondCountText.setText(formatNumber(player.diamonds));
-    this.scoreText.setText(`Score: ${formatScore(player.score)}`);
-    // Refresh hearts tylko gdy zmieni się liczba (drogie — destroy+create).
-    if (this.lifeIcons.length !== player.lives) {
-      this.refreshLivesHUD();
-    }
+    this.scoreText.setText(`Score: ${formatScore(player.score - (this._levelStartScore || 0))}`);
+    // 1 życie 1 szansa: HUD zawsze 1 ikona, refresh nie jest potrzebny po init.
 
     const progress = 1 - Math.max(0, timeRemaining) / this.lvl.duration;
     this.progressBar.clear();
@@ -714,6 +747,7 @@ export class GameScene extends Phaser.Scene {
 
     if (isDiamond) {
       sessionManager.addDiamond();
+      addDiamonds(1); // persistent wallet (live add).
       this.audioManager.playSfx('coin', { rate: DIAMOND_PICKUP_PITCH });
       this.emitParticles(x, y, PARTICLE_DIAMOND_COLOR, PARTICLE_DIAMOND_COUNT);
       Haptic.diamond();
@@ -725,6 +759,7 @@ export class GameScene extends Phaser.Scene {
         const r = sessionManager.addCoin();
         if (r.extraLife) result.extraLife = true;
       }
+      addCoins(multiplier); // persistent wallet (live add, double=2).
       this.audioManager.playSfx('coin', { rate: COIN_PICKUP_PITCH });
       this.emitParticles(x, y, PARTICLE_COIN_COLOR, PARTICLE_COIN_COUNT);
       // Polish: floating "+2" gdy DOUBLE_COINS — gracz widzi że bonus działa.
@@ -976,6 +1011,26 @@ export class GameScene extends Phaser.Scene {
     RewardStore.clearPending(); // one-shot
   }
 
+  /** Sesja shop power-ups: gracz kupił/ustawił aktywny power-up w sklepie.
+   *  Na start GameScene konsumujemy 1 sztukę i aktywujemy efekt (przez tę
+   *  samą drogę co chest pending reward — powerUpManager.activate +
+   *  applyPowerUpEffect). Boss fight nie używa tego flow. */
+  applyShopActivePowerup() {
+    try {
+      const activeId = getActivePowerupSync();
+      if (!activeId) return;
+      const def = getPowerupById(activeId);
+      if (!def || !def.managerType) return;
+      if (def.managerType === 'heart') return; // 1 życie 1 szansa — heart nigdy.
+      const consumed = consumePowerupSync(activeId);
+      if (!consumed) return;
+      powerUpManager.activate(def.managerType);
+      this.applyPowerUpEffect(def.managerType);
+    } catch (e) {
+      console.warn('[GameScene] applyShopActivePowerup error:', e?.message);
+    }
+  }
+
   activateGiantMode() {
     if (!this.player) return;
     this.giantActive = true;
@@ -1143,7 +1198,15 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    StatsTracker.track('levelComplete', { level: (sessionManager.currentPlayer()?.level ?? 0) + 1 });
+    {
+      const _lvlNum = (sessionManager.currentPlayer()?.level ?? 0) + 1;
+      StatsTracker.track('levelComplete', { level: _lvlNum });
+      // Run score = (DELTA tego levelu) × level_number — per-level scoring.
+      const _runScore = ScoreSystem.finalizeRunScore(_lvlNum, this._levelStartScore || 0);
+      RankingSystem.recordRun(_lvlNum, _runScore);
+      RankingSystem.unlock(_lvlNum + 1);
+      console.log(`[ScoreSystem] L${_lvlNum} complete: levelBase=${ScoreSystem.getLevelBaseScore(this._levelStartScore || 0)} × ${_lvlNum} = ${_runScore}`);
+    }
 
     // Po FINISH_SLOWMO_DURATION + 300ms przejście do LevelComplete.
     // advanceLevel() przeniesione do LevelComplete.create — tam ekran pokazuje
@@ -1159,6 +1222,7 @@ export class GameScene extends Phaser.Scene {
         scoreThisLevel: Math.floor(player.score - snap.score),
         coinsThisLevel: player.coins - snap.coins,
         diamondsThisLevel: player.diamonds - snap.diamonds,
+        levelStartScore: this._levelStartScore || 0,
       };
       // player.level jest tym levelem który właśnie ukończono (0-based).
       // V6: boss po KAŻDYM levelu (cycle 10 boss BGs modulo, +15px size per level).
@@ -1200,19 +1264,30 @@ export class GameScene extends Phaser.Scene {
     // więc visualnie wyglądało jak "skip" lub zniknięcie kilku serc naraz.
     this.refreshLivesHUD();
 
-    if (gameOverForPlayer) {
-      // Wszystkie życia stracone — GameOverScene + clear save (sesja P1).
-      GameStateStore.clear();
-      this.time.delayedCall(200, () => this.audioManager.playSfx('gameover', { volume: 0.6 }));
-      this.time.delayedCall(1500, () => {
-        this.scene.start('GameOverScene', { source: 'gameplay' });
+    // 1 życie 1 szansa: każda śmierć → DeathScene. Save zostaje (KONTYNUUJ wraca tu).
+    const _player = sessionManager.currentPlayer();
+    const _lvlNum = (_player?.level ?? 0) + 1;
+    const _runScore = ScoreSystem.finalizeRunScore(_lvlNum, this._levelStartScore || 0);
+    const _coinsGained = (_player?.coins || 0) - (this._levelStartCoins || 0);
+    const _diamondsGained = (_player?.diamonds || 0) - (this._levelStartDiamonds || 0);
+    const _result = RankingSystem.recordRun(_lvlNum, _runScore);
+    RankingSystem.unlock(_lvlNum);
+    RankingSystem.endRun();
+    console.log(`[ScoreSystem] DEATH L${_lvlNum}: levelBase=${ScoreSystem.getLevelBaseScore(this._levelStartScore || 0)} × ${_lvlNum} = ${_runScore}, isNewRecord=${_result.isNewRecord}, ranking=${_result.rankingScore}`);
+
+    this.time.delayedCall(200, () => this.audioManager.playSfx('gameover', { volume: 0.6 }));
+    this.time.delayedCall(1200, () => {
+      this.scene.start('DeathScene', {
+        level: _lvlNum,
+        runScore: _runScore,
+        isNewRecord: _result.isNewRecord,
+        oldScore: _result.oldScore,
+        delta: _result.delta,
+        rankingScore: _result.rankingScore,
+        coinsGained: Math.max(0, _coinsGained),
+        diamondsGained: Math.max(0, _diamondsGained),
       });
-    } else {
-      // Życie tracone, restart tego samego levelu.
-      this.time.delayedCall(1200, () => {
-        this.scene.restart();
-      });
-    }
+    });
   }
 
   cleanup() {

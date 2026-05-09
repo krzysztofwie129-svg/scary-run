@@ -105,17 +105,13 @@ class SessionManager {
   }
 
   /**
-   * Dodaje monetę do bieżącego gracza. Zwraca { extraLife: bool } —
-   * extraLife=true gdy zebrano milestone (co COINS_PER_EXTRA_LIFE) i lives < MAX_LIVES.
+   * Dodaje monetę do bieżącego gracza. Coin milestone extra life USUNIĘTY
+   * (1 życie 1 szansa) — zwracany {extraLife: false} dla compat z istniejącymi callerami.
    */
   addCoin() {
     const p = this.currentPlayer();
     p.coins++;
     p.score += COIN_SCORE;
-    if (p.coins % COINS_PER_EXTRA_LIFE === 0 && p.lives < MAX_LIVES) {
-      p.lives++;
-      return { extraLife: true };
-    }
     return { extraLife: false };
   }
 

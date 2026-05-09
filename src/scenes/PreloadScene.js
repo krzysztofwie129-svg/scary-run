@@ -56,6 +56,27 @@ export class PreloadScene extends Phaser.Scene {
       }
     }
 
+    // Skin full-sprite chary (char04-07) — inna struktura folderów niż char01-03:
+    //   public/assets/characters/Character NN/Png/Character Sprite/Anim/Character-Anim_NN.png
+    // Folder anim CAPITALIZED, file PNG (nie WebP). Klucz tekstur kompatybilny z resztą:
+    //   char04_run_00, char05_idle_05, etc. (Player.setupAnimations buduje frames z tych kluczy).
+    // Roll w nowych charach NIE jest używany w tej fazie (skiny sklepowe), pomijamy.
+    const SKIN_CHAR_NUMS = ['04', '05', '06', '07'];
+    const skinAnimSet = ['idle', 'run', 'jump', 'hit', 'fall'];
+    for (const num of SKIN_CHAR_NUMS) {
+      const charKey = `char${num}`;
+      const basePath = `assets/characters/Character ${num}/Png/Character Sprite`;
+      for (const anim of skinAnimSet) {
+        const count = ANIM_FRAME_COUNTS[anim];
+        const cap = capitalize(anim);
+        for (let i = 0; i < count; i++) {
+          const textureKey = `${charKey}_${anim}_${pad2(i)}`;
+          const url = `${basePath}/${cap}/Character-${cap}_${pad2(i)}.png`;
+          this.load.image(textureKey, url);
+        }
+      }
+    }
+
     // Tła paralaksy.
     this.load.image('bg_layer_00', `${ASSET_PATHS.tileset.background}/layer_00.webp`);
     this.load.image('bg_layer_01', `${ASSET_PATHS.tileset.background}/layer_01.webp`);
@@ -197,6 +218,28 @@ export class PreloadScene extends Phaser.Scene {
     // Reward popup v4 — czysta cyan/blue ornate frame z floodfilled transparency
     // (źródłowy PNG nie miał alpha → biały checkerboard wycięty po konwersji).
     this.load.image('reward_frame_v4', 'assets/ui/reward_frame_v4.webp');
+
+    // DeathScene redesign — pełnoekranowy ornate frame z baked buttons.
+    // v2: placeholder text overpainted (dark purple), checkerboard alpha floodfilled.
+    this.load.image('death_screen_bg', 'assets/ui/death_screen_bg_v2.webp');
+    // Menu SKLEP button — wycięty z death_screen mockup'a (sklep kiosk + "SKLEP").
+    this.load.image('menu_btn_shop', 'assets/ui/menu_btn_shop.webp');
+
+    // HUD redesign — 5 nowych grafik (game_hud_bar, btn_pause, btn_jump, btn_attack, boss_defeat_popup).
+    this.load.image('game_hud_bar', 'assets/ui/game_hud_bar.png');
+    this.load.image('btn_pause', 'assets/ui/btn_pause.png');
+    this.load.image('btn_jump', 'assets/ui/btn_jump.png');
+    this.load.image('btn_attack', 'assets/ui/btn_attack.png');
+    this.load.image('boss_defeat_popup', 'assets/ui/boss_defeat_popup.png');
+
+    // Shop redesign — 7 grafik dla SklepScene.
+    this.load.image('shop_bg', 'assets/ui/shop_bg.png');
+    this.load.image('shop_header_sklep', 'assets/ui/shop_header_sklep.png');
+    this.load.image('shop_btn_back', 'assets/ui/shop_btn_back.png');
+    this.load.image('shop_tab_skiny', 'assets/ui/shop_tab_skiny.png');
+    this.load.image('shop_tab_powerupy', 'assets/ui/shop_tab_powerupy.png');
+    this.load.image('shop_card_unowned', 'assets/ui/shop_card_unowned.png');
+    this.load.image('shop_card_equipped', 'assets/ui/shop_card_equipped.png');
     // Boss BGs — 1 per level (1-10). Cycle gdy level > 10.
     for (let i = 1; i <= 10; i++) {
       const key = `boss_bg_${String(i).padStart(2, '0')}`;

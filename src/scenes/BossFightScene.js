@@ -14,6 +14,8 @@ import {
 import { sessionManager } from '../utils/SessionManager.js';
 import { Haptic } from '../utils/Haptic.js';
 import { StatsTracker } from '../utils/StatsTracker.js';
+import { ScoreSystem } from '../systems/ScoreSystem.js';
+import { RankingSystem } from '../systems/RankingSystem.js';
 
 const BOSS_HP_MAX = 100;
 const PLAYER_DAMAGE = 10;
@@ -74,7 +76,9 @@ export class BossFightScene extends Phaser.Scene {
     // V8: HP scaling per level — L1=100 (10 hits @10dmg), +20 per level (L2=120, L10=280).
     this.bossHPMax = BOSS_HP_MAX + 20 * Math.max(0, this.fromLevel - 1);
     this.bossHP = this.bossHPMax;
-    this.playerHP = sessionManager.currentPlayer()?.lives || INITIAL_LIVES;
+    // Boss fight: 3 życia (gracz może być trafiony 3× zanim umrze).
+    // Niezależne od world INITIAL_LIVES (1) — boss to dedicated arena.
+    this.playerHP = 3;
     this.fightOver = false;
     this.fightStarted = false; // V8: blokuje player attack/jump dopóki bos się nie aktywował (anti-spam-burst).
     this.playerInvulnerable = false; // V2: jump/slide ustawia true podczas trwania.
@@ -112,8 +116,11 @@ export class BossFightScene extends Phaser.Scene {
         .setAlpha(0.85);
     };
 
-    this.jumpButton = makeHintIcon(margin, 'boss_btn_jump');
-    this.attackButton = makeHintIcon(GAME_WIDTH - margin, 'boss_btn_attack');
+    // Nowe assety btn_jump / btn_attack (purple-gold round). Fallback na stare boss_btn_*.
+    const jumpKey = this.textures.exists('btn_jump') ? 'btn_jump' : 'boss_btn_jump';
+    const attackKey = this.textures.exists('btn_attack') ? 'btn_attack' : 'boss_btn_attack';
+    this.jumpButton = makeHintIcon(margin, jumpKey);
+    this.attackButton = makeHintIcon(GAME_WIDTH - margin, attackKey);
   }
 
   createBackground() {
@@ -132,17 +139,9 @@ export class BossFightScene extends Phaser.Scene {
       bg.setDepth(-100);
     }
 
-    // 2. Drewniany ground pomost + 4 pasy drewna + ostry top edge.
-    const groundY = GROUND_Y + 30;
-    const ground = this.add.rectangle(GAME_WIDTH / 2, groundY, GAME_WIDTH, 60, 0x3d2817, 1);
-    ground.setOrigin(0.5).setDepth(-50);
-    for (let i = 0; i < 4; i++) {
-      const lineY = groundY - 20 + i * 12;
-      this.add.rectangle(GAME_WIDTH / 2, lineY, GAME_WIDTH, 1, 0x5c3a1a, 0.6)
-        .setOrigin(0.5).setDepth(-49);
-    }
-    this.add.rectangle(GAME_WIDTH / 2, groundY - 30, GAME_WIDTH, 4, 0x8b5a2b, 1)
-      .setOrigin(0.5).setDepth(-48);
+    // 1px ground stripe (analogicznie jak GameScene Ground.js — max widać tło levelu).
+    this.add.rectangle(GAME_WIDTH / 2, GROUND_Y, GAME_WIDTH, 1, 0x3d2817, 1)
+      .setOrigin(0.5).setDepth(-50);
 
     // 3. Czaszki w 4 rogach (subtle pulsing).
     const skullPositions = [
@@ -799,6 +798,13 @@ export class BossFightScene extends Phaser.Scene {
       this.time.delayedCall(2000, () => {
         // Wracamy do LevelComplete z bonusem +500 dorzuconym do scoreThisLevel.
         const sd = this.fromSceneData || {};
+        // Aktualizuj bestScore TEGO levelu z dodanym bonusem +500 (player.score
+        // już zinkrementowany powyżej). Liczymy delta od levelStartScore.
+        try {
+          const _lss = Number.isFinite(sd.levelStartScore) ? sd.levelStartScore : 0;
+          const _runScore = ScoreSystem.finalizeRunScore(this.fromLevel || 1, _lss);
+          RankingSystem.recordRun(this.fromLevel || 1, _runScore);
+        } catch {}
         this.scene.start('LevelCompleteScene', {
           ...sd,
           scoreThisLevel: (sd.scoreThisLevel || 0) + 500,
@@ -819,23 +825,70 @@ export class BossFightScene extends Phaser.Scene {
     if (this.anims.exists(fallAnim)) this.playerSprite.play(fallAnim);
 
     this.time.delayedCall(500, () => {
-      const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'DEFEAT!\nSPROBUJ ZNOW', {
-        fontSize: '56px',
+      Haptic.gameOver?.();
+
+      // Pre-compute DeathScene transition payload (gracz klika sam — NIE auto-transition).
+      const _gotoDeath = () => {
+        const _player = sessionManager.currentPlayer();
+        const _lvlNum = this.fromLevel || ((_player?.level ?? 0) + 1);
+        const _lss = (this.fromSceneData && Number.isFinite(this.fromSceneData.levelStartScore))
+          ? this.fromSceneData.levelStartScore : 0;
+        const _runScore = ScoreSystem.finalizeRunScore(_lvlNum, _lss);
+        const _result = RankingSystem.recordRun(_lvlNum, _runScore);
+        RankingSystem.unlock(_lvlNum);
+        RankingSystem.endRun();
+        this.scene.start('DeathScene', {
+          context: 'boss',
+          fromLevel: this.fromLevel,
+          sceneData: this.fromSceneData,
+          level: _lvlNum,
+          runScore: _runScore,
+          isNewRecord: _result.isNewRecord,
+          oldScore: _result.oldScore,
+          delta: _result.delta,
+          rankingScore: _result.rankingScore,
+          coinsGained: 0,
+          diamondsGained: 0,
+        });
+      };
+
+      // Overlay półprzezroczysty.
+      const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7)
+        .setOrigin(0.5).setDepth(20000);
+
+      // Container popupu z grafiki + dynamic text + przycisk.
+      const popup = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(20001);
+      const POPUP_W = 700;
+      const POPUP_H = 400;
+      const popupBg = this.add.image(0, 0, 'boss_defeat_popup').setOrigin(0.5).setDisplaySize(POPUP_W, POPUP_H);
+      const titleText = this.add.text(0, -POPUP_H * 0.15, 'Nie udało się!', {
+        fontSize: '52px',
         fontFamily: 'Arial Black, sans-serif',
-        color: '#ff3b3b',
-        stroke: '#000',
+        color: '#ffd93c',
+        stroke: '#000000',
         strokeThickness: 6,
         align: 'center',
-      }).setOrigin(0.5).setScale(0).setDepth(99999);
-      Haptic.gameOver?.();
-      this.tweens.add({ targets: banner, scale: 1.2, duration: 400, ease: 'Back.easeOut' });
+      }).setOrigin(0.5);
+      const btnW = 320;
+      const btnH = 70;
+      const btnY = POPUP_H * 0.18;
+      const btnBg = this.add.rectangle(0, btnY, btnW, btnH, 0x6b4eb8, 1).setStrokeStyle(4, 0xffd93c);
+      const btnText = this.add.text(0, btnY, 'Spróbuj ponownie', {
+        fontSize: '28px',
+        fontFamily: 'Arial Black, sans-serif',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4,
+      }).setOrigin(0.5);
+      btnBg.setInteractive({ useHandCursor: true });
+      btnBg.on('pointerover', () => btnBg.setScale(1.04));
+      btnBg.on('pointerout', () => btnBg.setScale(1.0));
+      btnBg.on('pointerdown', () => btnBg.setScale(0.96));
+      btnBg.on('pointerup', () => { btnBg.setScale(1.0); _gotoDeath(); });
 
-      this.time.delayedCall(2500, () => {
-        // V8: prawdziwy game over po przegranej z bossem (zamiast restart L1).
-        const player = sessionManager.currentPlayer();
-        if (player) player.lives = 0;
-        this.scene.start('GameOverScene');
-      });
+      popup.add([popupBg, titleText, btnBg, btnText]);
+      popup.setScale(0.7);
+      this.tweens.add({ targets: popup, scale: 1, duration: 300, ease: 'Back.easeOut' });
     });
   }
 }

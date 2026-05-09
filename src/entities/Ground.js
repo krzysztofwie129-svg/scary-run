@@ -22,13 +22,12 @@ export class Ground {
   constructor(scene) {
     this.scene = scene;
 
-    // Wypełniony soil pas pod ground line — od GROUND_TOP_Y do GAME_HEIGHT.
-    const soilHeight = GAME_HEIGHT - GROUND_TOP_Y;
+    const SOIL_THICKNESS = 1; // 1px — soil prawie niewidoczny, max widać tło levelu.
     this.soil = scene.add.rectangle(
       GAME_WIDTH / 2,
-      GROUND_TOP_Y + soilHeight / 2,
+      GROUND_TOP_Y + SOIL_THICKNESS / 2,
       GAME_WIDTH,
-      soilHeight,
+      SOIL_THICKNESS,
       SOIL_COLOR,
     );
     this.soil.setDepth(2).setScrollFactor(0);
