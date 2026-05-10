@@ -207,6 +207,7 @@ export class ShopScene extends Phaser.Scene {
       } catch (e) { /* ignore */ }
       this._scrollHandlers = null;
     }
+    this._scrollState = null;
     this._lastDragDistance = 0;
 
     if (this.activeTab === TAB_SKINS) {
@@ -272,36 +273,11 @@ export class ShopScene extends Phaser.Scene {
       this._cardObjects.push(card);
     });
 
-    // Drag-scroll gdy overflow.
+    // Drag-scroll gdy overflow — smooth lerp + momentum (RAF, nie event-direct).
     const overflow = Math.max(0, totalContentH - viewportH);
     this._lastDragDistance = 0;
     if (overflow > 0) {
-      const minY = viewportTop - overflow;
-      const maxY = viewportTop;
-
-      let isDragging = false;
-      let dragStartPointerY = 0;
-      let dragStartContainerY = 0;
-
-      const onDown = (pointer) => {
-        if (pointer.y < viewportTop) return;
-        isDragging = true;
-        dragStartPointerY = pointer.y;
-        dragStartContainerY = this._cardsContainer.y;
-        this._lastDragDistance = 0;
-      };
-      const onMove = (pointer) => {
-        if (!isDragging) return;
-        const dy = pointer.y - dragStartPointerY;
-        this._lastDragDistance = Math.max(this._lastDragDistance, Math.abs(dy));
-        this._cardsContainer.y = Phaser.Math.Clamp(dragStartContainerY + dy, minY, maxY);
-      };
-      const onUp = () => { isDragging = false; };
-
-      this.input.on('pointerdown', onDown);
-      this.input.on('pointermove', onMove);
-      this.input.on('pointerup', onUp);
-      this._scrollHandlers = { onDown, onMove, onUp };
+      this._setupSmoothScroll(this._cardsContainer, viewportTop, overflow);
 
       // Wskaźnik scroll (mały gradient/strzałka u dołu) — opcjonalne.
       const hint = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 8, '↕ przewiń', {
@@ -413,33 +389,88 @@ export class ShopScene extends Phaser.Scene {
       }
     });
 
-    // Drag-scroll setup gdy overflow.
+    // Drag-scroll setup gdy overflow — smooth lerp + momentum.
     const overflow = Math.max(0, totalContentH - viewportH);
     this._lastDragDistance = 0;
     if (overflow > 0) {
-      const minY = viewportTop - overflow;
-      const maxY = viewportTop;
-      let isDragging = false;
-      let dragStartPointerY = 0;
-      let dragStartContainerY = 0;
-      const onDown = (pointer) => {
-        if (pointer.y < viewportTop) return;
-        isDragging = true;
-        dragStartPointerY = pointer.y;
-        dragStartContainerY = this._cardsContainer.y;
-        this._lastDragDistance = 0;
-      };
-      const onMove = (pointer) => {
-        if (!isDragging) return;
-        const dy = pointer.y - dragStartPointerY;
-        this._lastDragDistance = Math.max(this._lastDragDistance, Math.abs(dy));
-        this._cardsContainer.y = Phaser.Math.Clamp(dragStartContainerY + dy, minY, maxY);
-      };
-      const onUp = () => { isDragging = false; };
-      this.input.on('pointerdown', onDown);
-      this.input.on('pointermove', onMove);
-      this.input.on('pointerup', onUp);
-      this._scrollHandlers = { onDown, onMove, onUp };
+      this._setupSmoothScroll(this._cardsContainer, viewportTop, overflow);
+    }
+  }
+
+  /** Smooth drag-scroll z momentum (eliminuje "szarpanie" wynikające z direct
+   *  Container.y = pointer.y w event handler).
+   *  - Pointer events update _scrollTargetY (target).
+   *  - Game loop (update()) lerp'uje container.y → _scrollTargetY (factor 0.30).
+   *  - Po pointerup: velocity-based momentum, decay 0.92 per klatkę, dopóki >0.3.
+   */
+  _setupSmoothScroll(container, viewportTop, overflow) {
+    const minY = viewportTop - overflow;
+    const maxY = viewportTop;
+    container.y = maxY;
+
+    const state = {
+      container,
+      viewportTop,
+      minY, maxY,
+      targetY: maxY,
+      velocity: 0,
+      isDragging: false,
+      dragStartPointerY: 0,
+      dragStartTargetY: 0,
+      lastMoveTs: 0,
+      lastMoveY: 0,
+    };
+
+    const onDown = (pointer) => {
+      if (pointer.y < viewportTop) return;
+      state.isDragging = true;
+      state.dragStartPointerY = pointer.y;
+      state.dragStartTargetY = state.targetY;
+      state.velocity = 0;
+      state.lastMoveTs = performance.now();
+      state.lastMoveY = pointer.y;
+      this._lastDragDistance = 0;
+    };
+    const onMove = (pointer) => {
+      if (!state.isDragging) return;
+      const dy = pointer.y - state.dragStartPointerY;
+      this._lastDragDistance = Math.max(this._lastDragDistance, Math.abs(dy));
+      state.targetY = Phaser.Math.Clamp(state.dragStartTargetY + dy, minY, maxY);
+      // Trackuj velocity dla momentum.
+      const now = performance.now();
+      const dt = Math.max(8, now - state.lastMoveTs);
+      state.velocity = ((pointer.y - state.lastMoveY) / dt) * 16; // px / klatka @60fps
+      state.lastMoveY = pointer.y;
+      state.lastMoveTs = now;
+    };
+    const onUp = () => { state.isDragging = false; };
+
+    this.input.on('pointerdown', onDown);
+    this.input.on('pointermove', onMove);
+    this.input.on('pointerup', onUp);
+    this._scrollHandlers = { onDown, onMove, onUp };
+    this._scrollState = state; // dla update()
+  }
+
+  // Phaser scene hook — wywołane co klatkę. Lerp container.y → targetY plus
+  // momentum decay po pointerup.
+  update() {
+    const s = this._scrollState;
+    if (!s || !s.container || !s.container.scene) return;
+    // Momentum (gdy nie dragujemy i velocity != 0).
+    if (!s.isDragging && Math.abs(s.velocity) > 0.3) {
+      s.targetY = Phaser.Math.Clamp(s.targetY + s.velocity, s.minY, s.maxY);
+      s.velocity *= 0.92;
+      if (s.targetY === s.minY || s.targetY === s.maxY) s.velocity = 0; // bounce off
+    } else if (!s.isDragging) {
+      s.velocity = 0;
+    }
+    // Smooth lerp container Y → target.
+    const diff = s.targetY - s.container.y;
+    if (Math.abs(diff) > 0.1) {
+      s.container.y += diff * 0.30;
+    } else {
+      s.container.y = s.targetY;
     }
   }
 
