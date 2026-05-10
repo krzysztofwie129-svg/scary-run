@@ -153,7 +153,7 @@ export class SettingsScene extends Phaser.Scene {
     const inputEl = document.createElement('input');
     inputEl.type = 'text';
     inputEl.placeholder = 'SCARY-XXXX-XXXX';
-    inputEl.maxLength = 14;
+    inputEl.maxLength = 15; // SCARY-XXXX-XXXX = 15 znakow (wczesniej 14 = bug, ucinalo ostatni)
     inputEl.autocomplete = 'off';
     inputEl.style.cssText = `
       position: absolute; left: 0; top: 0;
