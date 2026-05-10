@@ -19,32 +19,41 @@ export class SettingsScene extends Phaser.Scene {
 
   create() {
     this._domEls = [];
+    this._domPositioners = [];
     this.cameras.main.setBackgroundColor('#1a0a2e');
 
-    // === Header ===
-    this.add.text(GAME_WIDTH / 2, 50, 'USTAWIENIA', {
+    // === Header (Y=35) ===
+    this.add.text(GAME_WIDTH / 2, 35, 'USTAWIENIA', {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '36px',
-      color: '#ffd93c',
+      fontSize: '32px', color: '#ffd93c',
       stroke: '#ff6b9d', strokeThickness: 5,
     }).setOrigin(0.5);
 
-    // Back button
-    const backBg = this.add.rectangle(80, 50, 130, 50, VIOLET, 0.95)
-      .setStrokeStyle(3, GOLD).setInteractive({ useHandCursor: true });
-    this.add.text(80, 50, '← WRÓĆ', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '18px', color: '#ffffff',
-      stroke: '#000', strokeThickness: 3,
-    }).setOrigin(0.5);
-    backBg.on('pointerup', () => this.scene.start('MenuScene'));
+    // Back button — shop_btn_back asset (spójny z resztą).
+    if (this.textures.exists('shop_btn_back')) {
+      const back = this.add.image(110, 50, 'shop_btn_back')
+        .setDisplaySize(180, 60)
+        .setDepth(99999)
+        .setInteractive({ useHandCursor: true });
+      back.on('pointerover', () => back.setScale(back.scaleX * 1.05, back.scaleY * 1.05));
+      back.on('pointerout', () => back.setScale(back.scaleX / 1.05, back.scaleY / 1.05));
+      back.on('pointerup', () => this.scene.start('MenuScene'));
+    } else {
+      const backBg = this.add.rectangle(80, 50, 130, 50, VIOLET, 0.95)
+        .setStrokeStyle(3, GOLD).setInteractive({ useHandCursor: true });
+      this.add.text(80, 50, '← WRÓĆ', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '18px', color: '#ffffff',
+        stroke: '#000', strokeThickness: 3,
+      }).setOrigin(0.5);
+      backBg.on('pointerup', () => this.scene.start('MenuScene'));
+    }
 
-    // === SEKCJA 1: Difficulty ===
-    this.add.text(GAME_WIDTH / 2, 110, 'POZIOM TRUDNOŚCI', {
+    // === SEKCJA 1: Difficulty (Y=75-160) ===
+    this.add.text(GAME_WIDTH / 2, 75, 'POZIOM TRUDNOŚCI', {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '22px', color: '#bdaee3',
+      fontSize: '20px', color: '#bdaee3',
     }).setOrigin(0.5);
-
     const current = getDifficulty();
     const diffOpts = [
       { mode: 'easy', label: DIFFICULTY_LABELS.easy, x: GAME_WIDTH / 2 - 200 },
@@ -54,12 +63,12 @@ export class SettingsScene extends Phaser.Scene {
     this._diffBtns = {};
     for (const opt of diffOpts) {
       const isActive = opt.mode === current;
-      const bg = this.add.rectangle(opt.x, 165, 170, 55, isActive ? GOLD : VIOLET, 0.95)
+      const bg = this.add.rectangle(opt.x, 120, 170, 50, isActive ? GOLD : VIOLET, 0.95)
         .setStrokeStyle(3, isActive ? PINK : GOLD)
         .setInteractive({ useHandCursor: true });
-      const txt = this.add.text(opt.x, 165, opt.label, {
+      const txt = this.add.text(opt.x, 120, opt.label, {
         fontFamily: 'Arial Black, sans-serif',
-        fontSize: '20px',
+        fontSize: '18px',
         color: isActive ? '#1a0a2e' : '#ffffff',
         stroke: '#000', strokeThickness: 2,
       }).setOrigin(0.5);
@@ -70,57 +79,55 @@ export class SettingsScene extends Phaser.Scene {
       });
       this._diffBtns[opt.mode] = { bg, txt };
     }
-    this.add.text(GAME_WIDTH / 2, 210,
+    this.add.text(GAME_WIDTH / 2, 160,
       'Łatwy: -30% trudności i punktów  •  Trudny: +5% per level',
-      { fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#8678a8' },
+      { fontFamily: 'Arial, sans-serif', fontSize: '13px', color: '#8678a8' },
     ).setOrigin(0.5);
 
-    // === SEKCJA 2: Reset postępu (jasne fioletowe tło, duży czytelny button) ===
-    this.add.text(GAME_WIDTH / 2, 260, 'RESET POSTĘPU', {
+    // === SEKCJA 2: Reset postępu (Y=200-310) — jasne fioletowe tło, duży button ===
+    this.add.text(GAME_WIDTH / 2, 200, 'RESET POSTĘPU', {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '24px', color: '#ffd93c',
+      fontSize: '22px', color: '#ffd93c',
       stroke: '#ff6b9d', strokeThickness: 3,
     }).setOrigin(0.5);
-    // Jasne fioletowe tło dla czytelności (większy kontrast od ciemnego BG sceny).
-    const _resetPanel = this.add.rectangle(GAME_WIDTH / 2, 320, 700, 90, 0xb084ff, 0.25)
+    this.add.rectangle(GAME_WIDTH / 2, 255, 700, 80, 0xb084ff, 0.25)
       .setStrokeStyle(2, 0xb084ff);
-    const _resetBtnBg = this.add.rectangle(GAME_WIDTH / 2, 320, 480, 70, 0xff6b9d, 1)
+    const _resetBtnBg = this.add.rectangle(GAME_WIDTH / 2, 255, 480, 60, 0xff6b9d, 1)
       .setStrokeStyle(4, 0xffd93c).setInteractive({ useHandCursor: true });
-    const _resetBtnTxt = this.add.text(GAME_WIDTH / 2, 320, 'ZACZNIJ OD POCZĄTKU', {
+    this.add.text(GAME_WIDTH / 2, 255, 'ZACZNIJ OD POCZĄTKU', {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '26px', color: '#ffffff',
+      fontSize: '24px', color: '#ffffff',
       stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
     _resetBtnBg.on('pointerup', () => this._showResetConfirm());
     _resetBtnBg.on('pointerover', () => _resetBtnBg.setScale(1.03));
     _resetBtnBg.on('pointerout', () => _resetBtnBg.setScale(1.0));
-    this.add.text(GAME_WIDTH / 2, 370,
+    this.add.text(GAME_WIDTH / 2, 305,
       'Stary wynik w rankingu zostaje pod poprzednim imieniem',
-      { fontFamily: 'Arial, sans-serif', fontSize: '13px', color: '#bdaee3' },
+      { fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#bdaee3' },
     ).setOrigin(0.5);
 
-    // === SEKCJA 3: Claim code ===
-    this.add.text(GAME_WIDTH / 2, 425, 'KOD RATUNKOWY', {
+    // === SEKCJA 3: Claim code (Y=345-700) ===
+    this.add.text(GAME_WIDTH / 2, 345, 'KOD RATUNKOWY', {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '22px', color: '#bdaee3',
+      fontSize: '20px', color: '#bdaee3',
     }).setOrigin(0.5);
-
     const code = getCurrentCode();
-    this.add.rectangle(GAME_WIDTH / 2, 470, 460, 50, PURPLE, 1)
+    this.add.rectangle(GAME_WIDTH / 2, 390, 460, 48, PURPLE, 1)
       .setStrokeStyle(3, GOLD);
-    this._codeText = this.add.text(GAME_WIDTH / 2, 470, code || '— wygeneruj nowy —', {
+    this._codeText = this.add.text(GAME_WIDTH / 2, 390, code || '— wygeneruj nowy —', {
       fontFamily: 'Courier, monospace',
-      fontSize: code ? '24px' : '16px',
+      fontSize: code ? '22px' : '15px',
       color: code ? '#ffd93c' : '#bdaee3',
     }).setOrigin(0.5);
 
-    this._makeBtn(GAME_WIDTH / 2 - 145, 525, 240, 42,
+    this._makeBtn(GAME_WIDTH / 2 - 145, 445, 240, 42,
       code ? 'WYGENERUJ NOWY' : 'WYGENERUJ KOD', 0xb084ff,
       async () => {
         try {
           const newCode = await generateAndSaveCode();
           this._codeText.setText(newCode).setStyle({
-            fontSize: '24px', color: '#ffd93c',
+            fontSize: '22px', color: '#ffd93c',
           });
           this._showToast('Kod wygenerowany');
         } catch (e) {
@@ -128,48 +135,69 @@ export class SettingsScene extends Phaser.Scene {
           this._showToast('Błąd: ' + (e?.message || 'unknown'));
         }
       });
-
-    this._makeBtn(GAME_WIDTH / 2 + 145, 525, 240, 42, 'SKOPIUJ', 0x4ade80,
+    this._makeBtn(GAME_WIDTH / 2 + 145, 445, 240, 42, 'SKOPIUJ', 0x4ade80,
       async () => {
         const c = getCurrentCode();
         if (!c) { this._showToast('Najpierw wygeneruj'); return; }
         try {
           await navigator.clipboard.writeText(c);
           this._showToast('Skopiowano!');
-        } catch {
-          this._showToast(c);
-        }
+        } catch { this._showToast(c); }
       });
 
-    this.add.text(GAME_WIDTH / 2, 580, 'lub odzyskaj postęp z kodu:', {
-      fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#8678a8',
+    this.add.text(GAME_WIDTH / 2, 500, 'lub odzyskaj postęp z kodu:', {
+      fontFamily: 'Arial, sans-serif', fontSize: '13px', color: '#8678a8',
     }).setOrigin(0.5);
 
+    // DOM input — pozycjonowany w Phaser-coords (Y=545) z auto-resize na zmianę viewportu.
     const inputEl = document.createElement('input');
     inputEl.type = 'text';
     inputEl.placeholder = 'SCARY-XXXX-XXXX';
     inputEl.maxLength = 14;
+    inputEl.autocomplete = 'off';
     inputEl.style.cssText = `
-      position: fixed; left: 50%; top: 84%;
-      transform: translateX(-50%);
-      width: 280px; padding: 8px;
+      position: absolute; left: 0; top: 0;
+      transform: translate(-50%, -50%);
       font-family: Courier, monospace;
-      font-size: 18px; text-align: center;
+      text-align: center;
       background: #2d1b4e; color: #ffd93c;
       border: 3px solid #ff6b9d; border-radius: 6px;
       text-transform: uppercase; letter-spacing: 2px;
       z-index: 1000;
     `;
     inputEl.addEventListener('input', () => {
+      // Pozwala paste z spacjami/cudzymi znakami; sanitize wykonuje restoreFromCode.
       inputEl.value = inputEl.value.toUpperCase();
     });
     document.body.appendChild(inputEl);
     this._domEls.push(inputEl);
 
-    this._makeBtn(GAME_WIDTH / 2, 685, 280, 45, 'PRZYWRÓĆ POSTĘP', GOLD,
+    // Auto-position DOM input względem canvas (rozwiązuje fixed-percent issue na phone).
+    const positionInput = () => {
+      try {
+        const canvas = this.game?.canvas;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const sx = rect.width / GAME_WIDTH;
+        const sy = rect.height / GAME_HEIGHT;
+        const px = rect.left + (GAME_WIDTH / 2) * sx;
+        const py = rect.top + 545 * sy;
+        inputEl.style.left = px + 'px';
+        inputEl.style.top = py + 'px';
+        inputEl.style.width = (300 * sx) + 'px';
+        inputEl.style.padding = (8 * sy) + 'px';
+        inputEl.style.fontSize = Math.max(13, Math.floor(18 * sy)) + 'px';
+      } catch { /* ignore */ }
+    };
+    positionInput();
+    window.addEventListener('resize', positionInput);
+    window.addEventListener('orientationchange', positionInput);
+    this._domPositioners.push({ fn: positionInput });
+
+    this._makeBtn(GAME_WIDTH / 2, 620, 320, 50, 'PRZYWRÓĆ POSTĘP', GOLD,
       async () => {
-        const c = inputEl.value.trim();
-        if (!c) { this._showToast('Wpisz kod'); return; }
+        const c = inputEl.value;
+        if (!c || !c.trim()) { this._showToast('Wpisz kod'); return; }
         try {
           const ok = await restoreFromCode(c);
           if (ok) {
@@ -187,7 +215,21 @@ export class SettingsScene extends Phaser.Scene {
         }
       });
 
-    // Cleanup DOM input on shutdown
+    // Drag-scroll camera (safety net dla bardzo małych ekranów < 720h logicznych).
+    this.cameras.main.setBounds(0, 0, GAME_WIDTH, Math.max(GAME_HEIGHT, 720));
+    let dragStartY = 0, camStart = 0, isDragging = false;
+    this.input.on('pointerdown', (p) => {
+      // Nie startuj dragu jeśli klik jest na intearctive elemencie (Phaser ogarnia).
+      isDragging = true; dragStartY = p.y; camStart = this.cameras.main.scrollY;
+    });
+    this.input.on('pointermove', (p) => {
+      if (!isDragging || !p.isDown) return;
+      const dy = p.y - dragStartY;
+      this.cameras.main.scrollY = Math.max(0, Math.min(50, camStart - dy));
+    });
+    this.input.on('pointerup', () => { isDragging = false; });
+
+    // Cleanup
     this.events.once('shutdown', () => this._cleanupDom());
     this.events.once('destroy', () => this._cleanupDom());
   }
@@ -304,6 +346,11 @@ export class SettingsScene extends Phaser.Scene {
       try { el.remove(); } catch {}
     }
     this._domEls = [];
+    for (const p of (this._domPositioners || [])) {
+      try { window.removeEventListener('resize', p.fn); } catch {}
+      try { window.removeEventListener('orientationchange', p.fn); } catch {}
+    }
+    this._domPositioners = [];
   }
 
   _showToast(message) {

@@ -47,17 +47,25 @@ export class CharSelectScene extends Phaser.Scene {
       this.add.image(GAME_WIDTH / 2, 150, 'charselect_subtitle').setDisplaySize(440, 60);
     }
 
-    // 3. Back arrow top-left → MenuScene.
-    if (this.textures.exists('charselect_back')) {
-      const back = this.add.image(60, 60, 'charselect_back')
-        .setDisplaySize(70, 70)
+    // 3. Back button top-left → MenuScene. Asset shop_btn_back (ten sam co
+    // w DeathScene/Settings — spójny styl WRÓĆ na całej grze).
+    if (this.textures.exists('shop_btn_back')) {
+      const back = this.add.image(110, 50, 'shop_btn_back')
+        .setDisplaySize(180, 60)
+        .setDepth(99999)
         .setInteractive({ useHandCursor: true });
-      back.on('pointerover', () => back.setScale(back.scaleX * 1.1, back.scaleY * 1.1));
-      back.on('pointerout', () => back.setScale(back.scaleX / 1.1, back.scaleY / 1.1));
+      back.on('pointerover', () => back.setScale(back.scaleX * 1.05, back.scaleY * 1.05));
+      back.on('pointerout', () => back.setScale(back.scaleX / 1.05, back.scaleY / 1.05));
       back.on('pointerup', () => {
         this.audioManager?.playSfx('click');
         this.scene.start('MenuScene');
       });
+    } else if (this.textures.exists('charselect_back')) {
+      // Fallback do legacy charselect_back jeśli shop_btn_back niezaładowany.
+      const back = this.add.image(60, 60, 'charselect_back')
+        .setDisplaySize(70, 70)
+        .setInteractive({ useHandCursor: true });
+      back.on('pointerup', () => this.scene.start('MenuScene'));
     }
 
     // 4. 3 character cards w rzędzie. Większe (320×480) + slide-in z dołu

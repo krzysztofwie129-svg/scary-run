@@ -30,6 +30,17 @@ export class NameInputScene extends Phaser.Scene {
       return;
     }
 
+    // WRÓĆ button (lewy górny) → MenuScene. Asset shop_btn_back (ten sam co w DeathScene/Settings).
+    if (this.textures.exists('shop_btn_back')) {
+      const back = this.add.image(110, 50, 'shop_btn_back')
+        .setDisplaySize(180, 60)
+        .setDepth(99999)
+        .setInteractive({ useHandCursor: true });
+      back.on('pointerover', () => back.setScale(back.scaleX * 1.05, back.scaleY * 1.05));
+      back.on('pointerout', () => back.setScale(back.scaleX / 1.05, back.scaleY / 1.05));
+      back.on('pointerup', () => this.scene.start('MenuScene'));
+    }
+
     // BG full-screen Halloween cemetery.
     if (this.textures.exists('nameinput_bg')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'nameinput_bg')

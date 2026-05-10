@@ -45,10 +45,26 @@ export async function generateAndSaveCode() {
   throw new Error('Generate: too many collisions');
 }
 
+/** Czyści invisible chars (zero-width space, NBSP, BOM, RTL marks),
+ *  whitespace, polskie/specjalne znaki spoza alphabet ratunkowego.
+ *  Akceptuje kody z myślnikiem ASCII/em-dash/hyphen Unicode. */
+function sanitizeCode(raw) {
+  if (typeof raw !== 'string') return '';
+  return raw
+    .replace(/[​-‏‪-‮⁠-⁯﻿]/g, '') // zero-width + RTL marks + BOM
+    .replace(/ /g, '') // NBSP
+    .replace(/[‐-―−]/g, '-') // em/en/figure dash → ASCII hyphen
+    .replace(/\s+/g, '') // wszelki whitespace
+    .toUpperCase()
+    .trim();
+}
+
 export async function restoreFromCode(rawCode) {
-  const code = (rawCode || '').toUpperCase().trim();
+  const code = sanitizeCode(rawCode);
   if (!CODE_REGEX.test(code)) {
-    throw new Error('Nieprawidłowy format (oczekiwany: SCARY-XXXX-XXXX)');
+    // Lepszy error: pokaż co user faktycznie wpisał (sanitized), żeby
+    // user wiedział czy się literował poprawnie.
+    throw new Error(`Nieprawidłowy format. Wpisałeś: "${code}". Oczekiwany: SCARY-XXXX-XXXX`);
   }
 
   const response = await fetch(`${API_URL}?code=${encodeURIComponent(code)}`);
