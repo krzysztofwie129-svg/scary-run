@@ -213,23 +213,21 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // Settings (zębatka) — top-right corner, otwiera SettingsScene.
-    const _gearX = GAME_WIDTH - 50;
-    const _gearY = 50;
-    const _gearBg = this.add.circle(_gearX, _gearY, 28, 0x2d1b4e, 0.95)
-      .setStrokeStyle(3, 0xffd93c).setDepth(50);
-    const _gearTxt = this.add.text(_gearX, _gearY, '⚙', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '32px',
-      color: '#ffd93c',
-    }).setOrigin(0.5).setDepth(51);
-    _gearBg.setInteractive({ useHandCursor: true });
-    _gearBg.on('pointerup', () => {
+    // Settings — wykorzystujemy istniejącą zębatkę z baked menu_icons_row
+    // (4 ikony: gift, trophy, gear, person; 360×120 na (GAME_WIDTH-200, 70)).
+    // Gear = 3-cia z lewej. Pozycja w obrębie obrazka:
+    //   image center X = GAME_WIDTH - 200 = 1080
+    //   image szer = 360 → range x: 900 - 1260
+    //   4 ikony równomiernie → środek 3-ciej = 900 + (360 * 5/8) = 1125
+    //   środek Y = 70
+    // Kładziemy invisible interactive zone nad nią + click → SettingsScene.
+    const _gearHit = this.add.zone(1125, 70, 80, 80)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    _gearHit.on('pointerup', () => {
       this.audioManager?.playSfx('click');
       this.scene.start('SettingsScene');
     });
-    _gearBg.on('pointerover', () => _gearTxt.setScale(1.15));
-    _gearBg.on('pointerout', () => _gearTxt.setScale(1));
 
     // Build buttons (zależnie od hasSave).
     this.menuState = 'main';

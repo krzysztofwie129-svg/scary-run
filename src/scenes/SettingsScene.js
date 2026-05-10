@@ -75,22 +75,46 @@ export class SettingsScene extends Phaser.Scene {
       { fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#8678a8' },
     ).setOrigin(0.5);
 
-    // === SEKCJA 2: Claim code ===
-    this.add.text(GAME_WIDTH / 2, 270, 'KOD RATUNKOWY', {
+    // === SEKCJA 2: Reset postępu (jasne fioletowe tło, duży czytelny button) ===
+    this.add.text(GAME_WIDTH / 2, 260, 'RESET POSTĘPU', {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '24px', color: '#ffd93c',
+      stroke: '#ff6b9d', strokeThickness: 3,
+    }).setOrigin(0.5);
+    // Jasne fioletowe tło dla czytelności (większy kontrast od ciemnego BG sceny).
+    const _resetPanel = this.add.rectangle(GAME_WIDTH / 2, 320, 700, 90, 0xb084ff, 0.25)
+      .setStrokeStyle(2, 0xb084ff);
+    const _resetBtnBg = this.add.rectangle(GAME_WIDTH / 2, 320, 480, 70, 0xff6b9d, 1)
+      .setStrokeStyle(4, 0xffd93c).setInteractive({ useHandCursor: true });
+    const _resetBtnTxt = this.add.text(GAME_WIDTH / 2, 320, 'ZACZNIJ OD POCZĄTKU', {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '26px', color: '#ffffff',
+      stroke: '#000', strokeThickness: 4,
+    }).setOrigin(0.5);
+    _resetBtnBg.on('pointerup', () => this._showResetConfirm());
+    _resetBtnBg.on('pointerover', () => _resetBtnBg.setScale(1.03));
+    _resetBtnBg.on('pointerout', () => _resetBtnBg.setScale(1.0));
+    this.add.text(GAME_WIDTH / 2, 370,
+      'Stary wynik w rankingu zostaje pod poprzednim imieniem',
+      { fontFamily: 'Arial, sans-serif', fontSize: '13px', color: '#bdaee3' },
+    ).setOrigin(0.5);
+
+    // === SEKCJA 3: Claim code ===
+    this.add.text(GAME_WIDTH / 2, 425, 'KOD RATUNKOWY', {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '22px', color: '#bdaee3',
     }).setOrigin(0.5);
 
     const code = getCurrentCode();
-    const codeBox = this.add.rectangle(GAME_WIDTH / 2, 320, 460, 50, PURPLE, 1)
+    this.add.rectangle(GAME_WIDTH / 2, 470, 460, 50, PURPLE, 1)
       .setStrokeStyle(3, GOLD);
-    this._codeText = this.add.text(GAME_WIDTH / 2, 320, code || '— wygeneruj nowy —', {
+    this._codeText = this.add.text(GAME_WIDTH / 2, 470, code || '— wygeneruj nowy —', {
       fontFamily: 'Courier, monospace',
       fontSize: code ? '24px' : '16px',
       color: code ? '#ffd93c' : '#bdaee3',
     }).setOrigin(0.5);
 
-    this._makeBtn(GAME_WIDTH / 2 - 145, 380, 240, 45,
+    this._makeBtn(GAME_WIDTH / 2 - 145, 525, 240, 42,
       code ? 'WYGENERUJ NOWY' : 'WYGENERUJ KOD', 0xb084ff,
       async () => {
         try {
@@ -105,7 +129,7 @@ export class SettingsScene extends Phaser.Scene {
         }
       });
 
-    this._makeBtn(GAME_WIDTH / 2 + 145, 380, 240, 45, 'SKOPIUJ', 0x4ade80,
+    this._makeBtn(GAME_WIDTH / 2 + 145, 525, 240, 42, 'SKOPIUJ', 0x4ade80,
       async () => {
         const c = getCurrentCode();
         if (!c) { this._showToast('Najpierw wygeneruj'); return; }
@@ -113,13 +137,12 @@ export class SettingsScene extends Phaser.Scene {
           await navigator.clipboard.writeText(c);
           this._showToast('Skopiowano!');
         } catch {
-          this._showToast(c); // fallback wyświetl
+          this._showToast(c);
         }
       });
 
-    // Restore via input (DOM element overlay)
-    this.add.text(GAME_WIDTH / 2, 440, 'lub odzyskaj postęp z kodu:', {
-      fontFamily: 'Arial, sans-serif', fontSize: '15px', color: '#8678a8',
+    this.add.text(GAME_WIDTH / 2, 580, 'lub odzyskaj postęp z kodu:', {
+      fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#8678a8',
     }).setOrigin(0.5);
 
     const inputEl = document.createElement('input');
@@ -127,13 +150,13 @@ export class SettingsScene extends Phaser.Scene {
     inputEl.placeholder = 'SCARY-XXXX-XXXX';
     inputEl.maxLength = 14;
     inputEl.style.cssText = `
-      position: fixed; left: 50%; top: 64%;
+      position: fixed; left: 50%; top: 84%;
       transform: translateX(-50%);
-      width: 320px; padding: 12px;
+      width: 280px; padding: 8px;
       font-family: Courier, monospace;
-      font-size: 20px; text-align: center;
+      font-size: 18px; text-align: center;
       background: #2d1b4e; color: #ffd93c;
-      border: 3px solid #ff6b9d; border-radius: 8px;
+      border: 3px solid #ff6b9d; border-radius: 6px;
       text-transform: uppercase; letter-spacing: 2px;
       z-index: 1000;
     `;
@@ -143,7 +166,7 @@ export class SettingsScene extends Phaser.Scene {
     document.body.appendChild(inputEl);
     this._domEls.push(inputEl);
 
-    this._makeBtn(GAME_WIDTH / 2, 545, 320, 50, 'PRZYWRÓĆ POSTĘP', GOLD,
+    this._makeBtn(GAME_WIDTH / 2, 685, 280, 45, 'PRZYWRÓĆ POSTĘP', GOLD,
       async () => {
         const c = inputEl.value.trim();
         if (!c) { this._showToast('Wpisz kod'); return; }
@@ -163,18 +186,6 @@ export class SettingsScene extends Phaser.Scene {
           reportError(e, { context: 'restoreCode' });
         }
       });
-
-    // === SEKCJA 3: Reset gry ===
-    this.add.text(GAME_WIDTH / 2, 615, 'RESET POSTĘPU', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '20px', color: '#bdaee3',
-    }).setOrigin(0.5);
-    this._makeBtn(GAME_WIDTH / 2, 660, 360, 50, 'ZACZNIJ OD POCZĄTKU', 0xd05050,
-      () => this._showResetConfirm());
-    this.add.text(GAME_WIDTH / 2, 695,
-      'Stary wynik w rankingu zostaje pod poprzednim imieniem',
-      { fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#8678a8' },
-    ).setOrigin(0.5);
 
     // Cleanup DOM input on shutdown
     this.events.once('shutdown', () => this._cleanupDom());

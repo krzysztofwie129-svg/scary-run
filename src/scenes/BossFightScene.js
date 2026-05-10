@@ -858,43 +858,26 @@ export class BossFightScene extends Phaser.Scene {
         });
       };
 
-      // Overlay półprzezroczysty.
+      // Szybki popup "Nie udało się!" — TYLKO jako transient banner, BEZ przycisku.
+      // Po 1.5s automatycznie kierujemy do DeathScene gdzie są ZAGRAJ PONOWNIE / SKLEP / RANKING.
       const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7)
         .setOrigin(0.5).setDepth(20000);
-
-      // Container popupu z grafiki + dynamic text + przycisk.
       const popup = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(20001);
       const POPUP_W = 700;
       const POPUP_H = 400;
       const popupBg = this.add.image(0, 0, 'boss_defeat_popup').setOrigin(0.5).setDisplaySize(POPUP_W, POPUP_H);
-      const titleText = this.add.text(0, -POPUP_H * 0.15, 'Nie udało się!', {
-        fontSize: '52px',
+      const titleText = this.add.text(0, 0, 'Nie udało się!', {
+        fontSize: '56px',
         fontFamily: 'Arial Black, sans-serif',
         color: '#ffd93c',
-        stroke: '#000000',
-        strokeThickness: 6,
+        stroke: '#000000', strokeThickness: 6,
         align: 'center',
       }).setOrigin(0.5);
-      const btnW = 320;
-      const btnH = 70;
-      const btnY = POPUP_H * 0.18;
-      const btnBg = this.add.rectangle(0, btnY, btnW, btnH, 0x6b4eb8, 1).setStrokeStyle(4, 0xffd93c);
-      const btnText = this.add.text(0, btnY, 'Spróbuj ponownie', {
-        fontSize: '28px',
-        fontFamily: 'Arial Black, sans-serif',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 4,
-      }).setOrigin(0.5);
-      btnBg.setInteractive({ useHandCursor: true });
-      btnBg.on('pointerover', () => btnBg.setScale(1.04));
-      btnBg.on('pointerout', () => btnBg.setScale(1.0));
-      btnBg.on('pointerdown', () => btnBg.setScale(0.96));
-      btnBg.on('pointerup', () => { btnBg.setScale(1.0); _gotoDeath(); });
-
-      popup.add([popupBg, titleText, btnBg, btnText]);
+      popup.add([popupBg, titleText]);
       popup.setScale(0.7);
       this.tweens.add({ targets: popup, scale: 1, duration: 300, ease: 'Back.easeOut' });
+      // Auto-przejście do DeathScene po 1.5s (gracz nie musi klikać).
+      this.time.delayedCall(1500, () => _gotoDeath());
     });
   }
 }
