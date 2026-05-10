@@ -27,7 +27,9 @@ export async function onRequestGet({ env }) {
   }
   const raw = await env.LEADERBOARD.get(KV_KEY);
   const entries = raw ? safeParse(raw) : [];
-  return jsonResponse(entries);
+  // Defensywny dedup — gdyby starsze KV zawierało duplikaty (przed wprowadzeniem
+  // dedup w POST), tu odfiltrujemy: jedno imię = jeden najwyższy wpis.
+  return jsonResponse(dedupByName(entries));
 }
 
 export async function onRequestPost({ request, env }) {
@@ -65,16 +67,29 @@ export async function onRequestPost({ request, env }) {
   const entries = raw ? safeParse(raw) : [];
   entries.push(clean);
   entries.sort((a, b) => b.score - a.score);
-  const top = entries.slice(0, MAX_ENTRIES);
+  // Dedup po imieniu — zostaw tylko najwyższy wpis per imię (że to po sort,
+  // pierwsze wystąpienie = najwyższy score).
+  const dedup = dedupByName(entries);
+  const top = dedup.slice(0, MAX_ENTRIES);
   await env.LEADERBOARD.put(KV_KEY, JSON.stringify(top));
 
-  // Rank = 0-based index nowego wpisu w top, -1 jeśli nie zmieścił się
-  // (czyli był poza pozycją 10).
-  const rank = top.findIndex((e) =>
-    e.name === clean.name && e.score === clean.score && e.date === clean.date,
-  );
+  // Rank = 0-based index aktualnego wpisu danego imienia w top, -1 jeśli
+  // imię nie zmieściło się w top.
+  const rank = top.findIndex((e) => e.name === clean.name);
 
   return jsonResponse({ rank, entries: top });
+}
+
+function dedupByName(entries) {
+  const seen = new Set();
+  const out = [];
+  for (const e of entries) {
+    if (!e || typeof e.name !== 'string') continue;
+    if (seen.has(e.name)) continue;
+    seen.add(e.name);
+    out.push(e);
+  }
+  return out;
 }
 
 function jsonResponse(data, status = 200) {

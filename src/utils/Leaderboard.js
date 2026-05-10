@@ -105,11 +105,18 @@ export const Leaderboard = {
     const entries = Leaderboard._loadLocal();
     entries.push(entry);
     entries.sort((a, b) => b.score - a.score);
-    const top = entries.slice(0, LEADERBOARD_MAX_ENTRIES);
+    // Dedup: jedno imię = jeden najwyższy wpis (analogicznie do backendu).
+    const seen = new Set();
+    const dedup = [];
+    for (const e of entries) {
+      if (!e || typeof e.name !== 'string') continue;
+      if (seen.has(e.name)) continue;
+      seen.add(e.name);
+      dedup.push(e);
+    }
+    const top = dedup.slice(0, LEADERBOARD_MAX_ENTRIES);
     Leaderboard._saveLocal(top);
-    const rank = top.findIndex(
-      (e) => e.name === name && e.score === score && e.date === isoDate,
-    );
+    const rank = top.findIndex((e) => e.name === name);
     return { rank, entries: top };
   },
 };
