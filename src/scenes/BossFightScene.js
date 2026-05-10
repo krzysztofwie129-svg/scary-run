@@ -726,7 +726,7 @@ export class BossFightScene extends Phaser.Scene {
       Haptic.coin?.();
       return;
     }
-    this.sound.play('boss_player_hit', { volume: 0.5 });
+    try { this.sound.play('boss_player_hit', { volume: 0.5 }); } catch (e) { /* audio cache miss */ }
     this.playerHP = Math.max(0, this.playerHP - 1);
     this.refreshPlayerHearts();
 

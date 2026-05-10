@@ -32,6 +32,7 @@ import {
   OBSTACLE_TIERS,
   MIN_OBSTACLE_DISTANCE_X,
   MIN_OBSTACLE_DISTANCE_AFTER_WALL,
+  MAX_CONSECUTIVE_WALLS,
   AIR_GROUND_RULE,
   GROUND_Y,
   MAX_LIVES,
@@ -526,6 +527,10 @@ export class GameScene extends Phaser.Scene {
       if (AIR_GROUND_RULE && this.lastObstacleTier === 'high' && tier === 'high') {
         continue;
       }
+      // Anti-wall-cluster: po 2 wallach pod rząd nie pozwól 3-ciego.
+      if (tier === 'wall' && (this.consecutiveWalls || 0) >= MAX_CONSECUTIVE_WALLS) {
+        continue;
+      }
       break;
     } while (attempts < 8);
     return tier;
@@ -559,6 +564,12 @@ export class GameScene extends Phaser.Scene {
     const obstacle = new Obstacle(this, newSpawnX, type);
     this.obstacles.add(obstacle);
 
+    // Anti-wall-cluster counter.
+    if (tier === 'wall') {
+      this.consecutiveWalls = (this.consecutiveWalls || 0) + 1;
+    } else {
+      this.consecutiveWalls = 0;
+    }
     this.lastObstacleTier = tier;
     this.lastObstacleX = newSpawnX;
     if (tier === 'high') this.lastFlyingPumpkinTime = this.time.now;
@@ -876,7 +887,7 @@ export class GameScene extends Phaser.Scene {
     const cfg = POWER_UP_CONFIG[type];
     if (!cfg) return;
 
-    this.sound.play('powerup_pickup', { volume: 0.7 });
+    try { this.sound.play('powerup_pickup', { volume: 0.7 }); } catch (e) { /* audio cache miss on iOS */ }
 
     powerUpManager.activate(type);
     this.applyPowerUpEffect(type);

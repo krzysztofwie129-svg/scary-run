@@ -80,7 +80,9 @@ export class FinishLine extends Phaser.GameObjects.Container {
     this.x -= worldSpeed * (delta / 1000);
     if (!this.crossed && this.x < PLAYER_START_X) {
       this.crossed = true;
-      this.scene.events.emit('finish-line-crossed');
+      // Scene może być nullowane jeśli FinishLine update odpali się
+      // po scene.shutdown (Sentry JAVASCRIPT-D).
+      if (this.scene?.events) this.scene.events.emit('finish-line-crossed');
     }
   }
 }

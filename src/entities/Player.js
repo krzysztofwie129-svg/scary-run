@@ -138,12 +138,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.state_ === 'dead') return;
     this.state_ = 'dead';
     this.setVelocityX(0);
-    // Dead anim (50 frames @24fps), fallback do hit jeśli nie zaregistrowany.
-    const deadKey = this.animKeys.dead;
-    if (deadKey && this.scene.anims.exists(deadKey)) this.play(deadKey, true);
-    else this.play(this.animKeys.hit, true);
+    // Dead anim z fallbackiem na hit. Każda play() w try/catch — Phaser potrafi
+    // wywalić "currentFrame.duration undefined" jeśli anim w cache ma 0 frames
+    // (Sentry JAVASCRIPT-8, escalating na char04-07 preload race).
+    const tryPlay = (key) => {
+      if (!key || !this.scene?.anims?.exists?.(key)) return false;
+      try { this.play(key, true); return true; } catch (e) { return false; }
+    };
+    tryPlay(this.animKeys.dead) || tryPlay(this.animKeys.hit);
     Haptic.crash();
-    this.scene.events.emit('player-died');
+    this.scene?.events?.emit?.('player-died');
   }
 
   win() {
@@ -151,7 +155,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.state_ = 'win';
     this.setVelocityX(0);
     const winKey = this.animKeys.win;
-    if (winKey && this.scene.anims.exists(winKey)) this.play(winKey, true);
+    if (winKey && this.scene?.anims?.exists?.(winKey)) {
+      try { this.play(winKey, true); } catch (e) { /* anim cache race */ }
+    }
   }
 
   isDead() {

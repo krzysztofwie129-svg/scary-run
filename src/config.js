@@ -279,32 +279,32 @@ export const LEVELS = [
   {
     id: 8, name: 'Dragon Dungeon', duration: 30,
     bgFolder: 'level8_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.32, mid: 0.31, high: 0.19, wall: 0.18 },
-    obstacleSpawnRate: { min: 1.05, max: 1.59 },
+    obstacleMix: { low: 0.40, mid: 0.34, high: 0.16, wall: 0.10 },
+    obstacleSpawnRate: { min: 1.20, max: 1.70 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 488, musicVolume: 0.0,
   },
   {
     id: 9, name: 'Dragon Lair', duration: 30,
     bgFolder: 'level9_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.28, mid: 0.31, high: 0.20, wall: 0.21 },
-    obstacleSpawnRate: { min: 1.03, max: 1.56 },
+    obstacleMix: { low: 0.36, mid: 0.34, high: 0.18, wall: 0.12 },
+    obstacleSpawnRate: { min: 1.10, max: 1.60 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 493, musicVolume: 0.0,
   },
   {
     id: 10, name: 'Cursed Catacombs', duration: 30,
     bgFolder: 'level10_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.25, mid: 0.30, high: 0.21, wall: 0.24 },
-    obstacleSpawnRate: { min: 0.55, max: 0.85 },
+    obstacleMix: { low: 0.32, mid: 0.33, high: 0.20, wall: 0.15 },
+    obstacleSpawnRate: { min: 1.00, max: 1.50 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 498, musicVolume: 0.0,
   },
   {
     id: 11, name: 'Dragon Throne', duration: 30,
     bgFolder: 'level11_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.22, mid: 0.30, high: 0.22, wall: 0.26 },
-    obstacleSpawnRate: { min: 0.55, max: 0.85 },
+    obstacleMix: { low: 0.28, mid: 0.32, high: 0.22, wall: 0.18 },
+    obstacleSpawnRate: { min: 0.95, max: 1.40 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 503, musicVolume: 0.0,
   },
@@ -315,72 +315,72 @@ export const LEVELS = [
   {
     id: 12, name: 'Graveyard II', duration: 30, bgFolder: 'level1_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.20, mid: 0.30, high: 0.22, wall: 0.28 },
-    obstacleSpawnRate: { min: 0.55, max: 0.85 },
+    obstacleMix: { low: 0.24, mid: 0.32, high: 0.23, wall: 0.21 },
+    obstacleSpawnRate: { min: 0.90, max: 1.30 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 508, musicVolume: 0.0,
   },
   {
     id: 13, name: "Witch's Hill II", duration: 30, bgFolder: 'level2_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.18, mid: 0.30, high: 0.22, wall: 0.30 },
-    obstacleSpawnRate: { min: 0.55, max: 0.85 },
+    obstacleMix: { low: 0.20, mid: 0.32, high: 0.24, wall: 0.24 },
+    obstacleSpawnRate: { min: 0.85, max: 1.25 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 513, musicVolume: 0.0,
   },
   {
     id: 14, name: 'Spider Forest II', duration: 30, bgFolder: 'level3_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.16, mid: 0.30, high: 0.22, wall: 0.32 },
-    obstacleSpawnRate: { min: 0.55, max: 0.85 },
+    obstacleMix: { low: 0.18, mid: 0.30, high: 0.25, wall: 0.27 },
+    obstacleSpawnRate: { min: 0.80, max: 1.20 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 518, musicVolume: 0.0,
   },
   {
     id: 15, name: "Witch's House II", duration: 30, bgFolder: 'level4_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.14, mid: 0.30, high: 0.22, wall: 0.34 },
-    obstacleSpawnRate: { min: 0.40, max: 0.60 },
+    obstacleMix: { low: 0.15, mid: 0.30, high: 0.25, wall: 0.30 },
+    obstacleSpawnRate: { min: 0.75, max: 1.15 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 523, musicVolume: 0.0,
   },
   {
     id: 16, name: 'Cursed Cemetery', duration: 30, bgFolder: 'level5_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.12, mid: 0.30, high: 0.22, wall: 0.36 },
-    obstacleSpawnRate: { min: 0.40, max: 0.60 },
+    obstacleMix: { low: 0.12, mid: 0.28, high: 0.27, wall: 0.33 },
+    obstacleSpawnRate: { min: 0.70, max: 1.05 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 528, musicVolume: 0.0,
   },
   {
     id: 17, name: 'Toxic Forest II', duration: 30, bgFolder: 'level6_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.10, mid: 0.30, high: 0.22, wall: 0.38 },
-    obstacleSpawnRate: { min: 0.40, max: 0.60 },
+    obstacleMix: { low: 0.10, mid: 0.27, high: 0.27, wall: 0.36 },
+    obstacleSpawnRate: { min: 0.65, max: 1.00 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 534, musicVolume: 0.0,
   },
   {
     id: 18, name: 'Dark Manor II', duration: 30, bgFolder: 'level7_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.08, mid: 0.30, high: 0.22, wall: 0.40 },
-    obstacleSpawnRate: { min: 0.40, max: 0.60 },
+    obstacleMix: { low: 0.08, mid: 0.26, high: 0.28, wall: 0.38 },
+    obstacleSpawnRate: { min: 0.60, max: 0.95 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 539, musicVolume: 0.0,
   },
   {
     id: 19, name: 'Dragon Lair II', duration: 30, bgFolder: 'level8_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.06, mid: 0.30, high: 0.22, wall: 0.42 },
-    obstacleSpawnRate: { min: 0.40, max: 0.60 },
+    obstacleMix: { low: 0.06, mid: 0.24, high: 0.30, wall: 0.40 },
+    obstacleSpawnRate: { min: 0.55, max: 0.85 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 544, musicVolume: 0.0,
   },
   {
     id: 20, name: 'Dragon Dungeon II', duration: 30, bgFolder: 'level9_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.05, mid: 0.28, high: 0.23, wall: 0.44 },
-    obstacleSpawnRate: { min: 0.40, max: 0.60 },
+    obstacleMix: { low: 0.05, mid: 0.22, high: 0.31, wall: 0.42 },
+    obstacleSpawnRate: { min: 0.50, max: 0.80 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 550, musicVolume: 0.0,
   },
@@ -388,8 +388,8 @@ export const LEVELS = [
   {
     id: 21, name: 'Final Dungeon', duration: 30, bgFolder: 'level10_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.04, mid: 0.26, high: 0.24, wall: 0.46 },
-    obstacleSpawnRate: { min: 0.40, max: 0.60 },
+    obstacleMix: { low: 0.04, mid: 0.20, high: 0.32, wall: 0.44 },
+    obstacleSpawnRate: { min: 0.45, max: 0.75 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
     worldSpeed: 555, musicVolume: 0.0,
   },
@@ -532,8 +532,12 @@ export const OBSTACLE_TIERS = {
 // Anti-overlap.
 export const MIN_OBSTACLE_DISTANCE_X = 280;
 // Po 'wall' wymusimy więcej przestrzeni — gracz potrzebuje czasu na lądowanie
-// po double jumpie zanim trafi w kolejną przeszkodę.
-export const MIN_OBSTACLE_DISTANCE_AFTER_WALL = 350;
+// po double jumpie zanim trafi w kolejną przeszkodę. 500 (z 350) = ~1.0s
+// gap przy worldSpeed 500 → starcza na full double jump cycle (jump 1.2s).
+export const MIN_OBSTACLE_DISTANCE_AFTER_WALL = 500;
+// Po 2 wallach pod rząd nie pozwól trzeciego (anti-cluster). Forsuje
+// pickTier wybór non-wall jeśli lastObstacleTier='wall' i consecutiveWalls>=2.
+export const MAX_CONSECUTIVE_WALLS = 2;
 export const AIR_GROUND_RULE = true;
 
 // Multiplayer.

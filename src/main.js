@@ -107,6 +107,7 @@ const config = {
 let game = null;
 try {
   game = new Phaser.Game(config);
+  if (import.meta.env?.DEV) window.__game = game;
   // OrientationGuard.init rejestruje listenery, ale `check()` jest gated
   // przez flagę `started` — sprawdzanie odpala się DOPIERO gdy PreloadScene
   // wywoła `orientationGuard.start()` po complete eventcie ładowania.
