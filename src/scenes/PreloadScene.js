@@ -74,7 +74,8 @@ export class PreloadScene extends Phaser.Scene {
       if (raw) _equippedSkin = JSON.parse(raw) || 'default';
     } catch { /* ignore */ }
     const SKIN_TO_CHAR = { drox: '04', nex: '05', nox: '06', poki: '07' };
-    const skinAnimSet = ['idle', 'run', 'jump', 'hit', 'fall'];
+    // dead/win — sesja 2026-05: anim śmierci i wygranej dla skinów 04-07.
+    const skinAnimSet = ['idle', 'run', 'jump', 'hit', 'fall', 'dead', 'win'];
     const skinCharNum = SKIN_TO_CHAR[_equippedSkin];
     if (skinCharNum) {
       const charKey = `char${skinCharNum}`;

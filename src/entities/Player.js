@@ -96,13 +96,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const animKeys = {};
     for (const anim of ANIMS) {
       const key = `${charKey}_${anim}`;
-      animKeys[anim] = key;
-      if (scene.anims.exists(key)) continue;
+      if (scene.anims.exists(key)) { animKeys[anim] = key; continue; }
       const count = ANIM_FRAME_COUNTS[anim];
       const frames = [];
+      let allFramesExist = true;
       for (let i = 0; i < count; i++) {
-        frames.push({ key: `${charKey}_${anim}_${pad2(i)}` });
+        const frameKey = `${charKey}_${anim}_${pad2(i)}`;
+        if (!scene.textures.exists(frameKey)) { allFramesExist = false; break; }
+        frames.push({ key: frameKey });
       }
+      // Defensywnie skip jeśli któryś frame missing (np. skin char04-07 bez dead/win
+      // załadowanych w preload). Bez sprawdzania Phaser create() bez frames →
+      // crash przy play (currentFrame.duration undefined).
+      if (!allFramesExist) continue;
+      animKeys[anim] = key;
       scene.anims.create({
         key,
         frames,
