@@ -40,7 +40,7 @@ export function resetGame() {
     try { localStorage.removeItem(key); } catch { /* ignore */ }
   }
   // Wyczyść zapisane imię — żeby MenuScene play → NameInputScene (user wpisze nowe).
-  try { PlayerStore.clear(); } catch { /* ignore */ }
+  try { PlayerStore.clearName(); } catch { /* ignore */ }
   // Reset session in-memory.
   try { sessionManager.reset(); } catch { /* ignore */ }
   // Trigger sync — backend dostanie pusty snapshot pod istniejącym deviceId.
