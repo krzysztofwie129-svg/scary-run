@@ -315,6 +315,33 @@ export class GameScene extends Phaser.Scene {
         repeat: -1,
       });
     }
+    // Faza 2: anim'y dla animowanych obstacles (cyclops, warior, bomber).
+    const _mkAnim = (key, prefix, count, fr = 12) => {
+      if (this.anims.exists(key)) return;
+      const frames = [];
+      for (let i = 0; i < count; i++) {
+        frames.push({ key: `${prefix}_${String(i).padStart(2, '0')}` });
+      }
+      this.anims.create({ key, frames, frameRate: fr, repeat: -1 });
+    };
+    _mkAnim('cyclops_idle', 'cyclops_idle', 16, 12);
+    _mkAnim('warior_run',   'warior_run',   16, 24);
+    _mkAnim('bomber_fly',   'bomber_fly',   12, 14);
+    // Faza 2 ext: 16 dodatkowych monsterów (każdy 10 frames idle, archer 8).
+    for (const m of [
+      'cartoon_m1','cartoon_m2','cartoon_m3','cartoon_m4','cartoon_m5',
+      'funny_m1','funny_m2','funny_m3','funny_m4','funny_m5',
+      'v7_m1','v7_m2','v7_m3','v7_m4','v7_m5',
+    ]) _mkAnim(`${m}_anim`, m, 10, 12);
+    _mkAnim('archer_anim', 'archer', 8, 10);
+    // Sesja 2026-05-10 — 13 nowych halloween monsters.
+    for (const m of [
+      'necromancer_1', 'skeleton_1',
+      'ghost_1', 'ghost_2', 'ghost_3',
+      'troll_1', 'troll_2', 'troll_3',
+    ]) _mkAnim(`${m}_anim`, m, 10, 10);
+    for (const m of ['pzombie_1', 'pzombie_2', 'pzombie_3']) _mkAnim(`${m}_anim`, m, 4, 8);
+    for (const m of ['zombie_01', 'zombie_02']) _mkAnim(`${m}_anim`, m, 8, 12);
     const cx = GAME_WIDTH / 2;
     this.coinIcon = this.add.sprite(cx - 100, 28, 'coin_00').setOrigin(0.5);
     const coinScale = HUD_COIN_ICON_SIZE / 100;
@@ -523,7 +550,10 @@ export class GameScene extends Phaser.Scene {
 
     const tier = this.pickTier();
     const tierDef = OBSTACLE_TIERS[tier];
-    const types = tierDef.types;
+    // Per-level override — jeśli current level ma obstacleTypesOverride[tier],
+    // używamy tego pool zamiast globalnego OBSTACLE_TIERS[tier].types.
+    const override = this.lvl?.obstacleTypesOverride?.[tier];
+    const types = (override && override.length > 0) ? override : tierDef.types;
     const type = types[Math.floor(Math.random() * types.length)];
 
     const obstacle = new Obstacle(this, newSpawnX, type);
@@ -691,8 +721,9 @@ export class GameScene extends Phaser.Scene {
           return true;
         }
         if (powerUpManager.isActive(POWER_UP_TYPES.SPEED)) {
-          // SPEED = invulnerable, niszcz przeszkodę i kontynuuj.
-          o.destroy();
+          // SPEED = invulnerable, niszcz przeszkodę i kontynuuj. destroyAll
+          // niszczy też stackChildren (górne wooden_box w high_box_stack).
+          if (typeof o.destroyAll === 'function') o.destroyAll(); else o.destroy();
           return true;
         }
         if (powerUpManager.isActive(POWER_UP_TYPES.SHIELD)) {
@@ -701,7 +732,7 @@ export class GameScene extends Phaser.Scene {
           this.player.shieldActive = false;
           if (this.shieldAura) { this.shieldAura.destroy(); this.shieldAura = null; }
           this.cameras.main.flash(200, 78, 205, 196, false);
-          o.destroy();
+          if (typeof o.destroyAll === 'function') o.destroyAll(); else o.destroy();
           return false;
         }
         this.player.die();
@@ -1124,7 +1155,14 @@ export class GameScene extends Phaser.Scene {
       duration: 200, onComplete: () => flash.destroy(),
     });
     this.cameras.main.shake(80, 0.003);
-    try { obstacle.destroy(); } catch (e) { /* ignore */ }
+    // Dźwięk uderzenia (ten sam co player→boss w BossFightScene).
+    try { this.sound.play('boss_player_hit', { volume: 0.5 }); } catch (e) { /* ignore */ }
+    // destroyAll niszczy też stackChildren (górne wooden_box w high_box_stack);
+    // bez tego górny sprite zostawał sierotą i "pchany" przez gracza dalej.
+    try {
+      if (typeof obstacle.destroyAll === 'function') obstacle.destroyAll();
+      else obstacle.destroy();
+    } catch (e) { /* ignore */ }
   }
 
   createHeartFloatAnimation() {
@@ -1166,6 +1204,9 @@ export class GameScene extends Phaser.Scene {
     // przez quirks w lifecycle), kolejne wywołania return early.
     if (this.finishSequenceStarted) return;
     this.finishSequenceStarted = true;
+
+    // Win animacja (Char-Win_NN.png 30 frames) — sesja 2026-05.
+    try { this.player?.win?.(); } catch (e) { /* ignore */ }
 
     if (this.obstacleTimer) { this.obstacleTimer.remove(false); this.obstacleTimer = null; }
     if (this.coinTimer) { this.coinTimer.remove(false); this.coinTimer = null; }
@@ -1225,7 +1266,7 @@ export class GameScene extends Phaser.Scene {
     // Po FINISH_SLOWMO_DURATION + 300ms przejście do LevelComplete.
     // advanceLevel() przeniesione do LevelComplete.create — tam ekran pokazuje
     // ukończony level (player.level) zanim go inkrementuje przy NEXT LEVEL.
-    this.time.delayedCall(FINISH_SLOWMO_DURATION + 300, () => {
+    this.time.delayedCall(FINISH_SLOWMO_DURATION + 1100, () => {
       const player = sessionManager.currentPlayer();
       // Sesja 10: stats per-level dla LevelComplete (star rating, achievements).
       const snap = player.levelStartSnapshot || { coins: 0, diamonds: 0, score: 0 };
@@ -1241,12 +1282,13 @@ export class GameScene extends Phaser.Scene {
       // player.level jest tym levelem który właśnie ukończono (0-based).
       // V6: boss po KAŻDYM levelu (cycle 10 boss BGs modulo, +15px size per level).
       // V7: gracz wybiera czy walczyć (BossChoiceScene). Skip → bezpośrednio LC bez boss bonusu.
-      // Ostatni level → GameComplete bez boss fight.
-      if (player.level >= LEVELS.length - 1) {
-        this.scene.start('GameCompleteScene', sceneData);
-      } else {
-        this.scene.start('BossChoiceScene', { fromLevel: player.level + 1, sceneData });
-      }
+      // Ostatni level (L21) — też BossChoice. Po wygranej/skip → GameComplete (BossFightScene
+      // i BossChoiceScene sprawdzają isLastLevel w sceneData).
+      const _isLast = player.level >= LEVELS.length - 1;
+      this.scene.start('BossChoiceScene', {
+        fromLevel: player.level + 1,
+        sceneData: { ...sceneData, isLastLevel: _isLast },
+      });
     });
   }
 
@@ -1290,7 +1332,8 @@ export class GameScene extends Phaser.Scene {
     console.log(`[ScoreSystem] DEATH L${_lvlNum}: levelBase=${ScoreSystem.getLevelBaseScore(this._levelStartScore || 0)} × ${_lvlNum} = ${_runScore}, isNewRecord=${_result.isNewRecord}, ranking=${_result.rankingScore}`);
 
     this.time.delayedCall(200, () => this.audioManager.playSfx('gameover', { volume: 0.6 }));
-    this.time.delayedCall(1200, () => {
+    // 1200 → 1600 (+400ms — pełna anim dead bez urywania).
+    this.time.delayedCall(1600, () => {
       this.scene.start('DeathScene', {
         level: _lvlNum,
         runScore: _runScore,

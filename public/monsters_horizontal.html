@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scary Run — Hitbox Horizontal</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: linear-gradient(180deg, #1a0a2e 0%, #0a0420 100%);
+      color: #ffd93c;
+      font-family: 'Arial Black', sans-serif;
+    }
+    h1 {
+      text-align: center;
+      font-size: 26px;
+      margin: 0 0 4px;
+      text-shadow: 0 0 20px #ff6b9d;
+    }
+    .sub {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #bdaee3;
+      margin-bottom: 16px;
+    }
+    .row {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 12px 8px 24px;
+      scrollbar-color: #ff6b9d #1a0a2e;
+    }
+    .row::-webkit-scrollbar { height: 14px; }
+    .row::-webkit-scrollbar-thumb { background: #ff6b9d; border-radius: 7px; }
+    .row::-webkit-scrollbar-track { background: #2d1b4e; }
+    .item {
+      flex: 0 0 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-wrap {
+      width: 220px; height: 220px;
+      position: relative;
+      background: #0a0420;
+      border-radius: 8px;
+      flex-shrink: 0;
+      overflow: hidden;
+      border: 2px solid #6b4ea0;
+    }
+    .item.tier-mid    .preview-wrap { border-color: #4ade80; }
+    .item.tier-high   .preview-wrap { border-color: #b084ff; }
+    .item.tier-wall   .preview-wrap { border-color: #ff6b9d; }
+    .item.tier-low    .preview-wrap { border-color: #ffd93c; }
+    .item.tier-static .preview-wrap { border-color: #8678a8; }
+    .preview-wrap img {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100%; max-height: 100%;
+      object-fit: contain;
+    }
+    .hitbox {
+      position: absolute;
+      border: 3px solid #00ff88;
+      box-shadow: 0 0 8px rgba(0, 255, 136, 0.7);
+      background: rgba(0, 255, 136, 0.10);
+      pointer-events: none;
+    }
+    .hitbox-label {
+      position: absolute;
+      top: 4px; left: 4px;
+      background: rgba(0, 255, 136, 0.95);
+      color: #0a0420;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+    .tier-label {
+      position: absolute;
+      top: 4px; right: 4px;
+      font-family: monospace;
+      font-size: 9px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      letter-spacing: 1px;
+    }
+    .tier-mid .tier-label    { background: #4ade80; color: #1a0a2e; }
+    .tier-high .tier-label   { background: #b084ff; color: #1a0a2e; }
+    .tier-wall .tier-label   { background: #ff6b9d; color: #fff; }
+    .tier-low .tier-label    { background: #ffd93c; color: #1a0a2e; }
+    .tier-static .tier-label { background: #8678a8; color: #1a0a2e; }
+    .name {
+      font-size: 13px;
+      color: #ffd93c;
+      text-align: center;
+      max-width: 220px;
+      word-break: break-word;
+    }
+    .group-divider {
+      flex: 0 0 auto;
+      width: 4px;
+      background: #ff6b9d;
+      border-radius: 2px;
+      margin: 0 4px;
+      opacity: 0.6;
+      align-self: stretch;
+    }
+    .group-label {
+      flex: 0 0 auto;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      color: #ff6b9d;
+      font-size: 14px;
+      padding: 8px 4px;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <h1>SCARY RUN — Hitbox Horizontal</h1>
+  <div class="sub">
+    Wszyscy 38 przeciwników w jednej linii (scroll w prawo →) • <span style="color: #00ff88;">🟩 zielone = hitbox</span> • każdy preview 220×220
+  </div>
+
+  <div class="row" id="row"></div>
+
+  <script>
+    const MONSTERS = [
+      { group: 'GOBLIN' },
+      { name: 'Cyclops',  key: 'cyclops',  count: 8,  pad: 3, tier: 'wall', hitbox: 0.50 },
+      { name: 'Warior',   key: 'warior',   count: 16, pad: 3, tier: 'mid',  hitbox: 0.32 },
+      { name: 'Bomber',   key: 'bomber',   count: 12, pad: 3, tier: 'high', hitbox: 0.65 },
+      { name: 'Archer',   key: 'archer',   count: 8,  pad: 2, tier: 'mid',  hitbox: 0.32 },
+
+      { group: 'CARTOON' },
+      { name: 'Cartoon M1', key: 'cartoon_M1', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'Cartoon M2', key: 'cartoon_M2', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'Cartoon M3 (żółw)', key: 'cartoon_M3', count: 10, pad: 2, tier: 'mid',  hitbox: 0.22 },
+      { name: 'Cartoon M4 (nietoperz)', key: 'cartoon_M4', count: 10, pad: 2, tier: 'high', hitbox: 0.40 },
+      { name: 'Cartoon M5 (jeż)', key: 'cartoon_M5', count: 10, pad: 2, tier: 'mid',  hitbox: 0.22 },
+
+      { group: 'FUNNY' },
+      { name: 'Funny M1', key: 'funny_M1', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'Funny M2', key: 'funny_M2', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'Funny M3', key: 'funny_M3', count: 10, pad: 2, tier: 'wall', hitbox: 0.32 },
+      { name: 'Funny M4', key: 'funny_M4', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'Funny M5', key: 'funny_M5', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+
+      { group: 'V7' },
+      { name: 'V7 M1', key: 'v7_M1', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'V7 M2', key: 'v7_M2', count: 10, pad: 2, tier: 'wall', hitbox: 0.32 },
+      { name: 'V7 M3', key: 'v7_M3', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'V7 M4', key: 'v7_M4', count: 10, pad: 2, tier: 'wall', hitbox: 0.32 },
+      { name: 'V7 M5', key: 'v7_M5', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+
+      { group: 'HALLOWEEN' },
+      { name: 'Necromancer 1', key: 'necromancer_1', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'Skeleton 1',    key: 'skeleton_1',    count: 10, pad: 2, tier: 'mid',  hitbox: 0.32 },
+      { name: 'Ghost 1',       key: 'ghost_1',       count: 10, pad: 2, tier: 'high', hitbox: 0.35 },
+      { name: 'Ghost 2',       key: 'ghost_2',       count: 10, pad: 2, tier: 'high', hitbox: 0.35 },
+      { name: 'Ghost 3',       key: 'ghost_3',       count: 10, pad: 2, tier: 'high', hitbox: 0.35 },
+      { name: 'Troll 1',       key: 'troll_1',       count: 10, pad: 2, tier: 'wall', hitbox: 0.40 },
+      { name: 'Troll 2',       key: 'troll_2',       count: 10, pad: 2, tier: 'wall', hitbox: 0.40 },
+      { name: 'Troll 3',       key: 'troll_3',       count: 10, pad: 2, tier: 'wall', hitbox: 0.40 },
+      { name: 'Premium Zombie 1', key: 'pzombie_1', count: 4,  pad: 2, tier: 'mid', hitbox: 0.32 },
+      { name: 'Premium Zombie 2', key: 'pzombie_2', count: 4,  pad: 2, tier: 'mid', hitbox: 0.32 },
+      { name: 'Premium Zombie 3', key: 'pzombie_3', count: 4,  pad: 2, tier: 'mid', hitbox: 0.32 },
+      { name: 'Zombie 01', key: 'zombie_01', count: 8,  pad: 2, tier: 'mid', hitbox: 0.32 },
+      { name: 'Zombie 02', key: 'zombie_02', count: 8,  pad: 2, tier: 'mid', hitbox: 0.32 },
+
+      { group: 'STATIC' },
+      { name: 'Spikes',        key: 'spikes',         tier: 'low',  hitbox: 0.85, static: true, file: 'spikes.webp' },
+      { name: 'Stone',         key: 'stone',          tier: 'low',  hitbox: 0.85, static: true, file: 'stone.webp' },
+      { name: 'Rock 01-08',    key: 'rocks',          tier: 'low',  hitbox: 0.80, rock: true },
+      { name: 'Tombstone',     key: 'tombstone',      tier: 'mid',  hitbox: 0.80, static: true, file: 'static/tombstone.webp' },
+      { name: 'Wooden Barrel', key: 'wooden_barrel',  tier: 'mid',  hitbox: 0.85, static: true, file: 'wooden_barrel.webp' },
+      { name: 'Wooden Box',    key: 'wooden_box',     tier: 'mid',  hitbox: 0.90, static: true, file: 'wooden_box.webp' },
+      { name: 'High Box Stack',key: 'high_box_stack', tier: 'wall', hitbox: 0.90, static: true, file: 'wooden_box.webp' },
+      { name: 'Fence 01-02',   key: 'fences',         tier: 'wall', hitbox: 0.80, fence: true },
+      { name: 'Flying Pumpkin',key: 'flying_pumpkin', tier: 'high', hitbox: 0.80, static: true, file: '../decoration/pumpkin.webp' },
+    ];
+
+    const row = document.getElementById('row');
+
+    for (const m of MONSTERS) {
+      if (m.group) {
+        const div = document.createElement('div');
+        div.className = 'group-label';
+        div.textContent = m.group;
+        row.appendChild(div);
+        const sep = document.createElement('div');
+        sep.className = 'group-divider';
+        row.appendChild(sep);
+        continue;
+      }
+
+      const item = document.createElement('div');
+      item.className = `item tier-${m.tier}`;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'preview-wrap';
+      const img = document.createElement('img');
+
+      if (m.static) {
+        img.src = `assets/tileset/obstacles/${m.file}`;
+      } else if (m.rock) {
+        img.src = `assets/tileset/obstacles/static/rock_01.webp`;
+        let i = 1;
+        setInterval(() => {
+          i = (i % 8) + 1;
+          img.src = `assets/tileset/obstacles/static/rock_${String(i).padStart(2, '0')}.webp`;
+        }, 800);
+      } else if (m.fence) {
+        img.src = `assets/tileset/obstacles/static/fence_01.webp`;
+        let i = 1;
+        setInterval(() => {
+          i = (i % 2) + 1;
+          img.src = `assets/tileset/obstacles/static/fence_0${i}.webp`;
+        }, 1000);
+      } else {
+        let frame = 0;
+        const update = () => {
+          const padded = String(frame).padStart(m.pad || 2, '0');
+          img.src = `assets/tileset/obstacles/${m.key}/${padded}.webp`;
+          frame = (frame + 1) % m.count;
+        };
+        update();
+        setInterval(update, 100);
+      }
+      wrap.appendChild(img);
+
+      // Hitbox overlay
+      const hb = document.createElement('div');
+      hb.className = 'hitbox';
+      const px = Math.round(220 * m.hitbox);
+      const offset = Math.round((220 - px) / 2);
+      hb.style.left = offset + 'px';
+      hb.style.top = offset + 'px';
+      hb.style.width = px + 'px';
+      hb.style.height = px + 'px';
+      wrap.appendChild(hb);
+
+      const lbl = document.createElement('div');
+      lbl.className = 'hitbox-label';
+      lbl.textContent = (m.hitbox * 100).toFixed(0) + '%';
+      wrap.appendChild(lbl);
+
+      const tlbl = document.createElement('div');
+      tlbl.className = 'tier-label';
+      tlbl.textContent = m.tier.toUpperCase();
+      wrap.appendChild(tlbl);
+
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = m.name;
+
+      item.appendChild(wrap);
+      item.appendChild(name);
+      row.appendChild(item);
+    }
+  </script>
+</body>
+</html>

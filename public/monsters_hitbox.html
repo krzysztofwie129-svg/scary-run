@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scary Run — Hitbox Catalog</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: linear-gradient(180deg, #1a0a2e 0%, #0a0420 100%);
+      color: #ffd93c;
+      font-family: 'Arial Black', sans-serif;
+    }
+    h1 {
+      text-align: center;
+      font-size: 32px;
+      margin: 0 0 8px;
+      text-shadow: 0 0 20px #ff6b9d;
+    }
+    .sub {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      color: #bdaee3;
+      margin-bottom: 20px;
+    }
+    .legend {
+      max-width: 720px;
+      margin: 0 auto 24px;
+      padding: 12px 16px;
+      background: rgba(45, 27, 78, 0.6);
+      border: 2px solid #4ade80;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      color: #bdaee3;
+    }
+    .legend strong { color: #4ade80; }
+    .group-header {
+      grid-column: 1 / -1;
+      font-size: 22px;
+      color: #ffd93c;
+      border-bottom: 3px solid #ff6b9d;
+      padding: 16px 0 8px;
+      margin-top: 24px;
+    }
+    .grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .card {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: rgba(45, 27, 78, 0.6);
+      border: 2px solid #6b4ea0;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .card.tier-mid    { border-left: 6px solid #4ade80; }
+    .card.tier-high   { border-left: 6px solid #b084ff; }
+    .card.tier-wall   { border-left: 6px solid #ff6b9d; }
+    .card.tier-low    { border-left: 6px solid #ffd93c; }
+    .card.tier-static { border-left: 6px solid #8678a8; }
+    .preview-wrap {
+      width: 220px; height: 220px;
+      position: relative;
+      background: #0a0420;
+      border-radius: 8px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .preview-wrap img {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .hitbox {
+      position: absolute;
+      border: 3px solid #00ff88;
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.6), inset 0 0 10px rgba(0, 255, 136, 0.2);
+      background: rgba(0, 255, 136, 0.08);
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .hitbox-label {
+      position: absolute;
+      top: 4px; left: 4px;
+      background: rgba(0, 255, 136, 0.9);
+      color: #0a0420;
+      font-family: monospace;
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+    .info {
+      flex: 1;
+    }
+    .info .name {
+      font-size: 22px;
+      color: #ffd93c;
+      margin-bottom: 4px;
+    }
+    .info .tier {
+      display: inline-block;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      letter-spacing: 1px;
+      margin-right: 6px;
+    }
+    .tier-badge-mid    { background: #4ade80; color: #1a0a2e; }
+    .tier-badge-high   { background: #b084ff; color: #1a0a2e; }
+    .tier-badge-wall   { background: #ff6b9d; color: #fff; }
+    .tier-badge-low    { background: #ffd93c; color: #1a0a2e; }
+    .tier-badge-static { background: #8678a8; color: #1a0a2e; }
+    .info .desc {
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      color: #bdaee3;
+      margin-top: 6px;
+    }
+    .info .meta {
+      font-family: monospace;
+      font-size: 11px;
+      color: #8678a8;
+      margin-top: 4px;
+      line-height: 1.6;
+    }
+    .info .hitbox-info {
+      color: #00ff88;
+    }
+  </style>
+</head>
+<body>
+  <h1>SCARY RUN — Hitbox Catalog</h1>
+  <div class="sub">Wszyscy przeciwnicy z zielonym obramowaniem pola kolizji (hitbox)</div>
+
+  <div class="legend">
+    <strong>🟩 Zielone obramowanie</strong> = pole hitu (hitbox).
+    Tylko gdy gracz dotknie tego prostokąta, zostaje uderzony — przed tym jest <em>safe space</em>.
+    Im mniejszy hitbox, tym łatwiej przeskoczyć/przebiec obok bez kolizji.
+    <br>
+    <strong>hitboxRatio</strong> = procent szerokości/wysokości tekstury który stanowi hitbox (centrowany).
+    Np. ratio 0.32 = 32% texture w środku to hitbox, reszta to "transparent margin" (safe).
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <script>
+    // [name, key, count, pad, tier, hitboxRatio, desc]
+    const MONSTERS = [
+      { group: 'Goblin Pack' },
+      { name: 'Cyclops',  key: 'cyclops',  count: 8,  pad: 3, tier: 'wall', hitbox: 0.50, desc: 'Wymaga skoku' },
+      { name: 'Warior',   key: 'warior',   count: 16, pad: 3, tier: 'mid',  hitbox: 0.32, desc: 'Run anim' },
+      { name: 'Bomber',   key: 'bomber',   count: 12, pad: 3, tier: 'high', hitbox: 0.65, desc: 'Lata, slide' },
+      { name: 'Archer',   key: 'archer',   count: 8,  pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Łucznik' },
+
+      { group: 'Cartoon Monsters' },
+      { name: 'Cartoon M1', key: 'cartoon_M1', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Różowy okrągły' },
+      { name: 'Cartoon M2', key: 'cartoon_M2', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Żółto-różowy' },
+      { name: 'Cartoon M3', key: 'cartoon_M3', count: 10, pad: 2, tier: 'mid',  hitbox: 0.22, desc: 'Żółw — niski (mniejszy hitbox)' },
+      { name: 'Cartoon M4', key: 'cartoon_M4', count: 10, pad: 2, tier: 'high', hitbox: 0.40, desc: 'Nietoperz — lata' },
+      { name: 'Cartoon M5', key: 'cartoon_M5', count: 10, pad: 2, tier: 'mid',  hitbox: 0.22, desc: 'Niebieski jeż (mniejszy hitbox)' },
+
+      { group: 'Funny Monsters' },
+      { name: 'Funny M1', key: 'funny_M1', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Żółty z piórkami' },
+      { name: 'Funny M2', key: 'funny_M2', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Różowo-biały' },
+      { name: 'Funny M3', key: 'funny_M3', count: 10, pad: 2, tier: 'wall', hitbox: 0.32, desc: 'Niebieski rycerz' },
+      { name: 'Funny M4', key: 'funny_M4', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Szary z plecakiem' },
+      { name: 'Funny M5', key: 'funny_M5', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Biały kreator' },
+
+      { group: 'Monster V7' },
+      { name: 'V7 M1', key: 'v7_M1', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Żółty zębaty' },
+      { name: 'V7 M2', key: 'v7_M2', count: 10, pad: 2, tier: 'wall', hitbox: 0.32, desc: 'Niebieski z buzią' },
+      { name: 'V7 M3', key: 'v7_M3', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Fioletowy' },
+      { name: 'V7 M4', key: 'v7_M4', count: 10, pad: 2, tier: 'wall', hitbox: 0.32, desc: 'Biały szkielet' },
+      { name: 'V7 M5', key: 'v7_M5', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Pomarańczowy z dziobem' },
+
+      { group: 'Halloween (NOWE)' },
+      { name: 'Necromancer 1', key: 'necromancer_1', count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Czarny mag' },
+      { name: 'Skeleton 1',    key: 'skeleton_1',    count: 10, pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Szkielet z kosą' },
+      { name: 'Ghost 1',       key: 'ghost_1',       count: 10, pad: 2, tier: 'high', hitbox: 0.35, desc: 'Duch — lata' },
+      { name: 'Ghost 2',       key: 'ghost_2',       count: 10, pad: 2, tier: 'high', hitbox: 0.35, desc: 'Duch wariant 2' },
+      { name: 'Ghost 3',       key: 'ghost_3',       count: 10, pad: 2, tier: 'high', hitbox: 0.35, desc: 'Duch wariant 3' },
+      { name: 'Troll 1',       key: 'troll_1',       count: 10, pad: 2, tier: 'wall', hitbox: 0.40, desc: 'Wielki troll' },
+      { name: 'Troll 2',       key: 'troll_2',       count: 10, pad: 2, tier: 'wall', hitbox: 0.40, desc: 'Wariant 2' },
+      { name: 'Troll 3',       key: 'troll_3',       count: 10, pad: 2, tier: 'wall', hitbox: 0.40, desc: 'Wariant 3' },
+      { name: 'Premium Zombie 1', key: 'pzombie_1', count: 4,  pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Premium' },
+      { name: 'Premium Zombie 2', key: 'pzombie_2', count: 4,  pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Wariant 2' },
+      { name: 'Premium Zombie 3', key: 'pzombie_3', count: 4,  pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Wariant 3' },
+      { name: 'Zombie 01',     key: 'zombie_01',     count: 8,  pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Basic walk' },
+      { name: 'Zombie 02',     key: 'zombie_02',     count: 8,  pad: 2, tier: 'mid',  hitbox: 0.32, desc: 'Basic wariant 2' },
+
+      { group: 'Statyczne' },
+      { name: 'Spikes',        key: 'spikes',         tier: 'low',  hitbox: 0.85, static: true, file: 'spikes.webp', desc: 'Kolce' },
+      { name: 'Stone',         key: 'stone',          tier: 'low',  hitbox: 0.85, static: true, file: 'stone.webp',  desc: 'Kamień' },
+      { name: 'Rock',          key: 'rocks',          tier: 'low',  hitbox: 0.80, rock: true,                       desc: '8 wariantów' },
+      { name: 'Tombstone',     key: 'tombstone',      tier: 'mid',  hitbox: 0.80, static: true, file: 'static/tombstone.webp', desc: 'Nagrobek' },
+      { name: 'Wooden Barrel', key: 'wooden_barrel',  tier: 'mid',  hitbox: 0.85, static: true, file: 'wooden_barrel.webp', desc: 'Beczka' },
+      { name: 'Wooden Box',    key: 'wooden_box',     tier: 'mid',  hitbox: 0.90, static: true, file: 'wooden_box.webp', desc: 'Skrzynia' },
+      { name: 'High Box Stack',key: 'high_box_stack', tier: 'wall', hitbox: 0.90, static: true, file: 'wooden_box.webp', desc: '2x box stack' },
+      { name: 'Fence',         key: 'fences',         tier: 'wall', hitbox: 0.80, fence: true,                      desc: '2 ogrodzenia' },
+      { name: 'Flying Pumpkin',key: 'flying_pumpkin', tier: 'high', hitbox: 0.80, static: true, file: '../decoration/pumpkin.webp', desc: 'Latająca dynia' },
+    ];
+
+    const grid = document.getElementById('grid');
+
+    function tierLabel(t) {
+      return ({ mid: 'MID', high: 'HIGH', wall: 'WALL', low: 'LOW', static: 'STATIC' })[t] || t;
+    }
+
+    for (const m of MONSTERS) {
+      if (m.group) {
+        const h = document.createElement('div');
+        h.className = 'group-header';
+        h.textContent = m.group;
+        grid.appendChild(h);
+        continue;
+      }
+      const card = document.createElement('div');
+      card.className = `card tier-${m.tier}`;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'preview-wrap';
+      const img = document.createElement('img');
+
+      if (m.static) {
+        img.src = `assets/tileset/obstacles/${m.file}`;
+      } else if (m.rock) {
+        img.src = `assets/tileset/obstacles/static/rock_01.webp`;
+        let i = 1;
+        setInterval(() => {
+          i = (i % 8) + 1;
+          img.src = `assets/tileset/obstacles/static/rock_${String(i).padStart(2, '0')}.webp`;
+        }, 800);
+      } else if (m.fence) {
+        img.src = `assets/tileset/obstacles/static/fence_01.webp`;
+        let i = 1;
+        setInterval(() => {
+          i = (i % 2) + 1;
+          img.src = `assets/tileset/obstacles/static/fence_0${i}.webp`;
+        }, 1000);
+      } else {
+        let frame = 0;
+        const update = () => {
+          const padded = String(frame).padStart(m.pad || 2, '0');
+          img.src = `assets/tileset/obstacles/${m.key}/${padded}.webp`;
+          frame = (frame + 1) % m.count;
+        };
+        update();
+        setInterval(update, 100);
+      }
+      wrap.appendChild(img);
+
+      // Hitbox overlay — centered, ratio% of preview size.
+      // Preview = 220x220, więc hitbox box ma side = 220 * ratio.
+      const hb = document.createElement('div');
+      hb.className = 'hitbox';
+      const px = Math.round(220 * m.hitbox);
+      const offset = Math.round((220 - px) / 2);
+      hb.style.left = offset + 'px';
+      hb.style.top = offset + 'px';
+      hb.style.width = px + 'px';
+      hb.style.height = px + 'px';
+      wrap.appendChild(hb);
+
+      const lbl = document.createElement('div');
+      lbl.className = 'hitbox-label';
+      lbl.textContent = (m.hitbox * 100).toFixed(0) + '%';
+      wrap.appendChild(lbl);
+
+      const info = document.createElement('div');
+      info.className = 'info';
+      const safeMargin = ((1 - m.hitbox) / 2 * 100).toFixed(0);
+      info.innerHTML = `
+        <div class="name">${m.name}</div>
+        <span class="tier tier-badge-${m.tier}">${tierLabel(m.tier)}</span>
+        <div class="desc">${m.desc}</div>
+        <div class="meta">
+          <span class="hitbox-info">hitboxRatio: <strong>${m.hitbox}</strong> (${(m.hitbox * 100).toFixed(0)}% texture)</span><br>
+          safe margin: ${safeMargin}% z każdej strony<br>
+          key: <code>${m.key}</code>
+        </div>
+      `;
+
+      card.appendChild(wrap);
+      card.appendChild(info);
+      grid.appendChild(card);
+    }
+  </script>
+</body>
+</html>

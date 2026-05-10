@@ -78,7 +78,12 @@ export class BossChoiceScene extends Phaser.Scene {
       onClick: () => {
         this.audioManager?.playSfx('click');
         StatsTracker.track('bossSkip', { fromLevel: this.fromLevel });
-        this.scene.start('LevelCompleteScene', this.sceneData);
+        // Last level — skip = GameComplete bezpośrednio (po L21 nie ma więcej leveli).
+        if (this.sceneData?.isLastLevel) {
+          this.scene.start('GameCompleteScene', this.sceneData);
+        } else {
+          this.scene.start('LevelCompleteScene', this.sceneData);
+        }
       },
     });
   }

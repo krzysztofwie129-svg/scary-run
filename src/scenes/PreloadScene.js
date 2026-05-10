@@ -45,12 +45,16 @@ export class PreloadScene extends Phaser.Scene {
       return capitalize(anim);
     };
 
+    // Dead/Win — folder capitalized (Dead/, Win/) + PNG (nie WebP).
+    // Pozostałe anim — folder lowercase + WebP.
+    const animFolderName = (anim) => (anim === 'dead' || anim === 'win') ? capitalize(anim) : anim;
+    const animFileExt = (anim) => (anim === 'dead' || anim === 'win') ? 'png' : 'webp';
     for (const charKey of CHARACTER_KEYS) {
       const charPath = ASSET_PATHS.characters[charKey];
       for (const [anim, count] of Object.entries(ANIM_FRAME_COUNTS)) {
         for (let i = 0; i < count; i++) {
           const textureKey = `${charKey}_${anim}_${pad2(i)}`;
-          const url = `${charPath}/${anim}/Character-${animFilePrefix(charKey, anim)}_${fileFramePad(anim, i)}.webp`;
+          const url = `${charPath}/${animFolderName(anim)}/Character-${animFilePrefix(charKey, anim)}_${fileFramePad(anim, i)}.${animFileExt(anim)}`;
           this.load.image(textureKey, url);
         }
       }
@@ -61,11 +65,20 @@ export class PreloadScene extends Phaser.Scene {
     // Folder anim CAPITALIZED, file PNG (nie WebP). Klucz tekstur kompatybilny z resztą:
     //   char04_run_00, char05_idle_05, etc. (Player.setupAnimations buduje frames z tych kluczy).
     // Roll w nowych charach NIE jest używany w tej fazie (skiny sklepowe), pomijamy.
-    const SKIN_CHAR_NUMS = ['04', '05', '06', '07'];
+    // Lazy-load skin char04-07 — TYLKO ten który gracz ma equipped (zamiast
+    // wszystkich 4×70MB każdy). Defaults używają char01-03 (już załadowane).
+    // Ładowanie wszystkich 4 skinów = 70MB precache → lag na phone + długi loading.
+    let _equippedSkin = 'default';
+    try {
+      const raw = localStorage.getItem('scaryrun_equipped_skin');
+      if (raw) _equippedSkin = JSON.parse(raw) || 'default';
+    } catch { /* ignore */ }
+    const SKIN_TO_CHAR = { drox: '04', nex: '05', nox: '06', poki: '07' };
     const skinAnimSet = ['idle', 'run', 'jump', 'hit', 'fall'];
-    for (const num of SKIN_CHAR_NUMS) {
-      const charKey = `char${num}`;
-      const basePath = `assets/characters/Character ${num}/Png/Character Sprite`;
+    const skinCharNum = SKIN_TO_CHAR[_equippedSkin];
+    if (skinCharNum) {
+      const charKey = `char${skinCharNum}`;
+      const basePath = `assets/characters/Character ${skinCharNum}/Png/Character Sprite`;
       for (const anim of skinAnimSet) {
         const count = ANIM_FRAME_COUNTS[anim];
         const cap = capitalize(anim);
@@ -171,10 +184,88 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     // Latająca dynia — z dekoracji, używana jako 'flying_pumpkin' obstacle.
-    // Klucz textury 'flying_pumpkin' żeby zgadzał się z OBSTACLE_TYPES.
     this.load.image('flying_pumpkin', `${ASSET_PATHS.tileset.decoration}/pumpkin.webp`);
-    // 'pumpkin' (ten sam plik) jako dekoracja w LevelCompleteScene.
     this.load.image('pumpkin', `${ASSET_PATHS.tileset.decoration}/pumpkin.webp`);
+
+    // === NOWE PRZESZKODY (Faza 2) ===
+    // Statyczne: 8 rocków (random variant), 2 fence variants, tombstone.
+    for (let i = 1; i <= 8; i++) {
+      const n = String(i).padStart(2, '0');
+      this.load.image(`rock_${n}`, `${ASSET_PATHS.tileset.obstacles}/static/rock_${n}.webp`);
+    }
+    this.load.image('fence_01', `${ASSET_PATHS.tileset.obstacles}/static/fence_01.webp`);
+    this.load.image('fence_02', `${ASSET_PATHS.tileset.obstacles}/static/fence_02.webp`);
+    this.load.image('tombstone', `${ASSET_PATHS.tileset.obstacles}/static/tombstone.webp`);
+
+    // Animowane potwory (CraftPix Goblin pack):
+    //   cyclops_idle 8 frames → wall variant (animated)
+    //   warior_run 16 frames → mid variant (animated)
+    //   bomber_fly 12 frames → high variant (animated, lata)
+    // Cyclops Walk — 16 frames (z 8 idle), 2-digit naming.
+    for (let i = 0; i < 16; i++) {
+      const n = String(i).padStart(2, '0');
+      this.load.image(`cyclops_idle_${n}`, `${ASSET_PATHS.tileset.obstacles}/cyclops/${n}.webp`);
+    }
+    for (let i = 0; i < 16; i++) {
+      const n = String(i).padStart(2, '0');
+      this.load.image(`warior_run_${n}`, `${ASSET_PATHS.tileset.obstacles}/warior/0${String(i).padStart(2, '0')}.webp`);
+    }
+    for (let i = 0; i < 12; i++) {
+      const n = String(i).padStart(2, '0');
+      this.load.image(`bomber_fly_${n}`, `${ASSET_PATHS.tileset.obstacles}/bomber/0${String(i).padStart(2, '0')}.webp`);
+    }
+
+    // Faza 2 dodatkowa — 16 dodatkowych monsterów (cartoon, funny, v7, archer).
+    // Każdy ma 10 frames (lub 8 dla archer). Konwencja klucza: <name>_<NN>.
+    const _monsterDefs = [
+      { key: 'cartoon_m1', folder: 'cartoon_M1', count: 10 },
+      { key: 'cartoon_m2', folder: 'cartoon_M2', count: 10 },
+      { key: 'cartoon_m3', folder: 'cartoon_M3', count: 10 },
+      { key: 'cartoon_m4', folder: 'cartoon_M4', count: 10 },
+      { key: 'cartoon_m5', folder: 'cartoon_M5', count: 10 },
+      { key: 'funny_m1',   folder: 'funny_M1',   count: 10 },
+      { key: 'funny_m2',   folder: 'funny_M2',   count: 10 },
+      { key: 'funny_m3',   folder: 'funny_M3',   count: 10 },
+      { key: 'funny_m4',   folder: 'funny_M4',   count: 10 },
+      { key: 'funny_m5',   folder: 'funny_M5',   count: 10 },
+      { key: 'v7_m1',      folder: 'v7_M1',      count: 10 },
+      { key: 'v7_m2',      folder: 'v7_M2',      count: 10 },
+      { key: 'v7_m3',      folder: 'v7_M3',      count: 10 },
+      { key: 'v7_m4',      folder: 'v7_M4',      count: 10 },
+      { key: 'v7_m5',      folder: 'v7_M5',      count: 10 },
+      { key: 'archer',     folder: 'archer',     count: 8 },
+    ];
+    for (const m of _monsterDefs) {
+      for (let i = 0; i < m.count; i++) {
+        const n = String(i).padStart(2, '0');
+        this.load.image(`${m.key}_${n}`, `${ASSET_PATHS.tileset.obstacles}/${m.folder}/${n}.webp`);
+      }
+    }
+
+    // Faza 2 ext (sesja 2026-05-10): 13 nowych monsterów halloween.
+    //   Necromancer/Skeleton 1, Ghosts 1-3 (lecą!), Trolls 1-3 (wall), Premium
+    //   Zombies 1-3 (4 frames każdy), Basic Zombies 01-02 (8 frames Walk).
+    const _extraMonsters = [
+      { key: 'necromancer_1', folder: 'necromancer_1', count: 10 },
+      { key: 'skeleton_1',    folder: 'skeleton_1',    count: 10 },
+      { key: 'ghost_1',       folder: 'ghost_1',       count: 10 },
+      { key: 'ghost_2',       folder: 'ghost_2',       count: 10 },
+      { key: 'ghost_3',       folder: 'ghost_3',       count: 10 },
+      { key: 'troll_1',       folder: 'troll_1',       count: 10 },
+      { key: 'troll_2',       folder: 'troll_2',       count: 10 },
+      { key: 'troll_3',       folder: 'troll_3',       count: 10 },
+      { key: 'pzombie_1',     folder: 'pzombie_1',     count: 4 },
+      { key: 'pzombie_2',     folder: 'pzombie_2',     count: 4 },
+      { key: 'pzombie_3',     folder: 'pzombie_3',     count: 4 },
+      { key: 'zombie_01',     folder: 'zombie_01',     count: 8 },
+      { key: 'zombie_02',     folder: 'zombie_02',     count: 8 },
+    ];
+    for (const m of _extraMonsters) {
+      for (let i = 0; i < m.count; i++) {
+        const n = String(i).padStart(2, '0');
+        this.load.image(`${m.key}_${n}`, `${ASSET_PATHS.tileset.obstacles}/${m.folder}/${n}.webp`);
+      }
+    }
 
     // === Sesja 4: collectables, audio, level backgrounds ===
 

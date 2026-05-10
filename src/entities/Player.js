@@ -24,7 +24,8 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const DEFAULT_BODY = { w: 140, h: 200, offsetX: 247, offsetY: 200 };
 
 // Animacje per postać — bez 'roll' (slide usunięty w sesji 8).
-const ANIMS = ['idle', 'run', 'jump', 'hit', 'fall'];
+// dead/win — sesja 2026-05.
+const ANIMS = ['idle', 'run', 'jump', 'hit', 'fall', 'dead', 'win'];
 
 const FRAME_RATES = {
   idle: 12,
@@ -32,10 +33,12 @@ const FRAME_RATES = {
   jump: 24,
   fall: 12,
   hit: 30, // 40 frames @ 30fps = 1.33s
+  dead: 24, // 50 frames @ 24fps = ~2.1s (cofnięte na 24, delay po anim w GameScene/BossFight +400ms)
+  win: 24,  // 30 frames @ 24fps = 1.25s (jak wyżej)
 };
 
 // Animacje które NIE loopują (jednorazowe).
-const NON_LOOPING = new Set(['hit']);
+const NON_LOOPING = new Set(['hit', 'dead', 'win']);
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, charKey) {
@@ -128,9 +131,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.state_ === 'dead') return;
     this.state_ = 'dead';
     this.setVelocityX(0);
-    this.play(this.animKeys.hit, true);
+    // Dead anim (50 frames @24fps), fallback do hit jeśli nie zaregistrowany.
+    const deadKey = this.animKeys.dead;
+    if (deadKey && this.scene.anims.exists(deadKey)) this.play(deadKey, true);
+    else this.play(this.animKeys.hit, true);
     Haptic.crash();
     this.scene.events.emit('player-died');
+  }
+
+  win() {
+    if (this.state_ === 'dead' || this.state_ === 'win') return;
+    this.state_ = 'win';
+    this.setVelocityX(0);
+    const winKey = this.animKeys.win;
+    if (winKey && this.scene.anims.exists(winKey)) this.play(winKey, true);
   }
 
   isDead() {
@@ -139,7 +153,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
-    if (this.state_ === 'dead') return;
+    // Po dead/win: state zamrożony, preUpdate skipuje state-machine żeby
+    // run anim nie nadpisała dead/win (które są NON_LOOPING + jednorazowe).
+    if (this.state_ === 'dead' || this.state_ === 'win') return;
 
     const onGround = this.body.touching.down || this.body.blocked.down;
 

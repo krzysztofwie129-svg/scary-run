@@ -17,10 +17,38 @@ import {
 export class Obstacle extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, type) {
     const config = OBSTACLE_TYPES[type] || OBSTACLE_TYPES.stone;
-    // Dla stack typów używamy baseTexture (np. 'wooden_box' jako wizualnego źródła).
-    const visualTexture = config.baseTexture || type;
-    super(scene, x, config.y, visualTexture);
+    // Random variant (rock_01..08, fence_01..02) — losujemy texture przy spawnie.
+    let visualTexture;
+    if (config.randomVariant && config.baseTexture) {
+      const idx = 1 + Math.floor(Math.random() * config.randomVariant);
+      const padded = String(idx).padStart(2, '0');
+      visualTexture = `${config.baseTexture}_${padded}`;
+      // Fallback gdy textura missing — użyj baseTexture jako-is.
+      if (!scene.textures.exists(visualTexture)) visualTexture = config.baseTexture;
+    } else {
+      visualTexture = config.baseTexture || type;
+    }
+    // CraftPix sprites mają transparent padding pod stopami (~30px source pixels).
+    // Przy origin (0.5, 1) bottom sprite leży na config.y, ale visible character
+    // feet są groundPadding * scale pikseli wyżej. Korygujemy y w dół o tę wartość
+    // żeby visible feet były dokładnie na GROUND_Y line.
+    const groundPad = config.groundPadding || 0;
+    const adjustedY = config.floats ? config.y : config.y + groundPad * config.scale;
+    super(scene, x, adjustedY, visualTexture);
     scene.add.existing(this);
+
+    // Animowane obstacles (cyclops, warior, bomber) — odpalamy anim po init.
+    if (config.animated && config.animKey && scene.anims.exists(config.animKey)) {
+      this.play(config.animKey);
+    }
+
+    // FlipX TYLKO gdy config.faceLeft === true (default: bez flipu).
+    // Goblin/Cartoon/Funny/V7/Basic Zombies — sprite oryginalnie OK (twarz w prawo).
+    // Halloween Pack (necro/skeleton/ghost/troll/pzombie) — odwrotny facing,
+    // potrzebuje flipa żeby patrzył na gracza.
+    if (config.animated && config.faceLeft === true) {
+      this.setFlipX(true);
+    }
 
     this.type_ = type;
     this.config_ = config;
@@ -44,6 +72,12 @@ export class Obstacle extends Phaser.Physics.Arcade.Sprite {
     const margin = (1 - ratio) / 2;
     const stackHeight = config.stackHeight && config.stackHeight > 1 ? config.stackHeight : 1;
 
+    // Per-axis hitbox + offset (z editora). Fallback do legacy hitboxRatio (square centered).
+    const hbW = (typeof config.hitboxW === 'number') ? config.hitboxW : ratio;
+    const hbH = (typeof config.hitboxH === 'number') ? config.hitboxH : ratio;
+    const hbOffX = (typeof config.hitboxOffX === 'number') ? config.hitboxOffX : (1 - hbW) / 2;
+    const hbOffY = (typeof config.hitboxOffY === 'number') ? config.hitboxOffY : (1 - hbH) / 2;
+
     if (stackHeight > 1) {
       // Body covers full stack. Offset Y wymaga custom obliczenia bo body
       // jest wyższy niż jeden sprite — patrz wyprowadzenie:
@@ -65,8 +99,13 @@ export class Obstacle extends Phaser.Physics.Arcade.Sprite {
         this.stackChildren.push(top);
       }
     } else {
-      this.body.setSize(texW * ratio, texH * ratio);
-      this.body.setOffset(texW * margin, texH * margin);
+      this.body.setSize(texW * hbW, texH * hbH);
+      // Po setFlipX(true) sprite jest odbity horizontalnie; hitbox z editora
+      // (gdzie user widział sprite w oryginalnym facingu w prawo) musi też być
+      // zlustrowany żeby visible character pokrywał się z body.
+      const isFlipped = config.animated && config.faceLeft === true;
+      const finalOffX = isFlipped ? (texW * (1 - hbOffX - hbW)) : (texW * hbOffX);
+      this.body.setOffset(finalOffX, texH * hbOffY);
     }
 
     this.setDepth(5);

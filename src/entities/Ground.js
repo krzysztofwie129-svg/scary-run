@@ -32,15 +32,8 @@ export class Ground {
     );
     this.soil.setDepth(2).setScrollFactor(0);
 
-    // Cienka kreska "trawy" na samym top edge.
-    this.grassEdge = scene.add.rectangle(
-      GAME_WIDTH / 2,
-      GROUND_TOP_Y + GRASS_EDGE_HEIGHT / 2,
-      GAME_WIDTH,
-      GRASS_EDGE_HEIGHT,
-      GRASS_EDGE_COLOR,
-    );
-    this.grassEdge.setDepth(3).setScrollFactor(0);
+    // Zielona kreska usunięta (user feedback) — bez visible grass edge,
+    // ground line wynika z bgFolder warstwy parallax.
 
     // Pusta physics group — collider w GameScene już istnieje na tej grupie,
     // pusta = no-op (kolizja graceful skipping).

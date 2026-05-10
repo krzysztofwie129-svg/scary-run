@@ -332,8 +332,10 @@ export class BossFightScene extends Phaser.Scene {
     // V8: pierwszy atak natychmiast po starcie (zamiast czekać BOSS_ATTACK_INTERVAL),
     // żeby gracz nie mógł spamować ataków podczas "lagu" startu (~3s wcześniej).
     this.bossWindUpAndAttack();
-    // Difficulty: easy → wolniejsze ataki (1.43x interval), hard → szybsze (1/diffMul).
-    const _attackInterval = Math.max(400, Math.floor(BOSS_ATTACK_INTERVAL / (this._difficultyMul || 1)));
+    // Per-level base interval: do L7 wolniejsze (1600ms), L8+ pełna prędkość (1000ms).
+    // Plus difficulty: easy → wolniej (1.43x interval), hard → szybciej (1/diffMul).
+    const _baseInterval = (this.fromLevel <= 7) ? 1600 : BOSS_ATTACK_INTERVAL;
+    const _attackInterval = Math.max(400, Math.floor(_baseInterval / (this._difficultyMul || 1)));
     this.bossAttackTimer = this.time.addEvent({
       delay: _attackInterval,
       callback: () => this.bossWindUpAndAttack(),
@@ -777,6 +779,10 @@ export class BossFightScene extends Phaser.Scene {
     const fallAnim = `${this.bossCharKey}_fall`;
     if (this.anims.exists(fallAnim)) this.bossSprite.play(fallAnim);
 
+    // Player win anim (Char-Win_NN.png 30 frames) — sesja 2026-05.
+    const winAnim = `${this.playerCharKey}_win`;
+    if (this.anims.exists(winAnim)) this.playerSprite.play(winAnim);
+
     this.tweens.add({
       targets: this.bossSprite,
       alpha: 0.3,
@@ -801,7 +807,8 @@ export class BossFightScene extends Phaser.Scene {
       Haptic.gameComplete?.();
       this.tweens.add({ targets: banner, scale: 1.2, duration: 400, ease: 'Back.easeOut' });
 
-      this.time.delayedCall(2000, () => {
+      // 2000 → 2800 (+800ms total: pełna anim win + dodatkowy 0.4s na hold).
+      this.time.delayedCall(2800, () => {
         // Wracamy do LevelComplete z bonusem +500 dorzuconym do scoreThisLevel.
         const sd = this.fromSceneData || {};
         // Aktualizuj bestScore TEGO levelu z dodanym bonusem +500 (player.score
@@ -811,11 +818,17 @@ export class BossFightScene extends Phaser.Scene {
           const _runScore = ScoreSystem.finalizeRunScore(this.fromLevel || 1, _lss);
           RankingSystem.recordRun(this.fromLevel || 1, _runScore);
         } catch {}
-        this.scene.start('LevelCompleteScene', {
+        const nextSceneData = {
           ...sd,
           scoreThisLevel: (sd.scoreThisLevel || 0) + 500,
           bossDefeated: true,
-        });
+        };
+        // Last level (L21) — po wygranej idź bezpośrednio do GameComplete.
+        if (sd.isLastLevel) {
+          this.scene.start('GameCompleteScene', nextSceneData);
+        } else {
+          this.scene.start('LevelCompleteScene', nextSceneData);
+        }
       });
     });
   }
@@ -827,8 +840,14 @@ export class BossFightScene extends Phaser.Scene {
 
     StatsTracker.track('bossDefeat', { fromLevel: this.fromLevel });
 
-    const fallAnim = `${this.playerCharKey}_fall`;
-    if (this.anims.exists(fallAnim)) this.playerSprite.play(fallAnim);
+    // Player dead anim (50 frames @24fps) gdy boss wygrywa — sesja 2026-05.
+    // Fallback do fall jeśli dead nie zarejestrowany.
+    const deadAnim = `${this.playerCharKey}_dead`;
+    if (this.anims.exists(deadAnim)) this.playerSprite.play(deadAnim);
+    else {
+      const fallAnim = `${this.playerCharKey}_fall`;
+      if (this.anims.exists(fallAnim)) this.playerSprite.play(fallAnim);
+    }
 
     this.time.delayedCall(500, () => {
       Haptic.gameOver?.();
@@ -877,7 +896,8 @@ export class BossFightScene extends Phaser.Scene {
       popup.setScale(0.7);
       this.tweens.add({ targets: popup, scale: 1, duration: 300, ease: 'Back.easeOut' });
       // Auto-przejście do DeathScene po 1.5s (gracz nie musi klikać).
-      this.time.delayedCall(1500, () => _gotoDeath());
+      // 1500 → 1900 (+400ms — pełna anim dead bez urywania).
+      this.time.delayedCall(1900, () => _gotoDeath());
     });
   }
 }

@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scary Run — Hitbox Editor</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: linear-gradient(180deg, #1a0a2e 0%, #0a0420 100%);
+      color: #ffd93c;
+      font-family: 'Arial Black', sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    h1 {
+      text-align: center;
+      font-size: 24px;
+      margin: 0 0 4px;
+      text-shadow: 0 0 20px #ff6b9d;
+    }
+    .sub {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #bdaee3;
+      margin-bottom: 12px;
+    }
+    .toolbar {
+      max-width: 720px;
+      margin: 0 auto 20px;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      background: #ff6b9d;
+      color: #fff;
+      border: 2px solid #ffd93c;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-family: 'Arial Black', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+    .btn:hover { background: #ff8fbb; }
+    .btn.secondary { background: #6b4ea0; }
+    .btn.success   { background: #4ade80; color: #1a0a2e; }
+    .grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .group-header {
+      font-size: 18px;
+      color: #ffd93c;
+      border-bottom: 3px solid #ff6b9d;
+      padding: 12px 0 6px;
+      margin-top: 12px;
+    }
+    .card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(45, 27, 78, 0.6);
+      border: 2px solid #6b4ea0;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .preview-wrap {
+      width: 240px; height: 240px;
+      position: relative;
+      background: #0a0420;
+      border-radius: 8px;
+      flex-shrink: 0;
+      overflow: visible; /* żeby handles wystawały */
+      border: 2px solid #6b4ea0;
+      touch-action: none;
+    }
+    .preview-wrap img {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100%; max-height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .hitbox {
+      position: absolute;
+      border: 3px solid #00ff88;
+      box-shadow: 0 0 8px rgba(0, 255, 136, 0.7);
+      background: rgba(0, 255, 136, 0.12);
+      cursor: move;
+      box-sizing: border-box;
+    }
+    .handle {
+      position: absolute;
+      width: 16px; height: 16px;
+      background: #00ff88;
+      border: 2px solid #0a0420;
+      border-radius: 50%;
+      box-sizing: border-box;
+    }
+    .h-tl { top: -10px; left: -10px; cursor: nw-resize; }
+    .h-tr { top: -10px; right: -10px; cursor: ne-resize; }
+    .h-bl { bottom: -10px; left: -10px; cursor: sw-resize; }
+    .h-br { bottom: -10px; right: -10px; cursor: se-resize; }
+    .info {
+      flex: 1;
+      min-width: 0;
+    }
+    .info .name {
+      font-size: 16px;
+      color: #ffd93c;
+      margin-bottom: 6px;
+    }
+    .info .values {
+      font-family: monospace;
+      font-size: 12px;
+      color: #00ff88;
+      line-height: 1.6;
+    }
+    .info .values strong { color: #ffd93c; }
+    .info .row-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .info .row-actions button {
+      background: #6b4ea0;
+      color: #fff;
+      border: 1px solid #ffd93c;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: monospace;
+    }
+    .info .row-actions button:hover { background: #8678a8; }
+    #export-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #export-modal.active { display: flex; }
+    #export-modal .box {
+      background: #2d1b4e;
+      border: 3px solid #ffd93c;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 80vh;
+      overflow: auto;
+    }
+    #export-modal h2 { margin: 0 0 12px; color: #ffd93c; }
+    #export-modal textarea {
+      width: 100%;
+      min-height: 400px;
+      background: #1a0a2e;
+      color: #00ff88;
+      border: 1px solid #6b4ea0;
+      border-radius: 4px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      box-sizing: border-box;
+    }
+    .pulse {
+      animation: pulse 0.4s;
+    }
+    @keyframes pulse {
+      0% { background: rgba(0, 255, 136, 0.5); }
+      100% { background: rgba(45, 27, 78, 0.6); }
+    }
+  </style>
+</head>
+<body>
+  <h1>SCARY RUN — Hitbox Editor</h1>
+  <div class="sub">
+    Przeciągnij <span style="color: #00ff88;">🟩 zielony prostokąt</span> żeby przesunąć • <span style="color: #00ff88;">⚫ rogi</span> żeby zmienić rozmiar • zapis automatyczny
+  </div>
+
+  <div class="toolbar">
+    <button class="btn success" onclick="sendOnline()">📡 WYŚLIJ ONLINE (do gry)</button>
+    <button class="btn secondary" onclick="exportAll()">📤 Pokaż JSON (manual)</button>
+    <button class="btn secondary" onclick="resetAll()">🔄 Reset do domyślnych</button>
+    <button class="btn secondary" onclick="clearStorage()">🗑 Wyczyść zapis</button>
+  </div>
+  <div id="online-status" style="text-align:center; font-size:14px; color:#bdaee3; margin-bottom:12px; min-height:20px;"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <div id="export-modal">
+    <div class="box">
+      <h2>📋 Skopiuj poniższy JSON i prześlij Krzysztofowi</h2>
+      <textarea id="export-text" readonly></textarea>
+      <div style="margin-top: 12px; display: flex; gap: 8px;">
+        <button class="btn success" onclick="copyExport()">📋 Skopiuj do schowka</button>
+        <button class="btn secondary" onclick="document.getElementById('export-modal').classList.remove('active')">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PREVIEW = 240;
+    const STORAGE_KEY = 'scary_run_hitbox_edits_v1';
+
+    const MONSTERS = [
+      { group: 'GOBLIN' },
+      { name: 'Cyclops',  key: 'cyclops',  count: 8,  pad: 3, hitbox: 0.50 },
+      { name: 'Warior',   key: 'warior',   count: 16, pad: 3, hitbox: 0.32 },
+      { name: 'Bomber',   key: 'bomber',   count: 12, pad: 3, hitbox: 0.65 },
+      { name: 'Archer',   key: 'archer',   count: 8,  pad: 2, hitbox: 0.32 },
+
+      { group: 'CARTOON' },
+      { name: 'Cartoon M1', key: 'cartoon_M1', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'Cartoon M2', key: 'cartoon_M2', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'Cartoon M3 (żółw)', key: 'cartoon_M3', count: 10, pad: 2, hitbox: 0.22 },
+      { name: 'Cartoon M4 (nietoperz)', key: 'cartoon_M4', count: 10, pad: 2, hitbox: 0.40 },
+      { name: 'Cartoon M5 (jeż)', key: 'cartoon_M5', count: 10, pad: 2, hitbox: 0.22 },
+
+      { group: 'FUNNY' },
+      { name: 'Funny M1', key: 'funny_M1', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'Funny M2', key: 'funny_M2', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'Funny M3', key: 'funny_M3', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'Funny M4', key: 'funny_M4', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'Funny M5', key: 'funny_M5', count: 10, pad: 2, hitbox: 0.32 },
+
+      { group: 'V7' },
+      { name: 'V7 M1', key: 'v7_M1', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'V7 M2', key: 'v7_M2', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'V7 M3', key: 'v7_M3', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'V7 M4', key: 'v7_M4', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'V7 M5', key: 'v7_M5', count: 10, pad: 2, hitbox: 0.32 },
+
+      { group: 'HALLOWEEN' },
+      { name: 'Necromancer 1', key: 'necromancer_1', count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'Skeleton 1',    key: 'skeleton_1',    count: 10, pad: 2, hitbox: 0.32 },
+      { name: 'Ghost 1',       key: 'ghost_1',       count: 10, pad: 2, hitbox: 0.35 },
+      { name: 'Ghost 2',       key: 'ghost_2',       count: 10, pad: 2, hitbox: 0.35 },
+      { name: 'Ghost 3',       key: 'ghost_3',       count: 10, pad: 2, hitbox: 0.35 },
+      { name: 'Troll 1',       key: 'troll_1',       count: 10, pad: 2, hitbox: 0.40 },
+      { name: 'Troll 2',       key: 'troll_2',       count: 10, pad: 2, hitbox: 0.40 },
+      { name: 'Troll 3',       key: 'troll_3',       count: 10, pad: 2, hitbox: 0.40 },
+      { name: 'Premium Zombie 1', key: 'pzombie_1', count: 4, pad: 2, hitbox: 0.32 },
+      { name: 'Premium Zombie 2', key: 'pzombie_2', count: 4, pad: 2, hitbox: 0.32 },
+      { name: 'Premium Zombie 3', key: 'pzombie_3', count: 4, pad: 2, hitbox: 0.32 },
+      { name: 'Zombie 01', key: 'zombie_01', count: 8, pad: 2, hitbox: 0.32 },
+      { name: 'Zombie 02', key: 'zombie_02', count: 8, pad: 2, hitbox: 0.32 },
+
+      { group: 'STATIC' },
+      { name: 'Spikes',        key: 'spikes',         hitbox: 0.85, static: true, file: 'spikes.webp' },
+      { name: 'Stone',         key: 'stone',          hitbox: 0.85, static: true, file: 'stone.webp' },
+      { name: 'Tombstone',     key: 'tombstone',      hitbox: 0.80, static: true, file: 'static/tombstone.webp' },
+      { name: 'Wooden Barrel', key: 'wooden_barrel',  hitbox: 0.85, static: true, file: 'wooden_barrel.webp' },
+      { name: 'Wooden Box',    key: 'wooden_box',     hitbox: 0.90, static: true, file: 'wooden_box.webp' },
+      { name: 'High Box Stack',key: 'high_box_stack', hitbox: 0.90, static: true, file: 'wooden_box.webp' },
+      { name: 'Fence 01',      key: 'fence',          hitbox: 0.80, static: true, file: 'static/fence_01.webp' },
+      { name: 'Flying Pumpkin',key: 'flying_pumpkin', hitbox: 0.80, static: true, file: '../decoration/pumpkin.webp' },
+    ];
+
+    // Load stored edits
+    let stored = {};
+    try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch {}
+
+    // Build state per monster: {x, y, w, h} as fraction of PREVIEW (0-1).
+    const state = {};
+    for (const m of MONSTERS) {
+      if (m.group) continue;
+      const ratio = m.hitbox;
+      const def = {
+        x: (1 - ratio) / 2,
+        y: (1 - ratio) / 2,
+        w: ratio,
+        h: ratio,
+      };
+      state[m.key] = stored[m.key] || def;
+      state[m.key]._default = def;
+    }
+
+    function saveState() {
+      const out = {};
+      for (const k of Object.keys(state)) {
+        const s = state[k];
+        out[k] = { x: s.x, y: s.y, w: s.w, h: s.h };
+      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(out)); } catch {}
+    }
+
+    function updateInfo(key) {
+      const el = document.getElementById('info-' + key);
+      if (!el) return;
+      const s = state[key];
+      const widthPct = (s.w * 100).toFixed(1);
+      const heightPct = (s.h * 100).toFixed(1);
+      const offsetXPct = (s.x * 100).toFixed(1);
+      const offsetYPct = (s.y * 100).toFixed(1);
+      const def = s._default;
+      const changed = Math.abs(s.x - def.x) > 0.005 || Math.abs(s.y - def.y) > 0.005
+                   || Math.abs(s.w - def.w) > 0.005 || Math.abs(s.h - def.h) > 0.005;
+      el.innerHTML = `
+        <strong>width:</strong> ${widthPct}% &nbsp;
+        <strong>height:</strong> ${heightPct}%<br>
+        <strong>offsetX:</strong> ${offsetXPct}% &nbsp;
+        <strong>offsetY:</strong> ${offsetYPct}%
+        ${changed ? '<br><span style="color:#ff6b9d;">● zmodyfikowane</span>' : ''}
+      `;
+    }
+
+    function applyHitboxStyle(box, key) {
+      const s = state[key];
+      box.style.left = (s.x * PREVIEW) + 'px';
+      box.style.top = (s.y * PREVIEW) + 'px';
+      box.style.width = (s.w * PREVIEW) + 'px';
+      box.style.height = (s.h * PREVIEW) + 'px';
+    }
+
+    function setupDrag(box, handles, key) {
+      let mode = null; // 'move' | 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br'
+      let startX = 0, startY = 0;
+      let initial = null;
+      const wrap = box.parentElement;
+
+      const getPt = (e) => {
+        const t = e.touches ? e.touches[0] : e;
+        return { x: t.clientX, y: t.clientY };
+      };
+
+      const onDown = (e, m) => {
+        e.preventDefault();
+        e.stopPropagation();
+        mode = m;
+        const pt = getPt(e);
+        startX = pt.x; startY = pt.y;
+        initial = { ...state[key] };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+      };
+
+      const onMove = (e) => {
+        if (!mode) return;
+        e.preventDefault();
+        const pt = getPt(e);
+        const dx = (pt.x - startX) / PREVIEW;
+        const dy = (pt.y - startY) / PREVIEW;
+        const s = state[key];
+        if (mode === 'move') {
+          s.x = Math.max(0, Math.min(1 - initial.w, initial.x + dx));
+          s.y = Math.max(0, Math.min(1 - initial.h, initial.y + dy));
+        } else {
+          // Resize: change x/y/w/h depending on which corner.
+          let newX = initial.x, newY = initial.y, newW = initial.w, newH = initial.h;
+          if (mode === 'resize-tl') {
+            newX = Math.max(0, initial.x + dx);
+            newY = Math.max(0, initial.y + dy);
+            newW = initial.w - (newX - initial.x);
+            newH = initial.h - (newY - initial.y);
+          } else if (mode === 'resize-tr') {
+            newY = Math.max(0, initial.y + dy);
+            newW = initial.w + dx;
+            newH = initial.h - (newY - initial.y);
+          } else if (mode === 'resize-bl') {
+            newX = Math.max(0, initial.x + dx);
+            newW = initial.w - (newX - initial.x);
+            newH = initial.h + dy;
+          } else if (mode === 'resize-br') {
+            newW = initial.w + dx;
+            newH = initial.h + dy;
+          }
+          // Clamp min size + within preview
+          newW = Math.max(0.05, Math.min(1 - newX, newW));
+          newH = Math.max(0.05, Math.min(1 - newY, newH));
+          s.x = newX; s.y = newY; s.w = newW; s.h = newH;
+        }
+        applyHitboxStyle(box, key);
+        updateInfo(key);
+      };
+
+      const onUp = () => {
+        if (!mode) return;
+        mode = null;
+        saveState();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+      };
+
+      box.addEventListener('mousedown', (e) => { if (e.target === box) onDown(e, 'move'); });
+      box.addEventListener('touchstart', (e) => { if (e.target === box) onDown(e, 'move'); }, { passive: false });
+      handles.tl.addEventListener('mousedown', (e) => onDown(e, 'resize-tl'));
+      handles.tr.addEventListener('mousedown', (e) => onDown(e, 'resize-tr'));
+      handles.bl.addEventListener('mousedown', (e) => onDown(e, 'resize-bl'));
+      handles.br.addEventListener('mousedown', (e) => onDown(e, 'resize-br'));
+      handles.tl.addEventListener('touchstart', (e) => onDown(e, 'resize-tl'), { passive: false });
+      handles.tr.addEventListener('touchstart', (e) => onDown(e, 'resize-tr'), { passive: false });
+      handles.bl.addEventListener('touchstart', (e) => onDown(e, 'resize-bl'), { passive: false });
+      handles.br.addEventListener('touchstart', (e) => onDown(e, 'resize-br'), { passive: false });
+    }
+
+    const grid = document.getElementById('grid');
+
+    for (const m of MONSTERS) {
+      if (m.group) {
+        const h = document.createElement('div');
+        h.className = 'group-header';
+        h.textContent = m.group;
+        grid.appendChild(h);
+        continue;
+      }
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'preview-wrap';
+      const img = document.createElement('img');
+
+      if (m.static) {
+        // Static obstacle — single image, no animation.
+        img.src = `assets/tileset/obstacles/${m.file}`;
+      } else {
+        let frame = 0;
+        const update = () => {
+          const padded = String(frame).padStart(m.pad || 2, '0');
+          img.src = `assets/tileset/obstacles/${m.key}/${padded}.webp`;
+          frame = (frame + 1) % m.count;
+        };
+        update();
+        setInterval(update, 100);
+      }
+      wrap.appendChild(img);
+
+      const box = document.createElement('div');
+      box.className = 'hitbox';
+      const handles = {
+        tl: document.createElement('div'),
+        tr: document.createElement('div'),
+        bl: document.createElement('div'),
+        br: document.createElement('div'),
+      };
+      handles.tl.className = 'handle h-tl';
+      handles.tr.className = 'handle h-tr';
+      handles.bl.className = 'handle h-bl';
+      handles.br.className = 'handle h-br';
+      box.appendChild(handles.tl);
+      box.appendChild(handles.tr);
+      box.appendChild(handles.bl);
+      box.appendChild(handles.br);
+      wrap.appendChild(box);
+      applyHitboxStyle(box, m.key);
+      setupDrag(box, handles, m.key);
+
+      const info = document.createElement('div');
+      info.className = 'info';
+      info.innerHTML = `
+        <div class="name">${m.name}</div>
+        <div class="values" id="info-${m.key}"></div>
+        <div class="row-actions">
+          <button onclick="resetOne('${m.key}')">↺ Reset</button>
+        </div>
+      `;
+      card.appendChild(wrap);
+      card.appendChild(info);
+      grid.appendChild(card);
+
+      updateInfo(m.key);
+
+      // Attach reference for reset
+      card._box = box;
+      card._key = m.key;
+    }
+
+    function resetOne(key) {
+      const def = state[key]._default;
+      state[key].x = def.x; state[key].y = def.y;
+      state[key].w = def.w; state[key].h = def.h;
+      saveState();
+      // Find card and update style
+      const cards = document.querySelectorAll('.card');
+      cards.forEach((c) => {
+        if (c._key === key) {
+          applyHitboxStyle(c._box, key);
+          c.classList.add('pulse');
+          setTimeout(() => c.classList.remove('pulse'), 400);
+        }
+      });
+      updateInfo(key);
+    }
+
+    function resetAll() {
+      if (!confirm('Reset wszystkich hitboxów do wartości domyślnych z gry?')) return;
+      for (const k of Object.keys(state)) resetOne(k);
+    }
+
+    function clearStorage() {
+      if (!confirm('Wyczyścić zapisane edycje? (zachowa się reset wartości)')) return;
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      location.reload();
+    }
+
+    function exportAll() {
+      const out = [];
+      for (const m of MONSTERS) {
+        if (m.group) continue;
+        const s = state[m.key];
+        const def = s._default;
+        const changed = Math.abs(s.x - def.x) > 0.005 || Math.abs(s.y - def.y) > 0.005
+                     || Math.abs(s.w - def.w) > 0.005 || Math.abs(s.h - def.h) > 0.005;
+        out.push({
+          key: m.key,
+          name: m.name,
+          changed,
+          width:   +s.w.toFixed(3),
+          height:  +s.h.toFixed(3),
+          offsetX: +s.x.toFixed(3),
+          offsetY: +s.y.toFixed(3),
+          // Compatibility z aktualnym Obstacle.js (tylko jeden ratio + centered):
+          // Rekomendowany single ratio = średnia w/h.
+          legacyRatio: +((s.w + s.h) / 2).toFixed(3),
+          default: def,
+        });
+      }
+      document.getElementById('export-text').value = JSON.stringify(out, null, 2);
+      document.getElementById('export-modal').classList.add('active');
+    }
+
+    async function copyExport() {
+      const ta = document.getElementById('export-text');
+      const text = ta.value;
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Skopiowano do schowka!');
+      } catch {
+        // Fallback: select text dla manual copy
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); alert('Skopiowano (legacy)'); }
+        catch { alert('Zaznaczone — naciśnij Cmd/Ctrl+C lub long-press → Copy'); }
+      }
+    }
+
+    async function sendOnline() {
+      const status = document.getElementById('online-status');
+      status.textContent = '⏳ Wysyłanie...';
+      status.style.color = '#ffd93c';
+
+      // Build payload: same struktura co exportAll
+      const out = [];
+      for (const m of MONSTERS) {
+        if (m.group) continue;
+        const s = state[m.key];
+        const def = s._default;
+        const changed = Math.abs(s.x - def.x) > 0.005 || Math.abs(s.y - def.y) > 0.005
+                     || Math.abs(s.w - def.w) > 0.005 || Math.abs(s.h - def.h) > 0.005;
+        out.push({
+          key: m.key,
+          name: m.name,
+          changed,
+          width: +s.w.toFixed(3),
+          height: +s.h.toFixed(3),
+          offsetX: +s.x.toFixed(3),
+          offsetY: +s.y.toFixed(3),
+          legacyRatio: +((s.w + s.h) / 2).toFixed(3),
+        });
+      }
+
+      // POST do live PRODUCTION endpoint (CF Pages Functions). Vite dev nie ma functions,
+      // więc używamy absolute URL do scaryrun.win.
+      const ENDPOINT = 'https://scaryrun.win/api/dev-state';
+      try {
+        const res = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slot: 'hitbox-edits', payload: out }),
+        });
+        if (!res.ok) {
+          const errTxt = await res.text();
+          status.textContent = '❌ Błąd: ' + res.status + ' ' + errTxt.slice(0, 100);
+          status.style.color = '#ff6b9d';
+          return;
+        }
+        const result = await res.json();
+        if (result.ok) {
+          status.innerHTML = '✅ <span style="color:#4ade80;">Wysłane!</span> Krzysztof odczyta wartości po jego stronie.';
+        } else {
+          status.textContent = '❌ ' + JSON.stringify(result);
+          status.style.color = '#ff6b9d';
+        }
+      } catch (e) {
+        status.textContent = '❌ Network error: ' + (e?.message || 'unknown');
+        status.style.color = '#ff6b9d';
+      }
+    }
+  </script>
+</body>
+</html>

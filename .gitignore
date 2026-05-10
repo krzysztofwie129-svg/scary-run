@@ -34,6 +34,7 @@ Thumbs.db
 
 # Asset packs (royalty-free originals, not for redistribution)
 _assets-raw/
+craftpix-*/
 
 # Project session prompts (internal notes)
 _session_*.md

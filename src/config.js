@@ -69,6 +69,8 @@ export const ANIM_FRAME_COUNTS = {
   hit: 40,
   fall: 10,
   roll: 8,
+  dead: 50,  // sesja 2026-05: śmierć od kolizji/bossa (Dead/Character-Dead_NN.png)
+  win: 30,   // sesja 2026-05: wygrana levelu/bossa (Win/Character-Win_NN.png)
 };
 
 // Klatka PNG ma 633x523 ale właściwy sprite zajmuje ~8.6% pola,
@@ -90,7 +92,8 @@ export const PLAYER_START_Y = 550;
 
 // Top of ground — ground tile'y mają originY=0 więc tu zaczyna się ich górna
 // krawędź. Player z fizyką spada póki nie dotknie body ground tile'a.
-export const GROUND_Y = 620;
+// 650 (z 620) — user feedback: obniż gracza + przeszkody o 30 px.
+export const GROUND_Y = 650;
 
 // Spawning przeszkód — losowe odstępy w sekundach.
 // Z czasem odstępy się zmniejszają (rośnie trudność).
@@ -124,9 +127,10 @@ export const SLIDE_HITBOX_HEIGHT_RATIO = 0.5;
 // nie przeskakiwała przy mikro-bounce na styku body/ground (drżenie).
 export const LANDING_GRACE_FRAMES = 3;
 
-// Flying pumpkin — wisi w powietrzu, lewituje sin-falą.
-export const FLYING_PUMPKIN_FLOAT_AMPLITUDE = 15;
-export const FLYING_PUMPKIN_FLOAT_SPEED = 0.003;
+// Flying pumpkin / ghost / nietoperz — wisi w powietrzu, lewituje sin-falą.
+// Amplitude 5 (z 15) + speed 0.0015 (z 0.003) = mniejsze "drganie", spokojniejszy float.
+export const FLYING_PUMPKIN_FLOAT_AMPLITUDE = 0;
+export const FLYING_PUMPKIN_FLOAT_SPEED = 0.0015;
 // Po flying_pumpkin minimum 1.5s do następnej przeszkody — żeby nie spawnować
 // kombinacji "ledwo zeskoczyłeś, a tu naziemna" (niesprawiedliwe).
 export const FLYING_PUMPKIN_COOLDOWN_MS = 1500;
@@ -234,178 +238,160 @@ export const LEVELS = [
     worldSpeed: 473,
     musicVolume: 0.0,
   },
-  // L6 — biom L3 reuse
+  // L6+ rebalance (Faza 2): speed +1% per level (od 473 baseline z L5),
+  // obstacleSpawnRate -2% per level (krótszy interval = więcej obstacles),
+  // obstacleMix shift: każdy level +2.5% wall, +1.5% high, redukcja low.
+  // Trudność rośnie przez OBSTACLES (variety + density), nie przez speed.
   {
-    id: 6,
-    name: 'Spider Forest - Toxic',
-    duration: 30,
-    bgFolder: 'level6_test',
-    bgLayerCount: 1,
-    parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.42, mid: 0.33, high: 0.16, wall: 0.09 },
-    obstacleSpawnRate: { min: 0.94, max: 1.45 },
-    coinSpawnRate: { min: 0.45, max: 0.95 },
-    diamondChance: 0.28,
-    worldSpeed: 540,
-    musicVolume: 0.0,
+    // L6 — TEST MODE: TYLKO nowe monstery (×5 scale dla testu wizualnego).
+    // obstacleTypesOverride — per-tier nadpisanie OBSTACLE_TIERS[tier].types[].
+    id: 6, name: 'Spider Forest - Toxic', duration: 30,
+    bgFolder: 'level6_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
+    obstacleMix: { low: 0.0, mid: 0.70, high: 0.10, wall: 0.20 },
+    obstacleTypesOverride: {
+      mid: ['cartoon_m1', 'cartoon_m2', 'cartoon_m3', 'cartoon_m5',
+            'funny_m1', 'funny_m2', 'funny_m4', 'funny_m5',
+            'v7_m1', 'v7_m3', 'v7_m5', 'archer'],
+      high: ['cartoon_m4'],
+      wall: ['funny_m3', 'v7_m2', 'v7_m4'],
+    },
+    obstacleSpawnRate: { min: 1.40, max: 2.00 },
+    coinSpawnRate: { min: 0.45, max: 0.95 }, diamondChance: 0.28,
+    worldSpeed: 478, musicVolume: 0.0,
   },
-  // L7 — biom L4 reuse
   {
-    id: 7,
-    name: "Witch's House - Hellfire",
-    duration: 30,
-    bgFolder: 'level7_test',
-    bgLayerCount: 1,
-    parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.40, mid: 0.33, high: 0.17, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.85, max: 1.36 },
-    coinSpawnRate: { min: 0.4, max: 0.9 },
-    diamondChance: 0.30,
-    worldSpeed: 575,
-    musicVolume: 0.0,
+    // L7 — TEST MODE: TYLKO 13 nowych halloween monsterów (necro/skeleton/
+    // ghost/troll/zombies). 0% low, 60% mid (zombies), 20% high (ghosts), 20% wall (trolls).
+    id: 7, name: "Witch's House - Hellfire", duration: 30,
+    bgFolder: 'level7_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
+    obstacleMix: { low: 0.0, mid: 0.60, high: 0.20, wall: 0.20 },
+    obstacleTypesOverride: {
+      mid: ['necromancer_1', 'skeleton_1',
+            'pzombie_1', 'pzombie_2', 'pzombie_3',
+            'zombie_01', 'zombie_02'],
+      high: ['ghost_1', 'ghost_2', 'ghost_3'],
+      wall: ['troll_1', 'troll_2', 'troll_3'],
+    },
+    obstacleSpawnRate: { min: 1.40, max: 2.00 },
+    coinSpawnRate: { min: 0.4, max: 0.9 }, diamondChance: 0.30,
+    worldSpeed: 483, musicVolume: 0.0,
   },
-  // L8 — Dragon Dungeon 1 (NEW, sesja 9)
   {
-    id: 8,
-    name: 'Dragon Dungeon',
-    duration: 30,
-    bgFolder: 'level8_test',
-    bgLayerCount: 1,
-    parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.38, mid: 0.34, high: 0.18, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.54, max: 0.90 },
-    coinSpawnRate: { min: 0.4, max: 0.85 },
-    diamondChance: 0.30,
-    worldSpeed: 633,
-    musicVolume: 0.0,
+    id: 8, name: 'Dragon Dungeon', duration: 30,
+    bgFolder: 'level8_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
+    obstacleMix: { low: 0.32, mid: 0.31, high: 0.19, wall: 0.18 },
+    obstacleSpawnRate: { min: 1.05, max: 1.59 },
+    coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
+    worldSpeed: 488, musicVolume: 0.0,
   },
-  // L9 — Dragon Dungeon 2 (NEW)
   {
-    id: 9,
-    name: 'Dragon Lair',
-    duration: 30,
-    bgFolder: 'level9_test',
-    bgLayerCount: 1,
-    parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.36, mid: 0.34, high: 0.20, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.50, max: 0.83 },
-    coinSpawnRate: { min: 0.4, max: 0.85 },
-    diamondChance: 0.30,
-    worldSpeed: 690,
-    musicVolume: 0.0,
+    id: 9, name: 'Dragon Lair', duration: 30,
+    bgFolder: 'level9_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
+    obstacleMix: { low: 0.28, mid: 0.31, high: 0.20, wall: 0.21 },
+    obstacleSpawnRate: { min: 1.03, max: 1.56 },
+    coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
+    worldSpeed: 493, musicVolume: 0.0,
   },
-  // L10 — Dragon Dungeon 3 (NEW)
   {
-    id: 10,
-    name: 'Cursed Catacombs',
-    duration: 30,
-    bgFolder: 'level10_test',
-    bgLayerCount: 1,
-    parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.35, mid: 0.35, high: 0.20, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.48, max: 0.77 },
-    coinSpawnRate: { min: 0.4, max: 0.85 },
-    diamondChance: 0.30,
-    worldSpeed: 748,
-    musicVolume: 0.0,
+    id: 10, name: 'Cursed Catacombs', duration: 30,
+    bgFolder: 'level10_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
+    obstacleMix: { low: 0.25, mid: 0.30, high: 0.21, wall: 0.24 },
+    obstacleSpawnRate: { min: 1.01, max: 1.53 },
+    coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
+    worldSpeed: 498, musicVolume: 0.0,
   },
-  // L11 — Dragon Dungeon 4 (NEW — FINAL)
   {
-    id: 11,
-    name: 'Dragon Throne',
-    duration: 30,
-    bgFolder: 'level11_test',
-    bgLayerCount: 1,
-    parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.45, max: 0.74 },
-    coinSpawnRate: { min: 0.4, max: 0.85 },
-    diamondChance: 0.30,
-    worldSpeed: 805,
-    musicVolume: 0.0,
+    id: 11, name: 'Dragon Throne', duration: 30,
+    bgFolder: 'level11_test', bgLayerCount: 1, parallaxSpeeds: [1.0],
+    obstacleMix: { low: 0.22, mid: 0.30, high: 0.22, wall: 0.26 },
+    obstacleSpawnRate: { min: 0.99, max: 1.50 },
+    coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
+    worldSpeed: 503, musicVolume: 0.0,
   },
-  // L12-L21 — bg cycle z L1-L10. Trudność +2% per level (worldSpeed * 1.02,
-  // obstacleSpawnRate * 0.98 cumulative).
+  // L12-L21 — bg cycle z L1-L10. Faza 2 rebalance: speed +1% per level
+  // (kontynuacja od L11=503), spawnRate -2% per level, obstacleMix coraz
+  // więcej wall + high (gracz konfrontowany z trudniejszymi typami, nie
+  // szybciej pędzącymi).
   {
     id: 12, name: 'Graveyard II', duration: 30, bgFolder: 'level1_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.44, max: 0.73 },
+    obstacleMix: { low: 0.20, mid: 0.30, high: 0.22, wall: 0.28 },
+    obstacleSpawnRate: { min: 0.97, max: 1.47 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 821, musicVolume: 0.0,
+    worldSpeed: 508, musicVolume: 0.0,
   },
   {
     id: 13, name: "Witch's Hill II", duration: 30, bgFolder: 'level2_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.43, max: 0.71 },
+    obstacleMix: { low: 0.18, mid: 0.30, high: 0.22, wall: 0.30 },
+    obstacleSpawnRate: { min: 0.95, max: 1.44 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 837, musicVolume: 0.0,
+    worldSpeed: 513, musicVolume: 0.0,
   },
   {
     id: 14, name: 'Spider Forest II', duration: 30, bgFolder: 'level3_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.42, max: 0.70 },
+    obstacleMix: { low: 0.16, mid: 0.30, high: 0.22, wall: 0.32 },
+    obstacleSpawnRate: { min: 0.93, max: 1.41 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 854, musicVolume: 0.0,
+    worldSpeed: 518, musicVolume: 0.0,
   },
   {
     id: 15, name: "Witch's House II", duration: 30, bgFolder: 'level4_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.41, max: 0.68 },
+    obstacleMix: { low: 0.14, mid: 0.30, high: 0.22, wall: 0.34 },
+    obstacleSpawnRate: { min: 0.91, max: 1.38 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 871, musicVolume: 0.0,
+    worldSpeed: 523, musicVolume: 0.0,
   },
   {
     id: 16, name: 'Cursed Cemetery', duration: 30, bgFolder: 'level5_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.40, max: 0.67 },
+    obstacleMix: { low: 0.12, mid: 0.30, high: 0.22, wall: 0.36 },
+    obstacleSpawnRate: { min: 0.89, max: 1.35 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 888, musicVolume: 0.0,
+    worldSpeed: 528, musicVolume: 0.0,
   },
   {
     id: 17, name: 'Toxic Forest II', duration: 30, bgFolder: 'level6_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.39, max: 0.66 },
+    obstacleMix: { low: 0.10, mid: 0.30, high: 0.22, wall: 0.38 },
+    obstacleSpawnRate: { min: 0.87, max: 1.32 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 906, musicVolume: 0.0,
+    worldSpeed: 534, musicVolume: 0.0,
   },
   {
     id: 18, name: 'Dark Manor II', duration: 30, bgFolder: 'level7_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.38, max: 0.64 },
+    obstacleMix: { low: 0.08, mid: 0.30, high: 0.22, wall: 0.40 },
+    obstacleSpawnRate: { min: 0.85, max: 1.29 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 924, musicVolume: 0.0,
+    worldSpeed: 539, musicVolume: 0.0,
   },
   {
     id: 19, name: 'Dragon Lair II', duration: 30, bgFolder: 'level8_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.37, max: 0.63 },
+    obstacleMix: { low: 0.06, mid: 0.30, high: 0.22, wall: 0.42 },
+    obstacleSpawnRate: { min: 0.84, max: 1.27 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 943, musicVolume: 0.0,
+    worldSpeed: 544, musicVolume: 0.0,
   },
   {
     id: 20, name: 'Dragon Dungeon II', duration: 30, bgFolder: 'level9_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.36, max: 0.62 },
+    obstacleMix: { low: 0.05, mid: 0.28, high: 0.23, wall: 0.44 },
+    obstacleSpawnRate: { min: 0.82, max: 1.24 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 962, musicVolume: 0.0,
+    worldSpeed: 550, musicVolume: 0.0,
   },
   // L21 — FINAL (gracz po ukończeniu → GameCompleteScene).
   {
     id: 21, name: 'Final Dungeon', duration: 30, bgFolder: 'level10_test',
     bgLayerCount: 1, parallaxSpeeds: [1.0],
-    obstacleMix: { low: 0.33, mid: 0.35, high: 0.22, wall: 0.10 },
-    obstacleSpawnRate: { min: 0.35, max: 0.61 },
+    obstacleMix: { low: 0.04, mid: 0.26, high: 0.24, wall: 0.46 },
+    obstacleSpawnRate: { min: 0.80, max: 1.22 },
     coinSpawnRate: { min: 0.4, max: 0.85 }, diamondChance: 0.30,
-    worldSpeed: 981, musicVolume: 0.0,
+    worldSpeed: 555, musicVolume: 0.0,
   },
 ];
 
@@ -465,37 +451,80 @@ export const LIFE_LOST_INVULN_MS = 0;
 //   (jump_or_slide nie używamy — zbyt łatwy poziom).
 export const OBSTACLE_TIERS = {
   low: {
+    // rock USUNIĘTY z spawn pool (user feedback: "zielone kamyczki" do usunięcia).
     types: ['spikes', 'stone'],
     properties: {
-      // y = GROUND_Y + 10 (sesja 7.4) — kompensuje grass-decoration top edge
-      // ground tile (visible "podłoga" zaczyna się ~10px poniżej top tile);
-      // origin (0.5, 1) → sprite bottom na visible ground line.
       spikes: { y: GROUND_Y + 10, scale: 0.9, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
       stone:  { y: GROUND_Y + 10, scale: 0.85, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_only' },
+      rock:   { y: GROUND_Y + 10, scale: 0.7, hitboxRatio: 0.80, floats: false, requiresAction: 'jump_only', randomVariant: 8, baseTexture: 'rock' /* placeholder, runtime picks rock_01..08 */ },
     },
   },
   mid: {
-    types: ['wooden_box', 'wooden_barrel'],
+    // 7 mid: 2 statyczne, 5 animowanych (cartoon/funny/v7/archer/warior).
+    // tombstone USUNIĘTY z spawn pool (user feedback).
+    types: ['wooden_box', 'wooden_barrel', 'warior',
+      'cartoon_m1', 'cartoon_m2', 'cartoon_m3', 'cartoon_m5',
+      'funny_m1', 'funny_m2', 'funny_m4', 'funny_m5',
+      'v7_m1', 'v7_m3', 'v7_m5', 'archer',
+      'necromancer_1', 'skeleton_1',
+      'pzombie_1', 'pzombie_2', 'pzombie_3',
+      'zombie_01', 'zombie_02'],
     properties: {
-      // y = GROUND_Y + 10 (sesja 7.4) — visible ground alignment.
-      wooden_box:    { y: GROUND_Y + 10, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_or_slide' },
-      wooden_barrel: { y: GROUND_Y + 10, scale: 0.55, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_or_slide' },
+      wooden_box:    { y: GROUND_Y + 10, scale: 0.69, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_or_slide' },
+      wooden_barrel: { y: GROUND_Y + 10, scale: 0.86, hitboxRatio: 0.85, floats: false, requiresAction: 'jump_or_slide' },
+      tombstone:     { y: GROUND_Y + 10, scale: 0.45, hitboxRatio: 0.80, floats: false, requiresAction: 'jump_or_slide' },
+      warior:        { y: GROUND_Y + 10, scale: 0.75, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'warior_run', baseTexture: 'warior_run_00', hitboxW: 0.253, hitboxH: 0.716, hitboxOffX: 0.277, hitboxOffY: 0.169 },
+      cartoon_m1:    { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'cartoon_m1_anim', baseTexture: 'cartoon_m1_00', hitboxW: 0.324, hitboxH: 0.366, hitboxOffX: 0.319, hitboxOffY: 0.436 },
+      cartoon_m2:    { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'cartoon_m2_anim', baseTexture: 'cartoon_m2_00', hitboxW: 0.32, hitboxH: 0.383, hitboxOffX: 0.315, hitboxOffY: 0.448 },
+      cartoon_m3:    { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'cartoon_m3_anim', baseTexture: 'cartoon_m3_00', hitboxW: 0.403, hitboxH: 0.337, hitboxOffX: 0.273, hitboxOffY: 0.523 },
+      cartoon_m5:    { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'cartoon_m5_anim', baseTexture: 'cartoon_m5_00', hitboxW: 0.266, hitboxH: 0.349, hitboxOffX: 0.332, hitboxOffY: 0.469 },
+      funny_m1:      { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'funny_m1_anim', baseTexture: 'funny_m1_00', hitboxW: 0.245, hitboxH: 0.32, hitboxOffX: 0.444, hitboxOffY: 0.452 },
+      funny_m2:      { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'funny_m2_anim', baseTexture: 'funny_m2_00', hitboxW: 0.195, hitboxH: 0.328, hitboxOffX: 0.461, hitboxOffY: 0.465 },
+      funny_m4:      { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'funny_m4_anim', baseTexture: 'funny_m4_00', hitboxW: 0.187, hitboxH: 0.274, hitboxOffX: 0.49, hitboxOffY: 0.452 },
+      funny_m5:      { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'funny_m5_anim', baseTexture: 'funny_m5_00', hitboxW: 0.178, hitboxH: 0.32, hitboxOffX: 0.44, hitboxOffY: 0.427 },
+      v7_m1:         { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'v7_m1_anim', baseTexture: 'v7_m1_00', hitboxW: 0.303, hitboxH: 0.324, hitboxOffX: 0.352, hitboxOffY: 0.457 },
+      v7_m3:         { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'v7_m3_anim', baseTexture: 'v7_m3_00', hitboxW: 0.27, hitboxH: 0.291, hitboxOffX: 0.403, hitboxOffY: 0.486 },
+      v7_m5:         { y: GROUND_Y + 10, scale: 2.25, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'v7_m5_anim', baseTexture: 'v7_m5_00', hitboxW: 0.212, hitboxH: 0.345, hitboxOffX: 0.465, hitboxOffY: 0.415 },
+      archer:        { y: GROUND_Y + 10, scale: 0.53, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'archer_anim', baseTexture: 'archer_00', hitboxW: 0.428, hitboxH: 0.516, hitboxOffX: 0.207, hitboxOffY: 0.257 },
+      // Halloween pack (necro, skeleton, zombies) — mid tier (jump_or_slide).
+      necromancer_1: { y: GROUND_Y + 10, scale: 3.50, floats: false, requiresAction: 'jump_or_slide', animated: true, faceLeft: true, groundPadding: 30, animKey: 'necromancer_1_anim', baseTexture: 'necromancer_1_00', hitboxW: 0.149, hitboxH: 0.207, hitboxOffX: 0.436, hitboxOffY: 0.453 },
+      skeleton_1:    { y: GROUND_Y + 10, scale: 1.58, floats: false, requiresAction: 'jump_or_slide', animated: true, faceLeft: true, groundPadding: 30, animKey: 'skeleton_1_anim', baseTexture: 'skeleton_1_00', hitboxW: 0.307, hitboxH: 0.416, hitboxOffX: 0.407, hitboxOffY: 0.39 },
+      pzombie_1:     { y: GROUND_Y + 10, scale: 1.58, floats: false, requiresAction: 'jump_or_slide', animated: true, faceLeft: true, groundPadding: 30, animKey: 'pzombie_1_anim', baseTexture: 'pzombie_1_00', hitboxW: 0.312, hitboxH: 0.778, hitboxOffX: 0.348, hitboxOffY: 0.14 },
+      pzombie_2:     { y: GROUND_Y + 10, scale: 1.58, floats: false, requiresAction: 'jump_or_slide', animated: true, faceLeft: true, groundPadding: 30, animKey: 'pzombie_2_anim', baseTexture: 'pzombie_2_00', hitboxW: 0.228, hitboxH: 0.816, hitboxOffX: 0.361, hitboxOffY: 0.107 },
+      pzombie_3:     { y: GROUND_Y + 10, scale: 1.58, floats: false, requiresAction: 'jump_or_slide', animated: true, faceLeft: true, groundPadding: 30, animKey: 'pzombie_3_anim', baseTexture: 'pzombie_3_00', hitboxW: 0.232, hitboxH: 0.82, hitboxOffX: 0.369, hitboxOffY: 0.09 },
+      zombie_01:     { y: GROUND_Y + 10, scale: 1.62, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'zombie_01_anim', baseTexture: 'zombie_01_00', hitboxW: 0.333, hitboxH: 0.732, hitboxOffX: 0.352, hitboxOffY: 0.152 },
+      zombie_02:     { y: GROUND_Y + 10, scale: 1.62, floats: false, requiresAction: 'jump_or_slide', animated: true, groundPadding: 30, animKey: 'zombie_02_anim', baseTexture: 'zombie_02_00', hitboxW: 0.287, hitboxH: 0.703, hitboxOffX: 0.307, hitboxOffY: 0.198 },
     },
   },
   high: {
-    types: ['flying_pumpkin'],
+    // 3 high: pumpkin, bomber, cartoon_m4 (nietoperz lata).
+    types: ['flying_pumpkin', 'bomber', 'cartoon_m4', 'ghost_1', 'ghost_2', 'ghost_3'],
     properties: {
-      // Wysoka — slide tylko (skok nie wystarczy żeby pod nią przejść).
       flying_pumpkin: { y: GROUND_Y - 200, scale: 0.5, hitboxRatio: 0.8, floats: true, requiresAction: 'slide_only' },
+      bomber:         { y: GROUND_Y - 160, scale: 1.42, floats: true, requiresAction: 'slide_only', animated: true, animKey: 'bomber_fly', baseTexture: 'bomber_fly_00', hitboxW: 0.325, hitboxH: 0.483, hitboxOffX: 0.287, hitboxOffY: 0.354 },
+      cartoon_m4:     { y: GROUND_Y - 200, scale: 2.00, floats: true, requiresAction: 'slide_only', animated: true, animKey: 'cartoon_m4_anim', baseTexture: 'cartoon_m4_00', hitboxW: 0.342, hitboxH: 0.258, hitboxOffX: 0.292, hitboxOffY: 0.383 },
+      // Ghosts (3 warianty) — latają, slide_only.
+      ghost_1:        { y: GROUND_Y - 200, scale: 2.52, floats: true, requiresAction: 'slide_only', animated: true, faceLeft: true, animKey: 'ghost_1_anim', baseTexture: 'ghost_1_00', hitboxW: 0.167, hitboxH: 0.271, hitboxOffX: 0.433, hitboxOffY: 0.454 },
+      ghost_2:        { y: GROUND_Y - 200, scale: 2.52, floats: true, requiresAction: 'slide_only', animated: true, faceLeft: true, animKey: 'ghost_2_anim', baseTexture: 'ghost_2_00', hitboxW: 0.162, hitboxH: 0.271, hitboxOffX: 0.425, hitboxOffY: 0.429 },
+      ghost_3:        { y: GROUND_Y - 200, scale: 2.52, floats: true, requiresAction: 'slide_only', animated: true, faceLeft: true, animKey: 'ghost_3_anim', baseTexture: 'ghost_3_00', hitboxW: 0.171, hitboxH: 0.258, hitboxOffX: 0.438, hitboxOffY: 0.458 },
     },
   },
-  // 'wall' = stack 2 wooden_box. Body spans full stack height. Wymaga skoku
-  // (single jumpa, ale na granicy — gracz może potrzebować double jumpa).
-  // Obstacle.js dodaje sibling sprite na top gdy stackHeight > 1.
   wall: {
-    types: ['high_box_stack'],
+    // 6 wall: 2 statyczne, 4 animowane (cyclops + 3 duże potwory).
+    // fence USUNIĘTY z spawn pool (user feedback: "płotki" do usunięcia).
+    types: ['high_box_stack', 'cyclops', 'funny_m3', 'v7_m2', 'v7_m4',
+      'troll_1', 'troll_2', 'troll_3'],
     properties: {
-      high_box_stack: { y: GROUND_Y + 10, scale: 0.55, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_only', stackHeight: 2, baseTexture: 'wooden_box' },
+      high_box_stack: { y: GROUND_Y + 10, scale: 0.69, hitboxRatio: 0.9, floats: false, requiresAction: 'jump_only', stackHeight: 2, baseTexture: 'wooden_box' },
+      fence:          { y: GROUND_Y + 10, scale: 0.55, hitboxRatio: 0.80, floats: false, requiresAction: 'jump_only', randomVariant: 2, baseTexture: 'fence' },
+      cyclops:        { y: GROUND_Y + 10, scale: 0.98, floats: false, requiresAction: 'jump_only', animated: true, groundPadding: 30, animKey: 'cyclops_idle', baseTexture: 'cyclops_idle_00', hitboxW: 0.713, hitboxH: 0.713, hitboxOffX: 0.133, hitboxOffY: 0.179 },
+      funny_m3:       { y: GROUND_Y + 10, scale: 3.00, floats: false, requiresAction: 'jump_only', animated: true, groundPadding: 30, animKey: 'funny_m3_anim', baseTexture: 'funny_m3_00', hitboxW: 0.22, hitboxH: 0.337, hitboxOffX: 0.498, hitboxOffY: 0.419 },
+      v7_m2:          { y: GROUND_Y + 10, scale: 3.00, floats: false, requiresAction: 'jump_only', animated: true, groundPadding: 30, animKey: 'v7_m2_anim', baseTexture: 'v7_m2_00', hitboxW: 0.22, hitboxH: 0.291, hitboxOffX: 0.415, hitboxOffY: 0.457 },
+      v7_m4:          { y: GROUND_Y + 10, scale: 3.00, floats: false, requiresAction: 'jump_only', animated: true, groundPadding: 30, animKey: 'v7_m4_anim', baseTexture: 'v7_m4_00', hitboxW: 0.216, hitboxH: 0.307, hitboxOffX: 0.461, hitboxOffY: 0.473 },
+      // Trolls (3 warianty) — duże stworzenia, wall (jump_only).
+      troll_1:        { y: GROUND_Y + 10, scale: 2.28, floats: false, requiresAction: 'jump_only', animated: true, faceLeft: true, groundPadding: 30, animKey: 'troll_1_anim', baseTexture: 'troll_1_00', hitboxW: 0.229, hitboxH: 0.296, hitboxOffX: 0.438, hitboxOffY: 0.417 },
+      troll_2:        { y: GROUND_Y + 10, scale: 2.28, floats: false, requiresAction: 'jump_only', animated: true, faceLeft: true, groundPadding: 30, animKey: 'troll_2_anim', baseTexture: 'troll_2_00', hitboxW: 0.233, hitboxH: 0.292, hitboxOffX: 0.454, hitboxOffY: 0.429 },
+      troll_3:        { y: GROUND_Y + 10, scale: 2.28, floats: false, requiresAction: 'jump_only', animated: true, faceLeft: true, groundPadding: 30, animKey: 'troll_3_anim', baseTexture: 'troll_3_00', hitboxW: 0.242, hitboxH: 0.296, hitboxOffX: 0.438, hitboxOffY: 0.425 },
     },
   },
 };
