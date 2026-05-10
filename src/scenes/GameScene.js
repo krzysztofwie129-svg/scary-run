@@ -45,6 +45,7 @@ import { FinishLine } from '../entities/FinishLine.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { StatsTracker } from '../utils/StatsTracker.js';
+import { getDifficultyMultiplier } from '../utils/Difficulty.js';
 import { addCoins, addDiamonds } from '../utils/storage.js';
 import { ScoreSystem } from '../systems/ScoreSystem.js';
 import { RankingSystem } from '../systems/RankingSystem.js';
@@ -102,7 +103,20 @@ export class GameScene extends Phaser.Scene {
   create() {
     const lvl = LEVELS[this.currentLevel];
     this.lvl = lvl;
-    this.worldSpeed = lvl.worldSpeed;
+    // Difficulty mode (easy/normal/hard) — modyfikuje worldSpeed i density obstacles.
+    // easy: 0.7x szybko + dłuższe intervals; hard: 1.05^level kumulatywnie.
+    const _diffMul = getDifficultyMultiplier(this.currentLevel + 1);
+    this._difficultyMul = _diffMul;
+    this.worldSpeed = lvl.worldSpeed * _diffMul;
+    // Tworzymy zmodyfikowaną kopię lvl-config'u dla scheduler obstacles/coins
+    // (mnożymy intervals przez 1/_diffMul → na hard krótsze = częściej).
+    this.lvl = {
+      ...lvl,
+      obstacleSpawnRate: {
+        min: lvl.obstacleSpawnRate.min / _diffMul,
+        max: lvl.obstacleSpawnRate.max / _diffMul,
+      },
+    };
 
     StatsTracker.track('levelStart', { level: this.currentLevel + 1 });
 

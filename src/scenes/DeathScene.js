@@ -285,14 +285,10 @@ export class DeathScene extends Phaser.Scene {
       player.finished = false;
     }
     this._restoreMusic();
-    if (this.payload.context === 'boss') {
-      this.scene.start('BossFightScene', {
-        fromLevel: this.payload.fromLevel,
-        sceneData: this.payload.sceneData,
-      });
-    } else {
-      this.scene.start('GameScene');
-    }
+    // Po przegranej (level death LUB boss defeat) — zawsze wracamy na początek
+    // levelu (GameScene), nie do bossa. Inaczej user mógłby utknąć na walce
+    // z bossem bez możliwości przejścia.
+    this.scene.start('GameScene');
   }
 
   _openShop() {

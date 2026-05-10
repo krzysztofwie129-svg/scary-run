@@ -16,6 +16,7 @@ import { Haptic } from '../utils/Haptic.js';
 import { StatsTracker } from '../utils/StatsTracker.js';
 import { ScoreSystem } from '../systems/ScoreSystem.js';
 import { RankingSystem } from '../systems/RankingSystem.js';
+import { getDifficultyMultiplier } from '../utils/Difficulty.js';
 
 const BOSS_HP_MAX = 100;
 const PLAYER_DAMAGE = 10;
@@ -73,8 +74,11 @@ export class BossFightScene extends Phaser.Scene {
   }
 
   create() {
-    // V8: HP scaling per level — L1=100 (10 hits @10dmg), +20 per level (L2=120, L10=280).
-    this.bossHPMax = BOSS_HP_MAX + 20 * Math.max(0, this.fromLevel - 1);
+    // V8: HP scaling per level — L1=100, +20 per level. Plus difficulty mode:
+    // easy 0.7x, hard 1.05^level (kumulatywnie).
+    const _diffMul = getDifficultyMultiplier(this.fromLevel || 1);
+    this._difficultyMul = _diffMul;
+    this.bossHPMax = Math.max(40, Math.floor((BOSS_HP_MAX + 20 * Math.max(0, this.fromLevel - 1)) * _diffMul));
     this.bossHP = this.bossHPMax;
     // Boss fight: 3 życia (gracz może być trafiony 3× zanim umrze).
     // Niezależne od world INITIAL_LIVES (1) — boss to dedicated arena.
@@ -328,8 +332,10 @@ export class BossFightScene extends Phaser.Scene {
     // V8: pierwszy atak natychmiast po starcie (zamiast czekać BOSS_ATTACK_INTERVAL),
     // żeby gracz nie mógł spamować ataków podczas "lagu" startu (~3s wcześniej).
     this.bossWindUpAndAttack();
+    // Difficulty: easy → wolniejsze ataki (1.43x interval), hard → szybsze (1/diffMul).
+    const _attackInterval = Math.max(400, Math.floor(BOSS_ATTACK_INTERVAL / (this._difficultyMul || 1)));
     this.bossAttackTimer = this.time.addEvent({
-      delay: BOSS_ATTACK_INTERVAL,
+      delay: _attackInterval,
       callback: () => this.bossWindUpAndAttack(),
       loop: true,
     });

@@ -36,6 +36,7 @@ import { BossFightScene } from './scenes/BossFightScene.js';
 import { BossChoiceScene } from './scenes/BossChoiceScene.js';
 import { DeathScene } from './scenes/DeathScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
+import { SettingsScene } from './scenes/SettingsScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -95,6 +96,7 @@ const config = {
     GameCompleteScene,
     LeaderboardScene,
     ShopScene,
+    SettingsScene,
     SessionResultsScene,
     OrientationLockScene,
   ],

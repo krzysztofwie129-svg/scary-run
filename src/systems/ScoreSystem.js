@@ -11,6 +11,7 @@
 //   - chest score bonuses: +500 / +60 / +200
 
 import { sessionManager } from '../utils/SessionManager.js';
+import { getScoreMultiplier } from '../utils/Difficulty.js';
 
 export const ScoreSystem = {
   /** Zwraca base score (sum bez multiplier'a). */
@@ -25,13 +26,15 @@ export const ScoreSystem = {
     return Math.max(0, total - start);
   },
 
-  /** Final run score = (current level's base) × level_number (1-based).
-   *  Jeśli levelStartScore podany — liczy delta tylko tego levelu (nie cumulative). */
+  /** Final run score = (current level's base) × level_number (1-based) × difficultyScoreMul.
+   *  Jeśli levelStartScore podany — liczy delta tylko tego levelu (nie cumulative).
+   *  Difficulty: easy 0.7x, normal 1.0x, hard 1.05x. */
   finalizeRunScore(levelNumber, levelStartScore) {
     const base = Number.isFinite(levelStartScore)
       ? this.getLevelBaseScore(levelStartScore)
       : this.getBaseScore();
     const lvl = Math.max(1, Math.floor(levelNumber || 1));
-    return Math.floor(base * lvl);
+    const diffMul = getScoreMultiplier();
+    return Math.floor(base * lvl * diffMul);
   },
 };
