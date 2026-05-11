@@ -41,12 +41,18 @@ export function setDifficulty(mode) {
 /** Multiplier dla trudności poziomu (worldSpeed, boss HP, attack frequency).
  *  easy: 0.7 (mniej HP, wolniej, mniej spawn'ow)
  *  normal: 1.0
- *  hard: 1.05 ^ levelNumber (kumulatywnie per level, +5% per level)
+ *  hard: 1.025 ^ levelNumber (kumulatywnie +2.5% per level, cap 1.7x).
+ *  Wcześniej 1.05^N → L21=2.79× = poniżej refleksu człowieka, niemożliwe.
+ *  Po zluzowaniu L21 hard = 1.68× → speed 932px/s, min spawn 278ms — wciąż
+ *  ekstremalne dla pro graczy ale technicznie wykonywalne (10+ zamiast NaN).
  */
 export function getDifficultyMultiplier(levelNumber = 1) {
   const mode = getDifficulty();
   if (mode === 'easy') return 0.7;
-  if (mode === 'hard') return Math.pow(1.05, Math.max(1, Math.floor(levelNumber)));
+  if (mode === 'hard') {
+    const raw = Math.pow(1.025, Math.max(1, Math.floor(levelNumber)));
+    return Math.min(1.7, raw);
+  }
   return 1.0;
 }
 
