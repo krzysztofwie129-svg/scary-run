@@ -8,6 +8,16 @@ import { attachGlobalErrorHandlers } from './utils/ErrorOverlay.js';
 import { initialLoad as playerSyncInitialLoad } from './utils/PlayerSync.js';
 initSentry();
 attachGlobalErrorHandlers();
+
+// DEV: ?difficulty=easy|normal|hard w URL ustawia tryb przed bootem.
+try {
+  const _p = new URLSearchParams(window.location.search);
+  const _d = _p.get('difficulty');
+  if (_d && ['easy', 'normal', 'hard'].includes(_d)) {
+    localStorage.setItem('scaryrun_difficulty', _d);
+  }
+} catch (e) { /* ignore */ }
+
 // Hybrid backup gracza — async, fire-and-forget. Phaser startuje równolegle.
 playerSyncInitialLoad();
 
