@@ -2,8 +2,14 @@
 // (sesja Persistent Name). Klucz osobny od save (P1), leaderboard, achievements,
 // install-prompt. Na MenuScene "Czesc, KRZYSIEK!" + skip NameInputScene gdy
 // imię już zapisane.
+//
+// 2026-05-13: dodano markDirty() po save/clear. Wcześniej imię siedziało tylko
+// lokalnie + ad-hoc w save_v1.session.players[0].name. Po claim code recovery
+// na nowym urządzeniu imię gubione — user musial wpisac ponownie. Teraz
+// scary_run_player_v1 jest w PlayerSync.SYNCED_KEYS i deterministycznie POSTowany.
 
 import { NAME_MAX_LENGTH } from '../config.js';
+import { markDirty } from './PlayerSync.js';
 
 const STORAGE_KEY = 'scary_run_player_v1';
 
@@ -25,6 +31,7 @@ export const PlayerStore = {
         name: sanitized,
         savedAt: Date.now(),
       }));
+      markDirty();
       return true;
     } catch (e) {
       return false;
@@ -50,6 +57,9 @@ export const PlayerStore = {
   },
 
   clearName() {
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      markDirty();
+    } catch (e) { /* ignore */ }
   },
 };

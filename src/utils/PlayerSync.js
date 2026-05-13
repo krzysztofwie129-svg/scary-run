@@ -9,6 +9,10 @@ const DEBOUNCE_MS = 2000;
 const TS_KEY = 'scaryrun_sync_ts';
 
 // Klucze localStorage które bekapujemy (snapshot).
+// 2026-05-13: dodano scary_run_player_v1 (imię gracza). Wcześniej imię siedziało
+// TYLKO w scary_run_save_v1 → po claim code restore na nowym urządzeniu lub po
+// reset save_v1 user musiał ponownie wpisać imię (NameInputScene). Teraz imię
+// w snapshot KV — restoreowane razem z resztą profilu.
 const SYNCED_KEYS = [
   'game_wallet',
   'game_bestScores',
@@ -21,6 +25,7 @@ const SYNCED_KEYS = [
   'scaryrun_active_powerup',
   'scaryrun_wallet_init_v1',
   'scary_run_save_v1',
+  'scary_run_player_v1',
 ];
 
 let _debounceTimer = null;
