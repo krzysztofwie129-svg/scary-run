@@ -82,7 +82,13 @@ export async function restoreFromCode(rawCode) {
     throw new Error('localStorage failed: ' + (e?.message || ''));
   }
 
-  await initialLoad();
+  // 2026-05-13: zaktualizuj window.__playerSyncReady żeby MenuScene 'play' await
+  // czekał na NEW initialLoad. Inaczej awaituje stale Promise sprzed claim → race → L1.
+  const reloadPromise = initialLoad();
+  if (typeof window !== 'undefined') {
+    window.__playerSyncReady = reloadPromise.catch((e) => { console.warn('[restoreFromCode] reload failed:', e?.message); });
+  }
+  await reloadPromise;
   return true;
 }
 

@@ -1245,6 +1245,13 @@ export class GameScene extends Phaser.Scene {
     // Fanfara — static import (był dynamic, jeden powód mniej do failu).
     try { playFanfare(); } catch (e) { /* ignore audio quirks */ }
 
+    // 2026-05-13: stop auto-save timer PRZED finishLine save (analogicznie do
+    // handlePlayerDeath:1316). Bez tego saveStateTimer (2s loop) mógł fire
+    // MIĘDZY GameStateStore.save({currentLevel:N+1}) i scene transition,
+    // nadpisując save STARYM currentLevel (ukończony) zamiast N+1. KONTYNUUJ
+    // wracał na ten sam level który właśnie ukończono.
+    if (this.saveStateTimer) { this.saveStateTimer.remove(); this.saveStateTimer = null; }
+
     // Sesja DangerWindow Fix: zapisz save z level+1 zamiast clear().
     // iOS Safari potrafi reloadować tab podczas chest→game transition (SW
     // skipWaiting/clientsClaim + memory pressure). Bez save'a po reloadzie

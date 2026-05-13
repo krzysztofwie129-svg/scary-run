@@ -22,6 +22,7 @@
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { Leaderboard } from '../utils/Leaderboard.js';
+import { GameStateStore } from '../utils/GameStateStore.js';
 
 const FONT_TITLE = '"Luckiest Guy", "Bangers", "Arial Black", sans-serif';
 const FONT_BIG = '"Baloo 2", "Fredoka", "Arial Black", sans-serif';
@@ -283,7 +284,14 @@ export class DeathScene extends Phaser.Scene {
       player.diamonds = 0;
       player.lives = 1;
       player.finished = false;
+      // 2026-05-13: reset snapshotForLevel żeby kolejny GameScene.startLevel zrobił
+      // świeży snapshot (per-level stats / deathsThisLevel).
+      delete player._snapshotForLevel;
     }
+    // 2026-05-13: clear stale mid-game save. Stary save z `currentLevel: N+1`
+    // (z handleFinishLineCrossed PRZED śmiercią w bossie) pozostawałby w localStorage
+    // → MenuScene KONTYNUUJ wrzucałby gracza na L+1 mimo że na tym levelu zmarł.
+    GameStateStore.clear();
     this._restoreMusic();
     // Po przegranej (level death LUB boss defeat) — zawsze wracamy na początek
     // levelu (GameScene), nie do bossa. Inaczej user mógłby utknąć na walce

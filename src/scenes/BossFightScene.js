@@ -47,7 +47,17 @@ function ensureAnimsForChar(scene, charKey) {
     if (scene.anims.exists(key)) continue;
     const count = ANIM_FRAME_COUNTS[anim];
     const frames = [];
-    for (let i = 0; i < count; i++) frames.push({ key: `${charKey}_${anim}_${pad2(i)}` });
+    // 2026-05-13: texture-exists check — bez tego anims.create() z phantom frames
+    // → Phaser internal "currentFrame.key undefined" w rAF (recurring Sentry crash).
+    // Jeśli któryś frame missing (np. char07 not preloaded, network 404, equipped
+    // race condition), pomiń całą anim — Player/Boss fallback do statycznego sprite.
+    let allExist = true;
+    for (let i = 0; i < count; i++) {
+      const fk = `${charKey}_${anim}_${pad2(i)}`;
+      if (!scene.textures.exists(fk)) { allExist = false; break; }
+      frames.push({ key: fk });
+    }
+    if (!allExist) continue;
     scene.anims.create({
       key,
       frames,

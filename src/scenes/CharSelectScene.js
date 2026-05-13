@@ -178,6 +178,11 @@ export class CharSelectScene extends Phaser.Scene {
         if (typeof data.currentLevel === 'number') {
           sessionManager.currentPlayer().level = data.currentLevel;
         }
+      } else {
+        // 2026-05-13: save corrupted/malformed → clear żeby nie blokować poprawnego
+        // start fresh w play action. User nie widzi cichego "L1 zamiast N" surprise.
+        console.warn('[CharSelect] save_v1 corrupted, clearing');
+        GameStateStore.clear();
       }
     }
 

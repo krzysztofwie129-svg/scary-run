@@ -12,19 +12,28 @@ const KEYS = {
   lastRankingScore: PREFIX + 'lastRankingScore',
 };
 
+// 2026-05-13: _memFallback WRITE-ONLY (read tylko gdy localStorage nie działa).
+// Wcześniej safeGet sprawdzał _memFallback FIRST → po PlayerSync.initialLoad
+// (który zapisuje raw localStorage.setItem) cache zawierał OLD value → getCurrentLevel
+// zwracało 1 mimo localStorage="18" → user wchodził na L1 zamiast L18 (Krzysztof bug).
 const _memFallback = {};
 
 function safeGet(key, defaultVal) {
-  if (key in _memFallback) return _memFallback[key];
+  // 1) Próbuj localStorage (source of truth — PlayerSync.initialLoad pisze tu).
   try {
     const raw = localStorage.getItem(key);
-    if (raw == null) return defaultVal;
-    const parsed = JSON.parse(raw);
-    return parsed == null ? defaultVal : parsed;
+    if (raw != null) {
+      const parsed = JSON.parse(raw);
+      if (parsed != null) return parsed;
+    }
   } catch (e) {
+    // 2) localStorage zepsute (private mode / quota / corrupt) → fallback do _memFallback.
+    if (key in _memFallback) return _memFallback[key];
     console.warn(`storage.safeGet ${key} corrupted, using default`, e?.message);
-    return defaultVal;
   }
+  // 3) Brak danych w localStorage → spróbuj _memFallback (in-session cache dla private mode).
+  if (key in _memFallback) return _memFallback[key];
+  return defaultVal;
 }
 
 function safeSet(key, val) {

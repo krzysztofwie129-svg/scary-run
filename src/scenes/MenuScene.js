@@ -307,8 +307,11 @@ export class MenuScene extends Phaser.Scene {
         break;
       }
       case 'play': {
-        // 2026-05-13: GRAJ czyta highest unlocked. Drugi safeguard (poza BootScene):
-        // await PlayerSync.initialLoad gdyby user kliknął zanim sync skończył się.
+        // 2026-05-13: GRAJ czyta highest unlocked + re-entrance guard. Bez guard
+        // double-tap (lub szybki klik podczas await) odpalał wielokrotne scene.start
+        // → race wynikowych scen, niespodziewane stany.
+        if (this._playInFlight) break;
+        this._playInFlight = true;
         FullscreenManager.enter();
         FullscreenManager.keepAwake();
         (async () => {

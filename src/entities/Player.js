@@ -42,7 +42,18 @@ const NON_LOOPING = new Set(['hit', 'dead', 'win']);
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, charKey) {
-    super(scene, x, y, `${charKey}_run_00`);
+    // 2026-05-13: fallback gdy frames missing dla equipped skin (char04-07 race
+    // condition: PreloadScene lazy-load wczytuje TYLKO 1 skin per session, jeśli
+    // equipped zmienił się po preload, nowych frames nie ma). Bez tego "kwadracik"
+    // (MISSING texture box) zamiast postaci. Default char01 zawsze załadowany.
+    const initialTex = scene.textures.exists(`${charKey}_run_00`)
+      ? `${charKey}_run_00`
+      : 'char01_run_00';
+    super(scene, x, y, initialTex);
+    if (initialTex !== `${charKey}_run_00`) {
+      console.warn(`[Player] ${charKey} frames missing, fallback do char01`);
+      charKey = 'char01';
+    }
 
     scene.add.existing(this);
     scene.physics.add.existing(this);

@@ -26,6 +26,10 @@ const SYNCED_KEYS = [
   'scaryrun_wallet_init_v1',
   'scary_run_save_v1',
   'scary_run_player_v1',
+  // 2026-05-13: achievements + pending reward — gracz tracił unlocked osiągnięcia
+  // przy claim code restore na nowym urządzeniu.
+  'scary_run_achievements_v1',
+  'scary_run_pending_reward_v1',
 ];
 
 let _debounceTimer = null;
