@@ -24,7 +24,12 @@ function ensureIdleAnim(scene, charKey) {
   if (scene.anims.exists(key)) return;
   const count = ANIM_FRAME_COUNTS.idle;
   const frames = [];
-  for (let i = 0; i < count; i++) frames.push({ key: `${charKey}_idle_${pad2(i)}` });
+  // 2026-05-13: texture-exists check (recurring rAF crash protection)
+  for (let i = 0; i < count; i++) {
+    const fk = `${charKey}_idle_${pad2(i)}`;
+    if (!scene.textures.exists(fk)) return;
+    frames.push({ key: fk });
+  }
   scene.anims.create({ key, frames, frameRate: FRAME_RATES.idle, repeat: -1 });
 }
 
@@ -34,6 +39,12 @@ const TAB_POWERUPS = 'powerups';
 export class ShopScene extends Phaser.Scene {
   constructor() {
     super({ key: 'ShopScene' });
+  }
+
+  init(data) {
+    // 2026-05-13: returnScene aby ShopScene wracała do scene źródłowej
+    // (np DeathScene zachowuje recap context). Default MenuScene jeśli brak.
+    this._returnScene = data?.returnScene || 'MenuScene';
   }
 
   async create() {
@@ -89,7 +100,7 @@ export class ShopScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
       back.on('pointerover', () => back.setScale(back.scaleX * 1.05, back.scaleY * 1.05));
       back.on('pointerout', () => back.setScale(back.scaleX / 1.05, back.scaleY / 1.05));
-      back.on('pointerup', () => this.scene.start('MenuScene'));
+      back.on('pointerup', () => this.scene.start(this._returnScene || 'MenuScene'));
     } else {
       const backBtn = this.add.text(20, 35, '← WRÓĆ', {
         fontFamily: 'Arial Black, sans-serif',
@@ -98,7 +109,7 @@ export class ShopScene extends Phaser.Scene {
         backgroundColor: '#3a1d5a',
         padding: { x: 12, y: 6 },
       }).setOrigin(0, 0.5).setDepth(2).setInteractive({ useHandCursor: true });
-      backBtn.on('pointerup', () => this.scene.start('MenuScene'));
+      backBtn.on('pointerup', () => this.scene.start(this._returnScene || 'MenuScene'));
     }
 
     // Balance (prawa) — PKT + monety + diamenty.
@@ -571,6 +582,12 @@ export class ShopScene extends Phaser.Scene {
       hit.on('pointerup', async () => {
         if ((this._lastDragDistance || 0) > 10) return;
         await setEquippedSkin(skin.id);
+        // 2026-05-13: full-sprite skin (drox/nex/nox/poki) wymaga preload char04-07
+        // frames które PreloadScene załadował TYLKO dla PRZEDNIEGO equipped.
+        // Force page reload — PreloadScene wczyta fresh frames przy nowym booku.
+        if (['drox','nex','nox','poki'].includes(skin.id)) {
+          try { window.location.reload(); return; } catch (_) {}
+        }
         await this._renderTab();
       });
       container.add(hit);
@@ -714,6 +731,10 @@ export class ShopScene extends Phaser.Scene {
     });
     const equipBtn = this._makeModalButton(cx + 100, btnY, 160, 44, 'ZAŁÓŻ', 0x4ade80, 0xffd93c, '#0f1c0f', async () => {
       await setEquippedSkin(skin.id);
+      // 2026-05-13: full-sprite skin (drox/nex/nox/poki) → reload żeby preload char04-07.
+      if (['drox','nex','nox','poki'].includes(skin.id)) {
+        try { window.location.reload(); return; } catch (_) {}
+      }
       this._closeModal();
       await this._renderTab();
     });

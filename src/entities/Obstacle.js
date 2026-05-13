@@ -34,6 +34,11 @@ export class Obstacle extends Phaser.Physics.Arcade.Sprite {
     // żeby visible feet były dokładnie na GROUND_Y line.
     const groundPad = config.groundPadding || 0;
     const adjustedY = config.floats ? config.y : config.y + groundPad * config.scale;
+    // 2026-05-13: defensive — jeśli visualTexture absolutnie nie istnieje
+    // (fallback też failed), użyj placeholder 'tile' żeby nie crashować.
+    if (!scene.textures.exists(visualTexture)) {
+      visualTexture = scene.textures.exists('tile') ? 'tile' : Object.keys(scene.textures.list)[0];
+    }
     super(scene, x, adjustedY, visualTexture);
     scene.add.existing(this);
 

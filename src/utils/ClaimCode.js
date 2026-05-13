@@ -74,6 +74,14 @@ export async function restoreFromCode(rawCode) {
   const result = await response.json();
   if (!result.deviceId) return false;
 
+  // 2026-05-13: cancel pending debounce PRZED deviceId swap. Bez tego timer
+  // (2s after markDirty) mógł fire z buildSnapshot() po nadpisaniu localStorage
+  // przez initialLoad → POST mieszany state pod NEW deviceId.
+  try {
+    const { cancelPendingSync } = await import('./PlayerSync.js');
+    cancelPendingSync?.();
+  } catch (_) {}
+
   try {
     localStorage.setItem('scary_run_device_id_v1', result.deviceId);
     localStorage.removeItem('scaryrun_sync_ts'); // żeby initialLoad zaakceptował backend

@@ -20,6 +20,12 @@ function uuid() {
   return `${a}-${b}-${c}-${d}-${e}`;
 }
 
+// 2026-05-13: module-level cache dla private-mode fallback. Bez tego każde
+// get() generowało NOWY uuid → markDirty POST'y trafiały pod różne deviceId
+// → orphan KV entries, claim code recovery niemożliwy. Teraz: jedna ephemeral
+// tożsamość per session w private mode.
+let _ephemeralCached = null;
+
 export const DeviceId = {
   get() {
     try {
@@ -30,8 +36,9 @@ export const DeviceId = {
       }
       return id;
     } catch (e) {
-      // Private mode / disabled — return ephemeral ID dla tej sesji.
-      return uuid();
+      // Private mode / disabled — cache ephemeral ID per session.
+      if (!_ephemeralCached) _ephemeralCached = uuid();
+      return _ephemeralCached;
     }
   },
 };

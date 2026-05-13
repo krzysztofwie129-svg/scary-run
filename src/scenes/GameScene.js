@@ -308,20 +308,28 @@ export class GameScene extends Phaser.Scene {
 
     // Środek górny: animowana ikona coin (sprite) + licznik, diament + licznik.
     if (!this.anims.exists('coin_spin')) {
+      // 2026-05-13: texture-exists check przed anims.create (recurring rAF crash protection)
+      const _coinFrames = ['coin_00', 'coin_01', 'coin_02', 'coin_03', 'coin_05', 'coin_06'];
+      if (_coinFrames.every((k) => this.textures.exists(k))) {
       this.anims.create({
         key: 'coin_spin',
-        frames: ['coin_00', 'coin_01', 'coin_02', 'coin_03', 'coin_05', 'coin_06']
-          .map((k) => ({ key: k })),
+        frames: _coinFrames.map((k) => ({ key: k })),
         frameRate: 12,
         repeat: -1,
       });
+      }
     }
     // Faza 2: anim'y dla animowanych obstacles (cyclops, warior, bomber).
+    // 2026-05-13: texture-exists check przed anims.create. Bez tego pojedynczy
+    // frame 404 (network glitch, missing asset) tworzył anim z phantom frame,
+    // play() → Phaser internal "u.key undefined" crash w rAF.
     const _mkAnim = (key, prefix, count, fr = 12) => {
       if (this.anims.exists(key)) return;
       const frames = [];
       for (let i = 0; i < count; i++) {
-        frames.push({ key: `${prefix}_${String(i).padStart(2, '0')}` });
+        const fk = `${prefix}_${String(i).padStart(2, '0')}`;
+        if (!this.textures.exists(fk)) return; // któryś frame missing → skip anim
+        frames.push({ key: fk });
       }
       this.anims.create({ key, frames, frameRate: fr, repeat: -1 });
     };
@@ -348,7 +356,7 @@ export class GameScene extends Phaser.Scene {
     const coinScale = HUD_COIN_ICON_SIZE / 100;
     this.coinIcon.setScale(coinScale);
     this.coinIcon.setDepth(1000).setScrollFactor(0);
-    this.coinIcon.play('coin_spin');
+    if (this.anims.exists('coin_spin')) { try { this.coinIcon.play('coin_spin'); } catch (_) {} }
 
     this.coinCountText = this.add.text(cx - 80, 28, formatNumber(player.coins), {
       ...fontStyle, fontSize: '24px',
@@ -1262,9 +1270,15 @@ export class GameScene extends Phaser.Scene {
       const _player = sessionManager.currentPlayer();
       const _nextLevel = (_player?.level ?? 0) + 1;
       if (_nextLevel < LEVELS.length) {
+        // 2026-05-13: save z flagą pendingChoice='boss'. Bez tej flagi user
+        // który zamknął tab po finishLine ALE PRZED boss/chest fight → KONTYNUUJ
+        // skipował boss bonus 500 + chest reward. Z flagą MenuScene continueGame
+        // wraca do BossChoiceScene zamiast GameScene N+1.
         GameStateStore.save({
           session: sessionManager.serialize(),
           currentLevel: _nextLevel,
+          pendingChoice: 'boss',
+          completedLevel: (sessionManager.currentPlayer()?.level ?? 0),
         });
       } else {
         GameStateStore.clear(); // game complete, no save needed

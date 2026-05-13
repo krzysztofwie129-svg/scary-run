@@ -30,6 +30,9 @@ const SYNCED_KEYS = [
   // przy claim code restore na nowym urządzeniu.
   'scary_run_achievements_v1',
   'scary_run_pending_reward_v1',
+  // 2026-05-13: claim code — gdy user wyczyści cache lokalnie, claim recovery
+  // odzyskuje deviceId + claim code z snapshot zamiast generować nowy.
+  'scaryrun_my_code',
 ];
 
 let _debounceTimer = null;
@@ -73,7 +76,12 @@ async function _postSnapshot() {
     });
 
     if (!response.ok) {
-      if (response.status >= 500) {
+      // 2026-05-13: 413 (snapshot too large) — sygnał że bestScores/achievements
+      // wyrosły poza MAX_SIZE_BYTES (64KB). User nie zobaczy, ale backupy
+      // przestają działać → Sentry warn.
+      if (response.status === 413) {
+        console.error('[PlayerSync] 413 snapshot too large — backupy się wyłączyły');
+      } else if (response.status >= 500) {
         console.warn('[PlayerSync] POST failed:', response.status);
       }
       return;
@@ -96,6 +104,33 @@ export function markDirty() {
     _debounceTimer = null;
     _postSnapshot();
   }, DEBOUNCE_MS);
+}
+
+/** 2026-05-13: cancel pending debounce. Wołane w restoreFromCode przed deviceId
+ *  swap żeby pending POST nie wystrzelił z OLD localStorage pod NEW deviceId. */
+export function cancelPendingSync() {
+  if (_debounceTimer) {
+    clearTimeout(_debounceTimer);
+    _debounceTimer = null;
+  }
+}
+
+// 2026-05-13: pagehide flush via sendBeacon — user zamykajacy tab w <2s po
+// zakupie skinu/wpisie wagi mógł stracić sync do KV. sendBeacon gwarantuje
+// POST nawet po unload.
+if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+  window.addEventListener('pagehide', () => {
+    if (!_debounceTimer) return;
+    clearTimeout(_debounceTimer);
+    _debounceTimer = null;
+    try {
+      const deviceId = DeviceId.get();
+      if (!deviceId) return;
+      const body = JSON.stringify({ deviceId, snapshot: buildSnapshot(), ts: Date.now() });
+      const blob = new Blob([body], { type: 'application/json' });
+      navigator.sendBeacon(API_URL, blob);
+    } catch (_) { /* ignore */ }
+  });
 }
 
 /**

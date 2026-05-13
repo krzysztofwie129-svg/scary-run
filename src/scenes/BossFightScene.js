@@ -114,6 +114,37 @@ export class BossFightScene extends Phaser.Scene {
     this.time.delayedCall(800, () => this.showIntroBanner());
     this.time.delayedCall(2200, () => this.startFight());
     this.createControlButtons();
+
+    // 2026-05-13: pauza dostępna w boss fight + visibility auto-pause.
+    // Bez tego user idący na inny tab / odbierający telefon wracał martwy
+    // (boss attackował w tle). 1-życie-1-szansa = krytyczne.
+    this._addPauseButton();
+    this.visibilityHandler = () => {
+      if (document.hidden && !this.scene.isPaused() && !this.fightOver) {
+        this.pauseGame();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+    this.events.once('shutdown', () => {
+      if (this.visibilityHandler) {
+        document.removeEventListener('visibilitychange', this.visibilityHandler);
+        this.visibilityHandler = null;
+      }
+    });
+  }
+
+  _addPauseButton() {
+    const pauseBtn = this.textures.exists('btn_pause')
+      ? this.add.image(GAME_WIDTH - 30, 80, 'btn_pause').setDisplaySize(72, 72)
+      : this.add.text(GAME_WIDTH - 30, 80, '⏸', { fontSize: '48px', color: '#ffd93c' }).setOrigin(0.5);
+    pauseBtn.setDepth(99999).setInteractive({ useHandCursor: true });
+    pauseBtn.on('pointerdown', () => this.pauseGame());
+  }
+
+  pauseGame() {
+    if (this.scene.isPaused() || this.fightOver) return;
+    this.scene.pause();
+    this.scene.launch('PauseScene', { parentSceneKey: this.scene.key });
   }
 
   createControlButtons() {

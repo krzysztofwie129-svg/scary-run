@@ -28,6 +28,30 @@ export class MenuScene extends Phaser.Scene {
     super({ key: 'MenuScene' });
   }
 
+  // 2026-05-13: reset _playInFlight per scene start. Phaser reuses scene instance,
+  // po Settings/Shop back i powrocie do menu, stary _playInFlight=true blokowal
+  // GRAJ permanentnie do page reload.
+  init() {
+    this._playInFlight = false;
+    // Drain pending leaderboard submissions (offline-saved queue).
+    this._drainLeaderboardQueue();
+  }
+
+  async _drainLeaderboardQueue() {
+    try {
+      const raw = localStorage.getItem('scary_run_pending_lb');
+      if (!raw) return;
+      const queue = JSON.parse(raw);
+      if (!Array.isArray(queue) || queue.length === 0) return;
+      const { Leaderboard } = await import('../utils/Leaderboard.js');
+      const remaining = [];
+      for (const entry of queue) {
+        try { await Leaderboard.addAsync(entry); } catch (_) { remaining.push(entry); }
+      }
+      localStorage.setItem('scary_run_pending_lb', JSON.stringify(remaining));
+    } catch (_) {}
+  }
+
   create() {
     // DEV: ?chest=random|giant|destroyer → skip menu, idź prosto do ChestSelect
     // (z forceRewards=3× wybrana nagroda). Po KONTYNUUJ start GameScene
@@ -436,7 +460,10 @@ export class MenuScene extends Phaser.Scene {
     this.buttons?.forEach((b, i) => b.setFocused?.(i === this.focusedIndex));
   }
 
-  /** Sesja P1 — odtwarza stan z localStorage i przechodzi prosto do GameScene. */
+  /** Sesja P1 — odtwarza stan z localStorage i przechodzi prosto do GameScene.
+   *  2026-05-13: respektuj pendingChoice='boss' — gdy save oznaczone jako "po
+   *  finish line, przed boss" → wraca do BossChoiceScene żeby user dostał boss
+   *  bonus + chest reward których pominął gdy zamknął tab. */
   continueGame() {
     const data = GameStateStore.load();
     if (!data) {
@@ -450,6 +477,11 @@ export class MenuScene extends Phaser.Scene {
     }
     if (typeof data.currentLevel === 'number') {
       sessionManager.currentPlayer().level = data.currentLevel;
+    }
+    if (data.pendingChoice === 'boss') {
+      // Wraca do BossChoiceScene z completedLevel (level który właśnie ukończył).
+      this.scene.start('BossChoiceScene', { fromLevel: (data.completedLevel ?? 0) + 1 });
+      return;
     }
     this.scene.start('GameScene');
   }

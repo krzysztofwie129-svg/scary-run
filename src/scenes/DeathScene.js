@@ -301,7 +301,9 @@ export class DeathScene extends Phaser.Scene {
 
   _openShop() {
     this._restoreMusic();
-    this.scene.start('ShopScene');
+    // 2026-05-13: przekaż returnScene żeby ShopScene back wracał do DeathScene
+    // zamiast MenuScene (user nie tracił death recap context).
+    this.scene.start('ShopScene', { returnScene: 'DeathScene' });
   }
 
   _openRanking() {
@@ -318,8 +320,18 @@ export class DeathScene extends Phaser.Scene {
       const level = Math.max(1, this.payload.level || this.payload.fromLevel || 1);
       const coins = Math.floor(player.coins || 0);
       if (score <= 0) return;
-      Leaderboard.addAsync({ name, score, level, coins })
-        .catch(() => { /* fallback inside util */ });
+      const entry = { name, score, level, coins };
+      // 2026-05-13: retry queue dla failed submissions. Bez retry user network
+      // fail = wynik nie trafia do globalnego rankingu (silent loss).
+      Leaderboard.addAsync(entry)
+        .catch(() => {
+          try {
+            const raw = localStorage.getItem('scary_run_pending_lb') || '[]';
+            const queue = JSON.parse(raw);
+            queue.push({ ...entry, queuedAt: Date.now() });
+            localStorage.setItem('scary_run_pending_lb', JSON.stringify(queue.slice(-10)));
+          } catch (_) {}
+        });
     } catch (e) { /* ignore */ }
   }
 

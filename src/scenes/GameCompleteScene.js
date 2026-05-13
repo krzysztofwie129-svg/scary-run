@@ -169,7 +169,8 @@ export class GameCompleteScene extends Phaser.Scene {
         player.coins = 0;
         player.diamonds = 0;
         player.level = 0;
-        player.lives = 5;
+        // 2026-05-13: 1 życie 1 szansa (spec). Wcześniej lives=5 naruszało zasady.
+        player.lives = 1;
         player.finished = false;
         this.scene.start('GameScene');
       }),

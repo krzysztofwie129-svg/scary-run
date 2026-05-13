@@ -18,6 +18,7 @@ import {
   GROUND_Y,
 } from '../config.js';
 import { Haptic } from '../utils/Haptic.js';
+import { sessionManager } from '../utils/SessionManager.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -53,6 +54,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (initialTex !== `${charKey}_run_00`) {
       console.warn(`[Player] ${charKey} frames missing, fallback do char01`);
       charKey = 'char01';
+      // 2026-05-13: sync sessionManager żeby HUD portrait + save serialize
+      // odzwierciedlały rzeczywisty character.
+      try {
+        const p = sessionManager.currentPlayer?.();
+        if (p) p.character = 'char01';
+      } catch (_) {}
     }
 
     scene.add.existing(this);
