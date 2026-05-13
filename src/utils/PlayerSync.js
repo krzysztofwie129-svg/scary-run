@@ -128,10 +128,16 @@ export async function initialLoad() {
     }
 
     console.log('[PlayerSync] restoruje z backendu, ts:', result.ts);
-    for (const [key, value] of Object.entries(result.snapshot)) {
+    // 2026-05-13: DESTRUCTIVE restore — KV jest source of truth. Lokalne klucze
+    // które NIE są w snapshot muszą być usuwane, inaczej stale save_v1
+    // (z poprzedniej sesji) zostaje w localStorage i menu pokazuje KONTYNUUJ
+    // do starego stanu zamiast czystego startu (Krzysztof L2 case).
+    for (const key of SYNCED_KEYS) {
       try {
-        if (SYNCED_KEYS.includes(key)) {
-          localStorage.setItem(key, value);
+        if (key in result.snapshot) {
+          localStorage.setItem(key, result.snapshot[key]);
+        } else {
+          localStorage.removeItem(key);
         }
       } catch (e) { /* ignore quota */ }
     }
