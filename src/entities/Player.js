@@ -89,7 +89,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setOffset(bodyDef.offsetX, bodyDef.offsetY);
 
     this.animKeys = this.setupAnimations(scene, charKey);
-    this.play(this.animKeys.run);
+    this._safePlay(this.animKeys.run);
+  }
+
+  // 2026-05-13: defensywny play — wszystkie play(animKeys.X) muszą iść przez
+  // ten helper. Inaczej jeśli frames missing (race PreloadScene vs PlayerSync),
+  // animKeys.X = undefined → Phaser crash w rAF "u.key undefined".
+  _safePlay(key, ignoreIfPlaying) {
+    if (!key || !this.scene?.anims?.exists?.(key)) return;
+    try { this.play(key, ignoreIfPlaying); } catch (e) { /* anim cache race */ }
   }
 
   setupAnimations(scene, charKey) {
@@ -128,7 +136,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityY(isFirstJump ? JUMP_VELOCITY : DOUBLE_JUMP_VELOCITY);
     this.jumpsRemaining--;
     this.state_ = 'jumping';
-    this.play(this.animKeys.jump, true);
+    this._safePlay(this.animKeys.jump, true);
     this.scene.audioManager?.playSfx('jump', { rate: isFirstJump ? 1.0 : 1.15, volume: 0.7 });
     Haptic.jump();
     this.landingGraceCounter = 0;
@@ -178,7 +186,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (this.state_ !== 'running') {
         const wasAirborne = this.state_ === 'falling' || this.state_ === 'jumping';
         this.state_ = 'running';
-        this.play(this.animKeys.run, true);
+        this._safePlay(this.animKeys.run, true);
         this.jumpsRemaining = 2;
         if (wasAirborne) {
           this.scene.audioManager?.playSfx('landing', { volume: 0.5 });
@@ -188,11 +196,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       // W powietrzu. Jumping → fall przy opadaniu.
       if (this.body.velocity.y > 50 && this.state_ !== 'falling' && this.state_ !== 'jumping') {
         this.state_ = 'falling';
-        this.play(this.animKeys.fall, true);
+        this._safePlay(this.animKeys.fall, true);
         this.landingGraceCounter = LANDING_GRACE_FRAMES;
       } else if (this.state_ === 'jumping' && this.body.velocity.y > 50) {
         this.state_ = 'falling';
-        this.play(this.animKeys.fall, true);
+        this._safePlay(this.animKeys.fall, true);
         this.landingGraceCounter = LANDING_GRACE_FRAMES;
       }
     }
