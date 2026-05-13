@@ -75,8 +75,12 @@ export class PreloadScene extends Phaser.Scene {
     } catch { /* ignore */ }
     const SKIN_TO_CHAR = { drox: '04', nex: '05', nox: '06', poki: '07' };
     // dead/win — sesja 2026-05: anim śmierci i wygranej dla skinów 04-07.
-    // 2026-05-13: 'roll' dodane — BossFightScene playerSlide używa dla char04-07.
-    const skinAnimSet = ['idle', 'run', 'jump', 'hit', 'fall', 'dead', 'win', 'roll'];
+    // 2026-05-13: 'roll' celowo NIE w skinAnimSet — Character 04-07 Roll/ folder
+    // używa single-digit naming (Character-Roll_0.png) zamiast pad2 (_00.png).
+    // Plus char04 ma tylko 5 frames zamiast 8 (ANIM_FRAME_COUNTS.roll). Próby
+    // load to 404 spam w console. Skin players nie używają roll w gameplayu —
+    // BossFightScene slide ma anims.exists check + fallback.
+    const skinAnimSet = ['idle', 'run', 'jump', 'hit', 'fall', 'dead', 'win'];
     const skinCharNum = SKIN_TO_CHAR[_equippedSkin];
     if (skinCharNum) {
       const charKey = `char${skinCharNum}`;
