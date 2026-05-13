@@ -129,33 +129,43 @@ try {
   // Dzięki temu rotation overlay nie nakłada się na loading bar (sesja 7.3).
   orientationGuard.init(game);
 
-  // 2026-05-13: WebGL context lost handler — iOS/Android tracą context przy
-  // background tab / memory pressure / app switch / orientation rotation.
-  // Phaser dispatchContextRestored próbuje re-link shadery + re-create framebuffers
-  // → "Link Shader failed:" / "Framebuffer status: Framebuffer Unsupported" crash.
-  // Sentry: bfc06568 (shader), d749403c (framebuffer). Both unhandled,
-  // dispatchContextRestored mechanism.
-  // Fix: BLOKUJ Phaser recovery przez capture-phase listener PRZED bubble do Phaser.
-  // Plus auto-reload — fresh page = fresh WebGL context bez prób recovery.
+  // 2026-05-13: WebGL context recovery — iOS/Android tracą WebGL context
+  // (background tab / memory pressure / app switch / orientation). Phaser default
+  // dispatchContextRestored próbuje re-link shadery + re-create framebuffers
+  // → "Link Shader failed:" / "Framebuffer status: Framebuffer Unsupported"
+  // crash w realnym świecie (Phaser bug na slabszych GPU).
+  //
+  // Sentry: bfc06568 (Link Shader), d749403c (Framebuffer Unsupported, Android 10).
+  //
+  // Fix: użyj oficjalnego Phaser API `renderer.setContextHandlers(lost, restored)`
+  // żeby NIE wywoływać dispatchContextRestored. Zamiast recovery — auto-reload.
+  // Fresh page = fresh WebGL context bez prób buggy Phaser recovery.
   try {
-    const canvas = game.canvas;
-    if (canvas) {
-      const onContextLost = (e) => {
-        try { window.Sentry?.addBreadcrumb?.({ category: 'webgl', message: 'webglcontextlost', level: 'warning' }); } catch (_) {}
-        console.warn('[WebGL] context lost — auto-reload');
+    const renderer = game.renderer;
+    if (renderer && typeof renderer.setContextHandlers === 'function') {
+      renderer.setContextHandlers(
+        function customContextLost(e) {
+          try { window.Sentry?.addBreadcrumb?.({ category: 'webgl', message: 'context lost (custom handler)', level: 'warning' }); } catch (_) {}
+          console.warn('[WebGL] context lost — auto-reload (Phaser recovery skipped)');
+          if (e && e.preventDefault) e.preventDefault();
+          _scheduleReload('webglcontextlost', 250);
+        },
+        function customContextRestored() {
+          // INTENCJONALNIE pusta — NIE wywołuj this.dispatchContextRestored().
+          // Phaser docs (181066): "jeśli override, MUSISZ wywołać dispatch*
+          // żeby renderer się odtworzył". My NIE chcemy — robimy reload.
+          try { window.Sentry?.addBreadcrumb?.({ category: 'webgl', message: 'context restored (recovery skipped)', level: 'warning' }); } catch (_) {}
+          console.warn('[WebGL] context restored — recovery skipped (auto-reload in progress)');
+        }
+      );
+    } else if (game.canvas) {
+      // Fallback gdy renderer API niedostępne (np. Canvas2D mode).
+      game.canvas.addEventListener('webglcontextlost', (e) => {
         e.preventDefault();
         _scheduleReload('webglcontextlost', 250);
-      };
-      const onContextRestored = (e) => {
-        try { window.Sentry?.addBreadcrumb?.({ category: 'webgl', message: 'webglcontextrestored (blocked Phaser recovery)', level: 'warning' }); } catch (_) {}
-        console.warn('[WebGL] context restored — blocking Phaser recovery (already reloading)');
-        e.stopImmediatePropagation?.();
-      };
-      // CAPTURE phase (3rd arg true) — fire PRZED Phaser internal listener.
-      canvas.addEventListener('webglcontextlost', onContextLost, true);
-      canvas.addEventListener('webglcontextrestored', onContextRestored, true);
+      }, true);
     }
-  } catch (_) { /* canvas not ready or no WebGL */ }
+  } catch (_) { /* renderer not ready or no WebGL */ }
 } catch (e) {
   console.error('Game init failed:', e);
   const fallback = document.getElementById('browser-fallback');
