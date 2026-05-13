@@ -129,20 +129,31 @@ try {
   // Dzięki temu rotation overlay nie nakłada się na loading bar (sesja 7.3).
   orientationGuard.init(game);
 
-  // 2026-05-13: WebGL context lost handler — iOS Safari traci context przy
-  // background tab / memory pressure / app switch. Phaser próbuje re-link
-  // shadery (dispatchContextRestored) → `Link Shader failed:` crash (unhandled).
-  // Sentry: bfc06568. Fix: capture context lost, auto-reload — user widzi
-  // wczytanie zamiast white screen / spinner crash.
+  // 2026-05-13: WebGL context lost handler — iOS/Android tracą context przy
+  // background tab / memory pressure / app switch / orientation rotation.
+  // Phaser dispatchContextRestored próbuje re-link shadery + re-create framebuffers
+  // → "Link Shader failed:" / "Framebuffer status: Framebuffer Unsupported" crash.
+  // Sentry: bfc06568 (shader), d749403c (framebuffer). Both unhandled,
+  // dispatchContextRestored mechanism.
+  // Fix: BLOKUJ Phaser recovery przez capture-phase listener PRZED bubble do Phaser.
+  // Plus auto-reload — fresh page = fresh WebGL context bez prób recovery.
   try {
     const canvas = game.canvas;
     if (canvas) {
-      canvas.addEventListener('webglcontextlost', (e) => {
+      const onContextLost = (e) => {
         console.warn('[WebGL] context lost — auto-reload');
         e.preventDefault();
-        // Force save state przed reload (PlayerSync pagehide listener już to robi).
+        // PlayerSync pagehide listener flush state do KV via sendBeacon.
         setTimeout(() => { try { window.location.reload(); } catch (_) {} }, 250);
-      }, { passive: false });
+      };
+      const onContextRestored = (e) => {
+        // Blokuj Phaser recovery — i tak auto-reload wystrzelił.
+        console.warn('[WebGL] context restored — blocking Phaser recovery (already reloading)');
+        e.stopImmediatePropagation?.();
+      };
+      // CAPTURE phase (3rd arg true) — fire PRZED Phaser internal listener.
+      canvas.addEventListener('webglcontextlost', onContextLost, true);
+      canvas.addEventListener('webglcontextrestored', onContextRestored, true);
     }
   } catch (_) { /* canvas not ready or no WebGL */ }
 } catch (e) {
@@ -151,12 +162,26 @@ try {
   if (fallback) fallback.style.display = 'flex';
 }
 
-// 2026-05-13: globalny safety net dla unhandled "Link Shader failed:" —
-// w razie gdy webglcontextlost listener nie zadziała (race condition lub
-// shader compile fail w innym momencie), nadal auto-reload zamiast crash.
+// 2026-05-13: globalny safety net dla wszystkich WebGL recovery crashes.
+// dispatchContextRestored → Phaser próbuje re-link shadery / re-create FBO /
+// re-upload textures → każdy może fail z innym message. Reload zawsze.
+const WEBGL_CRASH_PATTERNS = /Link Shader failed|Framebuffer status|Framebuffer Unsupported|FRAMEBUFFER_(IN)?COMPLETE|gl\.linkProgram|createResource/i;
+function _isWebglCrash(msg) {
+  return typeof msg === 'string' && WEBGL_CRASH_PATTERNS.test(msg);
+}
 window.addEventListener('error', (ev) => {
-  if (ev?.error?.message?.includes('Link Shader failed') || /Link Shader failed/i.test(ev?.message || '')) {
-    console.warn('[Phaser] shader link failed — auto-reload');
+  const m = ev?.error?.message || ev?.message || '';
+  if (_isWebglCrash(m)) {
+    console.warn('[WebGL] recovery crash — auto-reload:', m.slice(0, 80));
+    ev.preventDefault?.();
+    setTimeout(() => { try { window.location.reload(); } catch (_) {} }, 500);
+  }
+});
+// Plus unhandledrejection — niektóre WebGL recovery errors fire jako Promise reject.
+window.addEventListener('unhandledrejection', (ev) => {
+  const m = ev?.reason?.message || String(ev?.reason || '');
+  if (_isWebglCrash(m)) {
+    console.warn('[WebGL] recovery rejection — auto-reload:', m.slice(0, 80));
     ev.preventDefault?.();
     setTimeout(() => { try { window.location.reload(); } catch (_) {} }, 500);
   }
