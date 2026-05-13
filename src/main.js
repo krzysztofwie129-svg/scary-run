@@ -141,13 +141,13 @@ try {
     const canvas = game.canvas;
     if (canvas) {
       const onContextLost = (e) => {
+        try { window.Sentry?.addBreadcrumb?.({ category: 'webgl', message: 'webglcontextlost', level: 'warning' }); } catch (_) {}
         console.warn('[WebGL] context lost — auto-reload');
         e.preventDefault();
-        // PlayerSync pagehide listener flush state do KV via sendBeacon.
-        setTimeout(() => { try { window.location.reload(); } catch (_) {} }, 250);
+        _scheduleReload('webglcontextlost', 250);
       };
       const onContextRestored = (e) => {
-        // Blokuj Phaser recovery — i tak auto-reload wystrzelił.
+        try { window.Sentry?.addBreadcrumb?.({ category: 'webgl', message: 'webglcontextrestored (blocked Phaser recovery)', level: 'warning' }); } catch (_) {}
         console.warn('[WebGL] context restored — blocking Phaser recovery (already reloading)');
         e.stopImmediatePropagation?.();
       };
@@ -169,20 +169,61 @@ const WEBGL_CRASH_PATTERNS = /Link Shader failed|Framebuffer status|Framebuffer 
 function _isWebglCrash(msg) {
   return typeof msg === 'string' && WEBGL_CRASH_PATTERNS.test(msg);
 }
+
+// Reload loop limit — gdy każdy reload powoduje kolejny crash (np. broken bundle,
+// driver issue), nie wpadaj w infinite reload. Po MAX_RELOADS pokaz fallback.
+const RELOAD_KEY = 'scary_run_webgl_reload_count';
+const RELOAD_MAX = 3;
+const RELOAD_WINDOW_MS = 60_000; // licznik reset po 60s bez crashu
+function _scheduleReload(reason, delay = 500) {
+  try {
+    const now = Date.now();
+    const raw = sessionStorage.getItem(RELOAD_KEY);
+    let state = raw ? JSON.parse(raw) : { count: 0, firstAt: now };
+    // Reset window jeśli stary licznik.
+    if (now - state.firstAt > RELOAD_WINDOW_MS) state = { count: 0, firstAt: now };
+    state.count++;
+    sessionStorage.setItem(RELOAD_KEY, JSON.stringify(state));
+    if (state.count > RELOAD_MAX) {
+      console.error(`[WebGL] reload loop limit (${RELOAD_MAX}) reached, showing fallback`);
+      try {
+        window.Sentry?.captureMessage?.(`WebGL reload loop limit: ${reason}`, 'error');
+      } catch (_) {}
+      const fb = document.getElementById('browser-fallback');
+      if (fb) {
+        fb.style.display = 'flex';
+        fb.innerHTML = '<div style="text-align:center;padding:40px;color:#fff;font-family:sans-serif"><h2 style="color:#ffd93c">Problem z grafiką</h2><p>Twoja przeglądarka traci kontekst WebGL. Spróbuj:</p><ul style="text-align:left;display:inline-block"><li>Zamknij inne karty</li><li>Restart przeglądarki</li><li>Update systemu</li></ul></div>';
+      }
+      return;
+    }
+    setTimeout(() => { try { window.location.reload(); } catch (_) {} }, delay);
+  } catch (_) {
+    // sessionStorage błąd → fallback do prostego reload bez limit
+    setTimeout(() => { try { window.location.reload(); } catch (_) {} }, delay);
+  }
+}
+
+// Reset reload counter po pomyślnym uruchomieniu (60s bez crashu = zdrowy state).
+setTimeout(() => {
+  try { sessionStorage.removeItem(RELOAD_KEY); } catch (_) {}
+}, RELOAD_WINDOW_MS);
+
 window.addEventListener('error', (ev) => {
   const m = ev?.error?.message || ev?.message || '';
   if (_isWebglCrash(m)) {
+    try { window.Sentry?.addBreadcrumb?.({ category: 'webgl', message: `error: ${m.slice(0, 80)}`, level: 'error' }); } catch (_) {}
     console.warn('[WebGL] recovery crash — auto-reload:', m.slice(0, 80));
     ev.preventDefault?.();
-    setTimeout(() => { try { window.location.reload(); } catch (_) {} }, 500);
+    _scheduleReload('error:' + m.slice(0, 40), 500);
   }
 });
 // Plus unhandledrejection — niektóre WebGL recovery errors fire jako Promise reject.
 window.addEventListener('unhandledrejection', (ev) => {
   const m = ev?.reason?.message || String(ev?.reason || '');
   if (_isWebglCrash(m)) {
+    try { window.Sentry?.addBreadcrumb?.({ category: 'webgl', message: `rejection: ${m.slice(0, 80)}`, level: 'error' }); } catch (_) {}
     console.warn('[WebGL] recovery rejection — auto-reload:', m.slice(0, 80));
     ev.preventDefault?.();
-    setTimeout(() => { try { window.location.reload(); } catch (_) {} }, 500);
+    _scheduleReload('rejection:' + m.slice(0, 40), 500);
   }
 });
