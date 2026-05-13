@@ -272,8 +272,10 @@ export class MenuScene extends Phaser.Scene {
     this.buttons = [];
     const items = [];
     if (hasSave) {
-      // Save istnieje: tylko KONTYNUUJ (gracz już wybrał postać na początku gry).
+      // Save istnieje: KONTYNUUJ (wraca do bieżącego levelu+score) + NOWA GRA
+      // (świadomy reset — user chce zacząć od początku z nową postacią).
       items.push({ key: 'menu_btn_kontynuuj', action: 'continue' });
+      items.push({ key: 'menu_btn_graj', action: 'newgame' });
     } else {
       items.push({ key: 'menu_btn_graj', action: 'play' });
     }
@@ -302,10 +304,13 @@ export class MenuScene extends Phaser.Scene {
         this.continueGame();
         break;
       }
-      case 'play': {
+      case 'play':
+      case 'newgame': {
+        // newgame = wymuszony reset save gdy hasSave (świadomy "Nowa gra" obok KONTYNUUJ).
         FullscreenManager.enter();
         FullscreenManager.keepAwake();
         GameStateStore.clear();
+        sessionManager.reset();
         StatsTracker.track('gameStart', { mode: 'sp' });
         const savedName = PlayerStore.getName();
         sessionManager.setupSinglePlayer(savedName || '');

@@ -71,13 +71,15 @@ export class PauseScene extends Phaser.Scene {
   }
 
   exitToMenu() {
-    // 2026-05-13: hard-reset sessionManager + clear save + stop wszystkich active
-    // overlay scenes. Wcześniej HUD score "zostawał" bo GameScene.scene.stop() nie
-    // czyściło player.score w sessionManager (singleton w pamięci JS), a kolejny
-    // GameScene startup brał _levelStartScore z OLD player gdy klikniesz GRAJ szybko.
-    GameStateStore.clear();
-    sessionManager.reset();
-    // Stop wszystkich overlay scenes które mogą być active z GameScene.
+    // 2026-05-13: NIE clear save — user oczekuje że "MENU GŁÓWNE" wyjdzie z gry
+    // ZACHOWUJĄC progress (level + score). Menu wykryje hasSave i pokaże KONTYNUUJ.
+    // Force save bieżącego state PRZED wyjściem (auto-save co 2s mógł nie zdążyć).
+    const parent = this.scene.get(this.parentSceneKey);
+    if (parent && typeof parent.saveCurrentState === 'function') {
+      try { parent.saveCurrentState(); } catch (_) { /* ignore */ }
+    }
+    // Stop overlay scenes które mogą być active z GameScene (gdy user pauzował
+    // w środku Boss/LevelComplete/Death etc).
     for (const k of ['PauseScene', 'GameScene', 'BossFightScene', 'LevelCompleteScene', 'DeathScene', 'GameOverScene']) {
       if (this.scene.isActive(k) || this.scene.isPaused(k)) this.scene.stop(k);
     }
