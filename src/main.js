@@ -129,9 +129,35 @@ try {
   // Dzięki temu rotation overlay nie nakłada się na loading bar (sesja 7.3).
   orientationGuard.init(game);
 
-  // Debug scene-log overlay usunięty po diagnostyce iOS reload buga.
+  // 2026-05-13: WebGL context lost handler — iOS Safari traci context przy
+  // background tab / memory pressure / app switch. Phaser próbuje re-link
+  // shadery (dispatchContextRestored) → `Link Shader failed:` crash (unhandled).
+  // Sentry: bfc06568. Fix: capture context lost, auto-reload — user widzi
+  // wczytanie zamiast white screen / spinner crash.
+  try {
+    const canvas = game.canvas;
+    if (canvas) {
+      canvas.addEventListener('webglcontextlost', (e) => {
+        console.warn('[WebGL] context lost — auto-reload');
+        e.preventDefault();
+        // Force save state przed reload (PlayerSync pagehide listener już to robi).
+        setTimeout(() => { try { window.location.reload(); } catch (_) {} }, 250);
+      }, { passive: false });
+    }
+  } catch (_) { /* canvas not ready or no WebGL */ }
 } catch (e) {
   console.error('Game init failed:', e);
   const fallback = document.getElementById('browser-fallback');
   if (fallback) fallback.style.display = 'flex';
 }
+
+// 2026-05-13: globalny safety net dla unhandled "Link Shader failed:" —
+// w razie gdy webglcontextlost listener nie zadziała (race condition lub
+// shader compile fail w innym momencie), nadal auto-reload zamiast crash.
+window.addEventListener('error', (ev) => {
+  if (ev?.error?.message?.includes('Link Shader failed') || /Link Shader failed/i.test(ev?.message || '')) {
+    console.warn('[Phaser] shader link failed — auto-reload');
+    ev.preventDefault?.();
+    setTimeout(() => { try { window.location.reload(); } catch (_) {} }, 500);
+  }
+});
