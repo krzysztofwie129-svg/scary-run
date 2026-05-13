@@ -307,25 +307,33 @@ export class MenuScene extends Phaser.Scene {
         break;
       }
       case 'play': {
-        // 2026-05-13: GRAJ NIE resetuje progress. Start od `getCurrentLevel()`
-        // (highest unlocked z game_currentLevel, persistent + KV-synced przez
-        // PlayerSync). Reset gry tylko przez Settings → Resetuj.
-        // GameStateStore.clear() OK bo to mid-game save (z pauzy), TTL 24h.
+        // 2026-05-13: GRAJ czyta highest unlocked. Drugi safeguard (poza BootScene):
+        // await PlayerSync.initialLoad gdyby user kliknął zanim sync skończył się.
         FullscreenManager.enter();
         FullscreenManager.keepAwake();
-        GameStateStore.clear();
-        sessionManager.reset();
-        StatsTracker.track('gameStart', { mode: 'sp' });
-        const savedName = PlayerStore.getName();
-        sessionManager.setupSinglePlayer(savedName || '');
-        // Set player.level do highest unlocked - 1 (level 0-indexed).
-        const highestUnlocked = getCurrentLevel();
-        sessionManager.currentPlayer().level = Math.max(0, highestUnlocked - 1);
-        if (savedName) {
-          this.scene.start('CharSelectScene');
-        } else {
-          this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: 1 });
-        }
+        (async () => {
+          if (window.__playerSyncReady) {
+            try {
+              await Promise.race([
+                window.__playerSyncReady,
+                new Promise((r) => setTimeout(r, 3000)),
+              ]);
+            } catch (_) { /* ignore */ }
+          }
+          GameStateStore.clear();
+          sessionManager.reset();
+          StatsTracker.track('gameStart', { mode: 'sp' });
+          const savedName = PlayerStore.getName();
+          sessionManager.setupSinglePlayer(savedName || '');
+          // Set player.level do highest unlocked - 1 (level 0-indexed).
+          const highestUnlocked = getCurrentLevel();
+          sessionManager.currentPlayer().level = Math.max(0, highestUnlocked - 1);
+          if (savedName) {
+            this.scene.start('CharSelectScene');
+          } else {
+            this.scene.start('NameInputScene', { playerIndex: 0, numPlayers: 1 });
+          }
+        })();
         break;
       }
       case 'character': {
