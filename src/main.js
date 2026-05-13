@@ -18,8 +18,13 @@ try {
   }
 } catch (e) { /* ignore */ }
 
-// Hybrid backup gracza — async, fire-and-forget. Phaser startuje równolegle.
-playerSyncInitialLoad();
+// 2026-05-13: KV sync MUSI skończyć przed start gry — inaczej race condition,
+// MenuScene 'play' action czyta game_currentLevel ZANIM snapshot z KV się
+// załadował → user widzi L1 zamiast highest unlocked. Krzysztof zaczynał od L1
+// mimo unlock L18. window.__playerSyncReady to Promise dostępny dla scen.
+window.__playerSyncReady = playerSyncInitialLoad().catch((e) => {
+  console.warn('[main] initialLoad failed:', e?.message);
+});
 
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, PHYSICS_GRAVITY } from './config.js';

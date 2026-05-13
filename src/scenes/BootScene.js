@@ -23,7 +23,19 @@ export class BootScene extends Phaser.Scene {
     this.load.image('menu_logo', 'assets/ui/menu_logo.webp');
   }
 
-  create() {
+  async create() {
+    // 2026-05-13: czekaj na PlayerSync.initialLoad przed start PreloadScene.
+    // Inaczej user klika GRAJ zanim KV snapshot zsynchronizuje localStorage
+    // → getCurrentLevel() zwraca default 1 → start L1 mimo unlock L18.
+    // Max 3s timeout — gdy backend niedostepny, kontynuujemy z lokalnymi danymi.
+    if (window.__playerSyncReady) {
+      try {
+        await Promise.race([
+          window.__playerSyncReady,
+          new Promise((resolve) => setTimeout(resolve, 3000)),
+        ]);
+      } catch (_) { /* ignore — fallback do lokalnego stanu */ }
+    }
     // Krótki delay przed PreloadScene, żeby Boot nie błyskał na 1 frame.
     this.time.delayedCall(50, () => {
       this.scene.start('PreloadScene');
