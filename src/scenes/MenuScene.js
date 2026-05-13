@@ -21,7 +21,7 @@ import { FullscreenManager } from '../utils/FullscreenManager.js';
 import { InstallPromptManager } from '../utils/InstallPromptManager.js';
 import { PlayerStore } from '../utils/PlayerStore.js';
 import { StatsTracker } from '../utils/StatsTracker.js';
-import { getWallet, getRankingScore } from '../utils/storage.js';
+import { getWallet, getRankingScore, getCurrentLevel } from '../utils/storage.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -272,11 +272,13 @@ export class MenuScene extends Phaser.Scene {
     this.buttons = [];
     const items = [];
     if (hasSave) {
-      // Save istnieje: KONTYNUUJ (wraca do bieżącego levelu+score) + NOWA GRA
-      // (świadomy reset — user chce zacząć od początku z nową postacią).
+      // Mid-game save istnieje (pauza→menu): KONTYNUUJ wraca do bieżącego levelu+score.
       items.push({ key: 'menu_btn_kontynuuj', action: 'continue' });
-      items.push({ key: 'menu_btn_graj', action: 'newgame' });
     } else {
+      // Brak mid-game save: GRAJ. Start od `getCurrentLevel()` (highest unlocked
+      // z game_currentLevel, syncowany do KV przez PlayerSync). Claim code recovery
+      // mapuje na ten klucz — user na nowym urządzeniu po claim wraca tam gdzie był.
+      // Reset progresu TYLKO przez Settings → Resetuj grę.
       items.push({ key: 'menu_btn_graj', action: 'play' });
     }
     items.push({ key: 'menu_btn_ranking', action: 'ranking' });
@@ -304,9 +306,11 @@ export class MenuScene extends Phaser.Scene {
         this.continueGame();
         break;
       }
-      case 'play':
-      case 'newgame': {
-        // newgame = wymuszony reset save gdy hasSave (świadomy "Nowa gra" obok KONTYNUUJ).
+      case 'play': {
+        // 2026-05-13: GRAJ NIE resetuje progress. Start od `getCurrentLevel()`
+        // (highest unlocked z game_currentLevel, persistent + KV-synced przez
+        // PlayerSync). Reset gry tylko przez Settings → Resetuj.
+        // GameStateStore.clear() OK bo to mid-game save (z pauzy), TTL 24h.
         FullscreenManager.enter();
         FullscreenManager.keepAwake();
         GameStateStore.clear();
@@ -314,6 +318,9 @@ export class MenuScene extends Phaser.Scene {
         StatsTracker.track('gameStart', { mode: 'sp' });
         const savedName = PlayerStore.getName();
         sessionManager.setupSinglePlayer(savedName || '');
+        // Set player.level do highest unlocked - 1 (level 0-indexed).
+        const highestUnlocked = getCurrentLevel();
+        sessionManager.currentPlayer().level = Math.max(0, highestUnlocked - 1);
         if (savedName) {
           this.scene.start('CharSelectScene');
         } else {
