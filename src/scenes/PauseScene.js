@@ -4,6 +4,7 @@
 
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
+import { sessionManager } from '../utils/SessionManager.js';
 
 export class PauseScene extends Phaser.Scene {
   constructor() {
@@ -70,9 +71,16 @@ export class PauseScene extends Phaser.Scene {
   }
 
   exitToMenu() {
+    // 2026-05-13: hard-reset sessionManager + clear save + stop wszystkich active
+    // overlay scenes. Wcześniej HUD score "zostawał" bo GameScene.scene.stop() nie
+    // czyściło player.score w sessionManager (singleton w pamięci JS), a kolejny
+    // GameScene startup brał _levelStartScore z OLD player gdy klikniesz GRAJ szybko.
     GameStateStore.clear();
-    this.scene.stop();
-    this.scene.stop(this.parentSceneKey);
+    sessionManager.reset();
+    // Stop wszystkich overlay scenes które mogą być active z GameScene.
+    for (const k of ['PauseScene', 'GameScene', 'BossFightScene', 'LevelCompleteScene', 'DeathScene', 'GameOverScene']) {
+      if (this.scene.isActive(k) || this.scene.isPaused(k)) this.scene.stop(k);
+    }
     this.scene.start('MenuScene');
   }
 }

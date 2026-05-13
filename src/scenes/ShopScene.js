@@ -42,6 +42,27 @@ export class ShopScene extends Phaser.Scene {
     this._tabContentObjects = [];
     this._modalObjects = [];
 
+    // 2026-05-13: PreloadScene lazy-loaduje TYLKO equipped skin (oszczędność 70MB).
+    // Shop preview wymaga idle frames dla WSZYSTKICH char04-07. Load on-demand —
+    // tylko `idle` (20 frames × 4 chars ≈ 5MB), reszta anim zostaje lazy.
+    const missing = [];
+    for (const cn of ['04', '05', '06', '07']) {
+      const charKey = `char${cn}`;
+      for (let i = 0; i < ANIM_FRAME_COUNTS.idle; i++) {
+        const textureKey = `${charKey}_idle_${pad2(i)}`;
+        if (!this.textures.exists(textureKey)) {
+          missing.push({ key: textureKey, url: `assets/characters/Character ${cn}/Png/Character Sprite/Idle/Character-Idle_${pad2(i)}.png` });
+        }
+      }
+    }
+    if (missing.length > 0) {
+      for (const m of missing) this.load.image(m.key, m.url);
+      await new Promise((resolve) => {
+        this.load.once('complete', resolve);
+        this.load.start();
+      });
+    }
+
     // === Background image ===
     if (this.textures.exists('shop_bg')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'shop_bg').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(0);
