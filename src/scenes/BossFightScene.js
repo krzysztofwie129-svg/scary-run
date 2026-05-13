@@ -220,7 +220,7 @@ export class BossFightScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setScale(0.5)
       .setDepth(100);
-    this.playerSprite.play(`${this.playerCharKey}_idle`);
+    { const k = `${this.playerCharKey}_idle`; if (this.anims.exists(k)) { try { this.playerSprite.play(k); } catch (_) {} } }
 
     // V5: body pokrywa cały widoczny obszar postaci żeby projectile zawsze
     // overlap'ował (CHARACTER_INFO.body offsety były zaprojektowane dla
@@ -254,7 +254,7 @@ export class BossFightScene extends Phaser.Scene {
       const finalScale = baseScale * (1 + bonusPx / baseH);
       this.bossSprite.setScale(finalScale);
     }
-    this.bossSprite.play(`${this.bossCharKey}_idle`);
+    { const k = `${this.bossCharKey}_idle`; if (this.anims.exists(k)) { try { this.bossSprite.play(k); } catch (_) {} } }
     // V5 Ground Fix: brutalne dosunięcie do ground.
     this.bossSprite.y = GROUND_Y + BOSS_Y_OFFSET;
   }
@@ -437,7 +437,7 @@ export class BossFightScene extends Phaser.Scene {
             this.jumpCount = 0;
             this.playerInvulnerable = false;
             this.refreshJumpIndicator();
-            if (!this.fightOver) this.playerSprite.play(`${this.playerCharKey}_idle`);
+            if (!this.fightOver) { const k = `${this.playerCharKey}_idle`; if (this.anims.exists(k)) { try { this.playerSprite.play(k); } catch (_) {} } }
           },
         });
       },
@@ -489,7 +489,7 @@ export class BossFightScene extends Phaser.Scene {
       onComplete: () => {
         this.playerSprite.scaleY = baseScaleY;
         this.playerInvulnerable = false;
-        if (!this.fightOver) this.playerSprite.play(`${this.playerCharKey}_idle`);
+        if (!this.fightOver) { const k = `${this.playerCharKey}_idle`; if (this.anims.exists(k)) { try { this.playerSprite.play(k); } catch (_) {} } }
       },
     });
     Haptic.slide?.();
@@ -529,7 +529,7 @@ export class BossFightScene extends Phaser.Scene {
     }
     this.lastAttackTime = now;
 
-    this.sound.play('boss_attack', { volume: 0.6 });
+    try { this.sound.play('boss_attack', { volume: 0.6 }); } catch (_) { /* iOS decode race */ }
 
     // Anim hit może się przerwać kolejnym tapem (DPS player-controlled).
     const hitAnim = `${this.playerCharKey}_hit`;
@@ -537,7 +537,7 @@ export class BossFightScene extends Phaser.Scene {
       this.playerSprite.play(hitAnim, true);
       this.playerSprite.once('animationcomplete', () => {
         if (!this.fightOver) {
-          this.playerSprite.play(`${this.playerCharKey}_idle`);
+          { const k = `${this.playerCharKey}_idle`; if (this.anims.exists(k)) { try { this.playerSprite.play(k); } catch (_) {} } }
         }
       });
     }
@@ -710,7 +710,7 @@ export class BossFightScene extends Phaser.Scene {
 
     this.bossSprite.once('animationcomplete', () => {
       if (!this.fightOver) {
-        this.bossSprite.play(`${this.bossCharKey}_idle`);
+        { const k = `${this.bossCharKey}_idle`; if (this.anims.exists(k)) { try { this.bossSprite.play(k); } catch (_) {} } }
       }
     });
   }
@@ -784,7 +784,7 @@ export class BossFightScene extends Phaser.Scene {
     if (this.bossAttackTimer) { this.bossAttackTimer.destroy(); this.bossAttackTimer = null; }
 
     StatsTracker.track('bossWin', { fromLevel: this.fromLevel });
-    this.sound.play('boss_victory', { volume: 0.8 });
+    try { this.sound.play('boss_victory', { volume: 0.8 }); } catch (_) { /* iOS decode race */ }
 
     const fallAnim = `${this.bossCharKey}_fall`;
     if (this.anims.exists(fallAnim)) this.bossSprite.play(fallAnim);

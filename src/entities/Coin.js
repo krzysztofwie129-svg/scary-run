@@ -39,17 +39,23 @@ export class Coin extends Phaser.Physics.Arcade.Sprite {
         ease: 'Sine.easeInOut',
       });
     } else {
-      // Anim spin — tworzymy raz globalnie.
+      // Anim spin — tworzymy raz globalnie. 2026-05-13: texture-exists check
+      // (network 404 lub asset preload race) + try/catch żeby uniknąć rAF crash.
       if (!scene.anims.exists(COIN_ANIM_KEY)) {
-        scene.anims.create({
-          key: COIN_ANIM_KEY,
-          frames: ['coin_00', 'coin_01', 'coin_02', 'coin_03', 'coin_05', 'coin_06']
-            .map((k) => ({ key: k })),
-          frameRate: 12,
-          repeat: -1,
-        });
+        const frameKeys = ['coin_00', 'coin_01', 'coin_02', 'coin_03', 'coin_05', 'coin_06'];
+        const allExist = frameKeys.every((k) => scene.textures.exists(k));
+        if (allExist) {
+          scene.anims.create({
+            key: COIN_ANIM_KEY,
+            frames: frameKeys.map((k) => ({ key: k })),
+            frameRate: 12,
+            repeat: -1,
+          });
+        }
       }
-      this.play(COIN_ANIM_KEY);
+      if (scene.anims.exists(COIN_ANIM_KEY)) {
+        try { this.play(COIN_ANIM_KEY); } catch (_) {}
+      }
     }
   }
 

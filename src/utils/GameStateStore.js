@@ -38,7 +38,11 @@ export const GameStateStore = {
       if (!raw) return null;
       const data = JSON.parse(raw);
       if (Date.now() - (data.timestamp || 0) > TTL_MS) {
-        GameStateStore.clear();
+        // 2026-05-13: TTL-expiry — clear LOKALNIE bez markDirty (NIE nadpisuj KV).
+        // Bez tego: gracz wraca po 30+ dniach → load() expire → clear({propagate})
+        // → POST snapshot bez save_v1 do KV (LWW akceptuje nowsze ts) → save w KV
+        // trwale utracony nawet jeśli claim code restore by go odzyskał.
+        try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
         return null;
       }
       return data;
@@ -48,6 +52,8 @@ export const GameStateStore = {
   },
 
   clear() {
+    // Świadome user-clear (np z MenuScene play action, ResetGame, DeathScene._restart).
+    // Propaguje do KV przez markDirty → snapshot bez save_v1 → KV usuwa stale state.
     try {
       localStorage.removeItem(STORAGE_KEY);
       markDirty();

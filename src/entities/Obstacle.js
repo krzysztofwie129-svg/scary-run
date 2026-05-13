@@ -38,8 +38,9 @@ export class Obstacle extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
 
     // Animowane obstacles (cyclops, warior, bomber) — odpalamy anim po init.
+    // 2026-05-13: try/catch — anim cache mógł być utworzony z phantom frames.
     if (config.animated && config.animKey && scene.anims.exists(config.animKey)) {
-      this.play(config.animKey);
+      try { this.play(config.animKey); } catch (_) {}
     }
 
     // FlipX TYLKO gdy config.faceLeft === true (default: bez flipu).

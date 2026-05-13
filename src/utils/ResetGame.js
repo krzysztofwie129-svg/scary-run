@@ -33,6 +33,12 @@ const KEYS_TO_CLEAR = [
   'scaryrun_wallet_init_v1',
   'scary_run_save_v1',
   'scaryrun_sync_ts',
+  // 2026-05-13: dodane brakujące keys — user "Resetuj grę" widziało stare
+  // achievements/pending reward/pending name jakby reset niepełny.
+  'scary_run_achievements_v1',
+  'scary_run_pending_reward_v1',
+  'scaryrun_pending_name',
+  'scary_run_install_prompt_dismissed_v1',
 ];
 
 export function resetGame() {
