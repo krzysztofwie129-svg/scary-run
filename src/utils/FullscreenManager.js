@@ -14,6 +14,14 @@ export const FullscreenManager = {
    * Zwraca natychmiast — async ale nie czekamy.
    */
   async enter() {
+    // Capacitor native app jest już fullscreen z definicji — wywołanie
+    // requestFullscreen() na document.documentElement triggeruje iOS systemowy
+    // overlay „Wyświetlasz capacitor://localhost na pełnym ekranie. Aby zamknąć
+    // przesuń palcem w dół." z X w lewym górnym rogu, który zasłania HUD.
+    // W native skip; w web (Safari/Chrome) odpalamy normalnie.
+    if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+      return;
+    }
     const elem = document.documentElement;
     try {
       if (elem.requestFullscreen) {

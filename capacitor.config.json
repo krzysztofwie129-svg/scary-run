@@ -1,0 +1,29 @@
+{
+  "appId": "pl.scaryrun.app",
+  "appName": "Scary Run",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "limitsNavigationsToAppBoundDomains": false,
+    "backgroundColor": "#1a0a2e"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "launchAutoHide": false,
+      "backgroundColor": "#1a0a2e",
+      "iosSpinnerStyle": "small",
+      "spinnerColor": "#ffffff",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true,
+      "iosFadeOutDuration": 250
+    },
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK",
+      "backgroundColor": "#1a0a2e"
+    }
+  }
+}

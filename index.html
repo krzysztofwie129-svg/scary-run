@@ -18,10 +18,11 @@
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
 
-  <!-- Google Fonts dla DeathScene redesign (Luckiest Guy / Baloo 2 / Montserrat / Nunito Sans). -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@800&family=Montserrat:wght@800&family=Nunito+Sans:wght@600&display=swap" rel="stylesheet">
+  <!-- Fonty bundlowane lokalnie z public/fonts/ (woff2 latin + latin-ext).
+       Wcześniej Google Fonts CDN — offline launch pokazywał system fallback
+       przez 1-2s, native build (iOS Capacitor) miałby blokujące request.
+       Skript do refresh: public/fonts/_download.sh (pobiera z gstatic). -->
+  <link rel="stylesheet" href="/fonts/fonts.css">
 
   <!-- SEO -->
   <meta name="description" content="Scary Run to gra runner w stylu halloween. Tap UP żeby skoczyć, tap DOWN żeby uniknąć latających dyni. Multiplayer 1-4 graczy, 4 levele, ranking top 10." />
@@ -47,6 +48,14 @@
   <style>
     * { box-sizing: border-box; }
 
+    /* Notch / Dynamic Island insets eksponowane jako CSS vars — GameScene
+       czyta je przez getComputedStyle i przesuwa HUD do safe area.
+       Web (brak notcha) → 0px, więc HUD bez zmian. */
+    :root {
+      --safe-area-left: env(safe-area-inset-left, 0px);
+      --safe-area-right: env(safe-area-inset-right, 0px);
+    }
+
     html, body {
       margin: 0;
       padding: 0;
@@ -69,14 +78,9 @@
       left: 0;
     }
 
-    /* NIE używamy env(safe-area-inset-*) na body — w landscape iPhone
-       (notch po lewej) padding-left=44 a padding-right=0 jest asymetryczny
-       i przesuwa container w prawo. Game canvas zajmuje pełen viewport,
-       gra wizualnie może sięgać pod notch (typowe w landscape grach). */
-
-    /* Container = pełen viewport. NIE używamy display:flex bo Phaser
-       Scale.FIT + autoCenter:CENTER_BOTH sam ustawia margin canvasa
-       — flex + Phaser-center daje konflikt centering => przesunięcie. */
+    /* Container = pełen viewport (full bleed pod notch). HUD bezpieczny przed
+       notchem rozwiązany w GameScene (HUD_SAFE_MARGIN), NIE paddingiem tu —
+       padding kurczył canvas i dawał asymetryczny czarny pasek przy notchu. */
     #game-container {
       position: fixed;
       top: 0;

@@ -208,16 +208,18 @@ export class GameScene extends Phaser.Scene {
     // === Sesja P1: Pause + Save + Tab Blur ===
 
     // PAUSE button — image-based btn_pause (purple-gold round) lub fallback Phaser text.
+    // _hudSafeMargin ustawione w createHUD() (wywołane wcześniej w create()).
+    const pauseX = GAME_WIDTH - 30 - (this._hudSafeMargin || 0);
     let pauseBtn;
     if (this.textures.exists('btn_pause')) {
-      pauseBtn = this.add.image(GAME_WIDTH - 30, 80, 'btn_pause')
+      pauseBtn = this.add.image(pauseX, 80, 'btn_pause')
         .setOrigin(1, 0)
         .setDisplaySize(60, 60)
         .setScrollFactor(0)
         .setDepth(10000)
         .setInteractive({ useHandCursor: true });
     } else {
-      pauseBtn = this.add.text(GAME_WIDTH - 30, 80, '⏸', {
+      pauseBtn = this.add.text(pauseX, 80, '⏸', {
         fontFamily: 'Arial Black, sans-serif',
         fontSize: '40px',
         color: '#ffffff',
@@ -226,7 +228,7 @@ export class GameScene extends Phaser.Scene {
       }).setOrigin(1, 0).setInteractive({ useHandCursor: true })
         .setDepth(10000).setScrollFactor(0);
     }
-    pauseBtn.on('pointerdown', () => this.pauseGame());
+    pauseBtn.on('pointerdown', () => { Haptic.tap(); this.pauseGame(); });
 
     // Auto-save state co 2 sekundy.
     this.saveStateTimer = this.time.addEvent({
@@ -282,8 +284,28 @@ export class GameScene extends Phaser.Scene {
     g.destroy();
   }
 
+  // Notch-safe margin dla skrajnego HUD (serca/level po lewej, score/pause
+   // po prawej). Czyta env(safe-area-inset-*) z CSS i przelicza px ekranu na
+  // jednostki gry (GAME_WIDTH). Web bez notcha → 0, HUD bez zmian.
+  getHudSafeMargin() {
+    try {
+      const cs = getComputedStyle(document.documentElement);
+      const left = parseFloat(cs.getPropertyValue('--safe-area-left')) || 0;
+      const right = parseFloat(cs.getPropertyValue('--safe-area-right')) || 0;
+      const notchPx = Math.max(left, right);
+      if (notchPx <= 0) return 0;
+      const vw = window.innerWidth || GAME_WIDTH;
+      // +8 game-units zapasu nad samą szerokością notcha.
+      return Math.round((notchPx / vw) * GAME_WIDTH) + 8;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   createHUD() {
     const player = sessionManager.currentPlayer();
+    this._hudSafeMargin = this.getHudSafeMargin();
+    const sm = this._hudSafeMargin;
     const fontStyle = {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: `${HUD_FONT_SIZE}px`,
@@ -303,8 +325,8 @@ export class GameScene extends Phaser.Scene {
     this.lifeIcons = [];
     this.refreshLivesHUD();
 
-    this.levelText = this.add.text(20, 60, `LEVEL ${this.lvl.id} — ${this.lvl.name}`, fontStyle).setDepth(1000).setScrollFactor(0);
-    this.timeText = this.add.text(20, 95, 'Time: 0:30', subStyle).setDepth(1000).setScrollFactor(0);
+    this.levelText = this.add.text(20 + sm, 60, `LEVEL ${this.lvl.id} — ${this.lvl.name}`, fontStyle).setDepth(1000).setScrollFactor(0);
+    this.timeText = this.add.text(20 + sm, 95, 'Time: 0:30', subStyle).setDepth(1000).setScrollFactor(0);
 
     // Środek górny: animowana ikona coin (sprite) + licznik, diament + licznik.
     if (!this.anims.exists('coin_spin')) {
@@ -371,7 +393,7 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(1000).setScrollFactor(0);
 
     // Prawy górny: SCORE + (jeśli MP) imię gracza.
-    const rightX = GAME_WIDTH - 20;
+    const rightX = GAME_WIDTH - 20 - sm;
     this.scoreText = this.add.text(rightX, 16, `Score: ${formatScore(0)}`, { ...fontStyle, color: '#ffe066' })
       .setOrigin(1, 0).setDepth(1000).setScrollFactor(0);
     if (sessionManager.isMultiplayer) {
@@ -461,8 +483,9 @@ export class GameScene extends Phaser.Scene {
     this.lifeIcons = [];
     // 1 życie 1 szansa: zawsze 1 ikona, żaden power-up tego nie zmienia.
     const lives = 1;
+    const sm = this._hudSafeMargin || 0;
     for (let i = 0; i < lives; i++) {
-      const x = 24 + i * (HUD_LIFE_ICON_SIZE + 6);
+      const x = 24 + sm + i * (HUD_LIFE_ICON_SIZE + 6);
       const heart = this.add.image(x, 30, 'life').setOrigin(0, 0.5);
       heart.setDisplaySize(HUD_LIFE_ICON_SIZE, HUD_LIFE_ICON_SIZE);
       heart.setTint(0xff3030);
@@ -814,7 +837,7 @@ export class GameScene extends Phaser.Scene {
       addDiamonds(1); // persistent wallet (live add).
       this.audioManager.playSfx('coin', { rate: DIAMOND_PICKUP_PITCH });
       this.emitParticles(x, y, PARTICLE_DIAMOND_COLOR, PARTICLE_DIAMOND_COUNT);
-      Haptic.diamond();
+      // Bez haptyki — zbieranie diamentów nie wibruje (user request).
     } else {
       // Sesja C: DOUBLE_COINS = +2 zamiast +1.
       const multiplier = powerUpManager.isActive(POWER_UP_TYPES.DOUBLE_COINS) ? 2 : 1;
@@ -835,9 +858,9 @@ export class GameScene extends Phaser.Scene {
         // pojawić się przed crash (1-frame delay + visual confusion).
         this.refreshLivesHUD();
         Haptic.extraLife();
-      } else {
-        Haptic.coin();
       }
+      // Bez haptyki przy zwykłej monecie — zbieranie monet nie wibruje
+      // (user request). extraLife (dodatkowe życie) zostaje — rzadki event.
     }
   }
 
@@ -1344,6 +1367,7 @@ export class GameScene extends Phaser.Scene {
 
     this.audioManager.playSfx('crash');
     this.emitParticles(this.player.x, this.player.y - 50, PARTICLE_CRASH_COLOR, PARTICLE_CRASH_COUNT);
+    // Death haptic — Player.die() już woła Haptic.crash() (2× heavy + error).
 
     const gameOverForPlayer = sessionManager.loseLife();
     // Bug fix: refresh HUD natychmiast po loseLife żeby user widział że

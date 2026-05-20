@@ -7,13 +7,28 @@
   "scripts": {
     "dev": "vite --port 5173",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:ios": "CAP_NATIVE=true vite build",
+    "ios:sync": "npm run build:ios && npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "build:android": "CAP_NATIVE=true vite build",
+    "android:sync": "npm run build:android && npx cap sync android",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.3.4",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@sentry/browser": "^10.52.0",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.3.4",
     "puppeteer": "^24.43.0",
     "vite": "^6.0.0",
     "vite-plugin-pwa": "^1.3.0"

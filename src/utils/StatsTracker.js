@@ -12,8 +12,9 @@
 //   gameComplete    — ukończenie L11 (GameCompleteScene)
 
 import { DeviceId } from './DeviceId.js';
+import { apiUrl } from './apiBase.js';
 
-const API_URL = '/api/stats';
+const API_URL = apiUrl('/api/stats');
 const TIMEOUT_MS = 3000;
 
 export const StatsTracker = {

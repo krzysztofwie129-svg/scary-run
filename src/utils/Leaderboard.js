@@ -11,8 +11,9 @@
 // Schema entry: { name, score, level, coins, date (ISO string) }.
 
 import { LEADERBOARD_KEY, LEADERBOARD_MAX_ENTRIES } from '../config.js';
+import { apiUrl } from './apiBase.js';
 
-const API_URL = '/api/leaderboard';
+const API_URL = apiUrl('/api/leaderboard');
 const FETCH_TIMEOUT_MS = 4000;
 
 export const Leaderboard = {

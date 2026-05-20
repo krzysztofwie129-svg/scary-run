@@ -3,8 +3,9 @@
 // Konflikt resolution: newer ts wygrywa (last-write-wins).
 
 import { DeviceId } from './DeviceId.js';
+import { apiUrl } from './apiBase.js';
 
-const API_URL = '/api/player';
+const API_URL = apiUrl('/api/player');
 const DEBOUNCE_MS = 2000;
 const TS_KEY = 'scaryrun_sync_ts';
 
@@ -142,6 +143,11 @@ export async function initialLoad() {
   try {
     const deviceId = DeviceId.get();
     if (!deviceId) return;
+
+    // Offline guard — bez tego fetch wisi w native iOS aż DNS/TCP timeoutuje
+    // (kilka sekund) zamiast natychmiast zwrócić. BootScene już ma 1s race,
+    // ale ten skip jest dodatkowo szybszy + zapobiega niepotrzebnemu fetch.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
     const response = await fetch(`${API_URL}?deviceId=${encodeURIComponent(deviceId)}`, {
       method: 'GET',

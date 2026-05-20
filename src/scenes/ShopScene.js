@@ -325,10 +325,10 @@ export class ShopScene extends Phaser.Scene {
     const owned = await getOwnedPowerups();
     const activeId = await getActivePowerup();
 
-    // Layout: 1 kolumna × N wierszy. Container scroll-able.
-    const cardW = 800;
-    const cardH = 100;
-    const gapY = 14;
+    // Layout: 1 kolumna × N wierszy, halloween-style ramki (patrz mockup).
+    const cardW = 940;
+    const cardH = 108;
+    const gapY = 18;
     const viewportTop = 200;
     const viewportH = GAME_HEIGHT - viewportTop - 15;
     const totalContentH = POWERUPS.length * cardH + (POWERUPS.length - 1) * gapY;
@@ -337,88 +337,14 @@ export class ShopScene extends Phaser.Scene {
     this._tabContentObjects.push(this._cardsContainer);
 
     POWERUPS.forEach((powerup, i) => {
-      const cardY = cardH / 2 + i * (cardH + gapY); // relatywne do containera
+      const cardY = cardH / 2 + i * (cardH + gapY);
       const cardX = GAME_WIDTH / 2;
       const ownedCount = owned[powerup.id] || 0;
       const isActive = activeId === powerup.id;
-
-      const borderColor = isActive ? 0xffd93c : 0x6b4ea0;
-      const borderW = isActive ? 4 : 2;
-      const cardBg = this.add.rectangle(cardX, cardY, cardW, cardH, 0x2d1b4e, 0.95).setStrokeStyle(borderW, borderColor);
-      this._cardsContainer.add(cardBg);
-
-      // Lewa: ikona emoji.
-      const iconText = this.add.text(cardX - cardW / 2 + 50, cardY, powerup.icon, { fontSize: '54px' }).setOrigin(0.5);
-      this._cardsContainer.add(iconText);
-
-      // Środek-lewo: nazwa + opis.
-      const nameText = this.add.text(cardX - cardW / 2 + 110, cardY - 18, powerup.name, {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '24px',
-        color: '#ffd93c',
-        stroke: '#000',
-        strokeThickness: 3,
-      }).setOrigin(0, 0.5);
-      const descText = this.add.text(cardX - cardW / 2 + 110, cardY + 18, powerup.description, {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '15px',
-        color: '#bdaee3',
-      }).setOrigin(0, 0.5);
-      this._cardsContainer.add([nameText, descText]);
-
-      // Środek-prawo: licznik 'Masz: X'.
-      const countText = this.add.text(cardX + cardW / 2 - 290, cardY, `Masz: ${ownedCount}`, {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '18px',
-        color: '#ffffff',
-        stroke: '#000',
-        strokeThickness: 3,
-      }).setOrigin(0.5);
-      this._cardsContainer.add(countText);
-
-      // Prawo-górne: KUP button (zawsze widoczny).
-      const buyX = cardX + cardW / 2 - 110;
-      const buyY = cardY - 20;
-      const buyBtn = this.add.rectangle(buyX, buyY, 180, 40, 0x4ade80, 1).setStrokeStyle(2, 0x166534);
-      const buyText = this.add.text(buyX, buyY, `KUP 🪙 ${powerup.price}`, {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '16px',
-        color: '#0f1c0f',
-      }).setOrigin(0.5);
-      buyBtn.setInteractive({ useHandCursor: true });
-      buyBtn.on('pointerup', async () => {
-        const coins = await getCoins();
-        if (coins < powerup.price) {
-          this._showShortToast('Za mało monet!');
-          return;
-        }
-        await setCoins(coins - powerup.price);
-        await addPowerup(powerup.id, 1);
-        await this._refreshBalance();
-        await this._renderTab();
+      const row = this._buildPowerupRow({
+        powerup, x: cardX, y: cardY, w: cardW, h: cardH, ownedCount, isActive,
       });
-      this._cardsContainer.add([buyBtn, buyText]);
-
-      // Prawo-dolne: USTAW / AKTYWNY button — tylko jeśli ownedCount > 0.
-      if (ownedCount > 0) {
-        const setX = buyX;
-        const setY = cardY + 25;
-        const setLabel = isActive ? 'AKTYWNY ✓' : 'USTAW';
-        const setFill = isActive ? 0xffd93c : 0x6b4eb8;
-        const setColor = isActive ? '#1a0a2e' : '#ffffff';
-        const setBtn = this.add.rectangle(setX, setY, 180, 40, setFill, 1).setStrokeStyle(2, 0xffd93c);
-        const setText = this.add.text(setX, setY, setLabel, {
-          fontFamily: 'Arial Black, sans-serif',
-          fontSize: '16px',
-          color: setColor,
-        }).setOrigin(0.5);
-        setBtn.setInteractive({ useHandCursor: true });
-        setBtn.on('pointerup', async () => {
-          await setActivePowerup(isActive ? null : powerup.id);
-          await this._renderTab();
-        });
-        this._cardsContainer.add([setBtn, setText]);
-      }
+      this._cardsContainer.add(row);
     });
 
     // Drag-scroll setup gdy overflow — smooth lerp + momentum.
@@ -427,6 +353,167 @@ export class ShopScene extends Phaser.Scene {
     if (overflow > 0) {
       this._setupSmoothScroll(this._cardsContainer, viewportTop, overflow);
     }
+  }
+
+  /** Pojedynczy wiersz power-upa — halloween panel: gradientowa fioletowa
+   *  ramka, złoty obrys, glow (mocniejszy gdy active), okrągłe tło ikony,
+   *  zielony gradientowy przycisk KUP. Zwraca Container. */
+  _buildPowerupRow({ powerup, x, y, w, h, ownedCount, isActive }) {
+    const c = this.add.container(x, y);
+    const halfW = w / 2;
+    const halfH = h / 2;
+    const radius = 24;
+
+    // Zewnętrzny glow — złoty gdy active, subtelny fiolet w spoczynku.
+    const glow = this.add.graphics();
+    glow.fillStyle(isActive ? 0xffd93c : 0x9b6dff, isActive ? 0.30 : 0.12);
+    glow.fillRoundedRect(-halfW - 7, -halfH - 7, w + 14, h + 14, radius + 7);
+    c.add(glow);
+
+    // Panel — pionowy gradient fioletu + złoty obrys + wewnętrzny highlight.
+    const panel = this.add.graphics();
+    panel.fillGradientStyle(0x4a3270, 0x4a3270, 0x261941, 0x261941, 1);
+    panel.fillRoundedRect(-halfW, -halfH, w, h, radius);
+    panel.lineStyle(3, isActive ? 0xffe27a : 0xe0b54a, 1);
+    panel.strokeRoundedRect(-halfW, -halfH, w, h, radius);
+    panel.lineStyle(1.5, 0x6b4ea0, 0.55);
+    panel.strokeRoundedRect(-halfW + 4, -halfH + 4, w - 8, h - 8, radius - 4);
+    c.add(panel);
+
+    // Okrągłe tło ikony — radialny-ish gradient + złoty ring.
+    const icoX = -halfW + 74;
+    const icoR = 42;
+    const icoBg = this.add.graphics();
+    icoBg.fillGradientStyle(0x5e4192, 0x5e4192, 0x2c1b4d, 0x2c1b4d, 1);
+    icoBg.fillCircle(icoX, 0, icoR);
+    icoBg.lineStyle(3, 0xe0b54a, 1);
+    icoBg.strokeCircle(icoX, 0, icoR);
+    c.add(icoBg);
+    const ico = this.add.text(icoX, 2, powerup.icon, { fontSize: '46px' }).setOrigin(0.5);
+    c.add(ico);
+
+    // Nazwa (złota) + opis (jasny fiolet).
+    const textX = -halfW + 146;
+    const name = this.add.text(textX, -17, powerup.name, {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '27px',
+      color: '#ffd93c',
+      stroke: '#3a1d0a',
+      strokeThickness: 4,
+    }).setOrigin(0, 0.5);
+    const desc = this.add.text(textX, 21, powerup.description, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '16px',
+      color: '#cbb8ec',
+    }).setOrigin(0, 0.5);
+    c.add([name, desc]);
+
+    // Licznik „Masz: N" — środek-prawo.
+    const count = this.add.text(halfW - 350, 0, `Masz: ${ownedCount}`, {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '19px',
+      color: '#ffffff',
+      stroke: '#000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    c.add(count);
+
+    // Przyciski po prawej. owned=0 → jeden duży KUP wyśrodkowany.
+    // owned>0 → KUP (góra) + USTAW/AKTYWNY (dół).
+    const btnCX = halfW - 132;
+    if (ownedCount > 0) {
+      const buy = this._makeShopButton({
+        x: btnCX, y: -24, w: 220, h: 50, label: `KUP`, price: powerup.price,
+        variant: 'green',
+        onClick: () => this._buyPowerup(powerup),
+      });
+      const setActive = this._makeShopButton({
+        x: btnCX, y: 30, w: 220, h: 50,
+        label: isActive ? 'AKTYWNY' : 'USTAW',
+        variant: isActive ? 'gold' : 'purple',
+        onClick: async () => {
+          await setActivePowerup(isActive ? null : powerup.id);
+          await this._renderTab();
+        },
+      });
+      c.add([...buy, ...setActive]);
+    } else {
+      const buy = this._makeShopButton({
+        x: btnCX, y: 0, w: 230, h: 64, label: `KUP`, price: powerup.price,
+        variant: 'green',
+        onClick: () => this._buyPowerup(powerup),
+      });
+      c.add(buy);
+    }
+
+    return c;
+  }
+
+  /** Kupno power-upa — wspólna logika dla obu wariantów przycisku. */
+  async _buyPowerup(powerup) {
+    if ((this._lastDragDistance || 0) > 10) return;
+    const coins = await getCoins();
+    if (coins < powerup.price) {
+      this._showShortToast('Za mało monet!');
+      return;
+    }
+    await setCoins(coins - powerup.price);
+    await addPowerup(powerup.id, 1);
+    await this._refreshBalance();
+    await this._renderTab();
+  }
+
+  /** Stylowany przycisk sklepu (gradient + obrys + połysk). Zwraca tablicę
+   *  z jednym Container na pozycji (x,y) — setScale przy hover skaluje cały
+   *  przycisk od jego środka. variant: green | gold | purple. */
+  _makeShopButton({ x, y, w, h, label, price, variant, onClick }) {
+    const palettes = {
+      green:  { top: 0x7ee05a, bot: 0x3f9e2a, line: 0x1c5210, text: '#11320a' },
+      gold:   { top: 0xffe27a, bot: 0xd8a72e, line: 0x6b4a0a, text: '#2a1800' },
+      purple: { top: 0x8a63c8, bot: 0x4a2d80, line: 0x2a1650, text: '#ffffff' },
+    };
+    const p = palettes[variant] || palettes.green;
+    const bc = this.add.container(x, y);
+    const hw = w / 2;
+    const hh = h / 2;
+    const r = Math.min(16, hh);
+
+    // Graphics rysowane wokół (0,0) — pozycja przez container, skala bezpieczna.
+    const gfx = this.add.graphics();
+    gfx.fillGradientStyle(p.top, p.top, p.bot, p.bot, 1);
+    gfx.fillRoundedRect(-hw, -hh, w, h, r);
+    gfx.lineStyle(3, p.line, 1);
+    gfx.strokeRoundedRect(-hw, -hh, w, h, r);
+    gfx.fillStyle(0xffffff, 0.20);
+    gfx.fillRoundedRect(-hw + 5, -hh + 4, w - 10, h * 0.36, r - 4);
+    bc.add(gfx);
+
+    if (price != null) {
+      const labelText = this.add.text(-6, 0, label, {
+        fontFamily: 'Arial Black, sans-serif', fontSize: '22px', color: p.text,
+      }).setOrigin(1, 0.5);
+      const coin = this.add.text(8, 0, '🪙', { fontSize: '22px' }).setOrigin(0.5);
+      const priceText = this.add.text(26, 0, `${price}`, {
+        fontFamily: 'Arial Black, sans-serif', fontSize: '22px', color: p.text,
+      }).setOrigin(0, 0.5);
+      bc.add([labelText, coin, priceText]);
+    } else {
+      const labelText = this.add.text(0, 0, label, {
+        fontFamily: 'Arial Black, sans-serif', fontSize: '21px', color: p.text,
+      }).setOrigin(0.5);
+      bc.add(labelText);
+    }
+
+    // Hit zone — Graphics rounded nie ma łatwego hit-area, Zone jest pewne.
+    const hit = this.add.zone(0, 0, w, h).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => bc.setScale(1.04));
+    hit.on('pointerout', () => bc.setScale(1.0));
+    hit.on('pointerdown', () => bc.setScale(0.96));
+    hit.on('pointerup', () => { bc.setScale(1.0); onClick(); });
+    bc.add(hit);
+
+    return [bc];
   }
 
   /** Smooth drag-scroll z momentum (eliminuje "szarpanie" wynikające z direct

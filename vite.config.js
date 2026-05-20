@@ -1,9 +1,20 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Native build (Capacitor iOS) → wyłączamy Service Worker + PWA manifest.
+// Origin w WKWebView = capacitor://localhost; SW cache'owałby tę domenę,
+// a po update appki nie ma jak go aktualizować (forever stale). CAP_NATIVE=true
+// ustawiamy w npm run build:ios.
+const isNativeBuild = process.env.CAP_NATIVE === 'true';
+
 export default defineConfig({
   root: '.',
   publicDir: 'public',
+  define: {
+    'import.meta.env.VITE_API_BASE': JSON.stringify(
+      isNativeBuild ? (process.env.VITE_API_BASE || 'https://scaryrun.pl') : ''
+    ),
+  },
   server: {
     port: 5173,
     open: false,
@@ -16,6 +27,7 @@ export default defineConfig({
   },
   plugins: [
     VitePWA({
+      disable: isNativeBuild,
       registerType: 'autoUpdate',
       includeAssets: [
         'favicon.ico',
@@ -63,6 +75,7 @@ export default defineConfig({
         globPatterns: [
           '**/*.{js,css,html,ico,json,webmanifest}',
           'assets/**/*.{webp,png,jpg,svg,opus,mp3,woff2}',
+          'fonts/**/*.woff2',
         ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
 

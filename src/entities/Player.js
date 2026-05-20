@@ -150,13 +150,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.state_ === 'dead') return;
     if (this.jumpsRemaining <= 0) return;
 
+    // Haptic NAJWCZEŚNIEJ — Capacitor JS→native bridge ma latencję, więc
+    // odpalamy zaraz po guardach, przed velocity/anim/audio, żeby Taptic
+    // Engine dostał call jak najbliżej momentu tapnięcia.
+    Haptic.jump();
+
     const isFirstJump = this.jumpsRemaining === 2;
     this.setVelocityY(isFirstJump ? JUMP_VELOCITY : DOUBLE_JUMP_VELOCITY);
     this.jumpsRemaining--;
     this.state_ = 'jumping';
     this._safePlay(this.animKeys.jump, true);
     this.scene.audioManager?.playSfx('jump', { rate: isFirstJump ? 1.0 : 1.15, volume: 0.7 });
-    Haptic.jump();
     this.landingGraceCounter = 0;
   }
 

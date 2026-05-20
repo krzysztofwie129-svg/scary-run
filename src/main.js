@@ -6,8 +6,10 @@
 import { initSentry } from './utils/SentryInit.js';
 import { attachGlobalErrorHandlers } from './utils/ErrorOverlay.js';
 import { initialLoad as playerSyncInitialLoad } from './utils/PlayerSync.js';
+import { initNativeUI } from './utils/NativeUI.js';
 initSentry();
 attachGlobalErrorHandlers();
+initNativeUI();
 
 // DEV: ?difficulty=easy|normal|hard w URL ustawia tryb przed bootem.
 try {
@@ -52,13 +54,18 @@ import { BossChoiceScene } from './scenes/BossChoiceScene.js';
 import { DeathScene } from './scenes/DeathScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
 import { SettingsScene } from './scenes/SettingsScene.js';
+import { Haptic } from './utils/Haptic.js';
 
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
   backgroundColor: '#1a0a2e',
   scale: {
-    mode: Phaser.Scale.FIT,
+    // ENVELOP zamiast FIT: gra 1280×720 (16:9) na iPhone landscape (19.5:9)
+    // wypełnia pełny ekran kosztem ucięcia ~11% góra/dół. FIT zostawiał
+    // pillarboxy po bokach (~18% z każdej strony) — user widział „ucięty
+    // po bokach". HUD pozycjonowany w centralnym 80% pionu, więc safe.
+    mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     parent: 'game-container',
     width: GAME_WIDTH,
@@ -166,6 +173,29 @@ try {
       }, true);
     }
   } catch (_) { /* renderer not ready or no WebGL */ }
+
+  // Globalna haptyka UI — light tap na klik w dowolny interaktywny element
+  // (przyciski menu, sklep, ustawienia, ekrany wyników). Gameplay sceny
+  // wykluczone: GameScene/BossFightScene tap = skok/slide (mają własną
+  // haptykę przez Player), BootScene/PreloadScene nie mają przycisków.
+  try {
+    const HAPTIC_EXCLUDE = new Set([
+      'BootScene', 'PreloadScene', 'GameScene', 'BossFightScene',
+    ]);
+    game.events.once('ready', () => {
+      for (const scene of game.scene.scenes) {
+        const key = scene.scene?.key;
+        if (!key || HAPTIC_EXCLUDE.has(key)) continue;
+        const tapHandler = () => Haptic.tap();
+        scene.events.on('create', () => {
+          // removeListener przed on — scene.create odpala też przy restart,
+          // bez tego listenery by się mnożyły (N tap'ów per klik).
+          scene.input?.removeListener('gameobjectdown', tapHandler);
+          scene.input?.on('gameobjectdown', tapHandler);
+        });
+      }
+    });
+  } catch (_) { /* haptyka best-effort */ }
 } catch (e) {
   console.error('Game init failed:', e);
   const fallback = document.getElementById('browser-fallback');

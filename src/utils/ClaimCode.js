@@ -4,9 +4,10 @@
 
 import { DeviceId } from './DeviceId.js';
 import { initialLoad } from './PlayerSync.js';
+import { apiUrl } from './apiBase.js';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 znaki bez I/O/0/1
-const API_URL = '/api/claim';
+const API_URL = apiUrl('/api/claim');
 const CODE_REGEX = /^SCARY-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
 
 function randomChunk(len = 4) {
