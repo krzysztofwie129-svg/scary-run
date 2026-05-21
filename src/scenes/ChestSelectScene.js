@@ -15,6 +15,8 @@ import { RewardManager, REWARDS } from '../utils/RewardManager.js';
 import { RewardStore } from '../utils/RewardStore.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { Haptic } from '../utils/Haptic.js';
+import { ScoreSystem } from '../systems/ScoreSystem.js';
+import { RankingSystem } from '../systems/RankingSystem.js';
 
 const CHEST_POSITIONS = [
   { x: GAME_WIDTH * 0.25, y: GAME_HEIGHT * 0.72 },
@@ -41,6 +43,10 @@ export class ChestSelectScene extends Phaser.Scene {
     this.nextSceneData = data?.nextSceneData || {};
     // DEV: forceRewards = [type, type, type] dla testów (?chest=giant itp.).
     this.forceRewards = Array.isArray(data?.forceRewards) ? data.forceRewards : null;
+    // Ukończony poziom (1-based) + jego levelStartScore — do doliczenia
+    // punktów ze skrzynki do rankingu (re-finalize run_score).
+    this.completedLevel = Number.isFinite(data?.completedLevel) ? data.completedLevel : 0;
+    this.levelStartScore = Number.isFinite(data?.levelStartScore) ? data.levelStartScore : 0;
   }
 
   create() {
@@ -300,6 +306,16 @@ export class ChestSelectScene extends Phaser.Scene {
   applyAndContinue(rewardType, reward) {
     if (reward.instant) {
       RewardManager.applyInstantReward(rewardType, sessionManager);
+      // FIX: punkty ze skrzynki liczą się do rankingu. Nagroda dodała punkty do
+      // player.score — re-finalizujemy run_score ukończonego poziomu (delta od
+      // levelStartScore zawiera teraz bonus skrzynki) i zapisujemy rekord.
+      // setBestScore robi max → antyfarm zachowany (liczy się najlepszy łączny run).
+      if (this.completedLevel > 0) {
+        try {
+          const runScore = ScoreSystem.finalizeRunScore(this.completedLevel, this.levelStartScore);
+          RankingSystem.recordRun(this.completedLevel, runScore);
+        } catch (e) { /* ignore */ }
+      }
     } else {
       RewardStore.setPending({
         type: rewardType,

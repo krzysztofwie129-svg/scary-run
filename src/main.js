@@ -86,13 +86,13 @@ const config = {
     pixelArt: false,
     roundPixels: false,
   },
-  // Mobile-only: keyboard + mouse OFF, tylko touch + multi-pointer.
-  // DEV: ?desktop=1 → włącz mouse (do testów na desktopie / puppeteer).
+  // Wejście: touch (telefon) + mouse + keyboard (desktop — wznowiony 2026-05).
+  // Mouse MUSI być ON, inaczej kliknięcia w menu/ustawieniach/walce z bossem
+  // nie działają na desktopie (Phaser scene.input ignoruje mysz przy mouse:false).
   input: {
     activePointers: 3,
-    keyboard: false,
-    mouse: typeof window !== 'undefined'
-      && new URLSearchParams(window.location.search).has('desktop'),
+    keyboard: true,
+    mouse: true,
     touch: true,
   },
   // Phaser renderuje sceny w kolejności array — późniejsze NA WIERZCHU.

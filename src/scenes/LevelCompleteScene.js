@@ -34,6 +34,9 @@ export class LevelCompleteScene extends Phaser.Scene {
     this.scoreThisLevel = data?.scoreThisLevel || 0;
     this.coinsThisLevel = data?.coinsThisLevel || 0;
     this.diamondsThisLevel = data?.diamondsThisLevel || 0;
+    // levelStartScore ukończonego poziomu — przekazywany dalej do ChestSelectScene,
+    // żeby skrzynka mogła re-finalizować run_score z bonusem skrzynki (ranking).
+    this.levelStartScore = Number.isFinite(data?.levelStartScore) ? data.levelStartScore : 0;
   }
 
   create() {
@@ -417,7 +420,12 @@ export class LevelCompleteScene extends Phaser.Scene {
       sessionManager.advanceLevel();
       const hasChest = this.scene.manager?.getScene?.('ChestSelectScene');
       if (hasChest) {
-        this.scene.start('ChestSelectScene', { nextScene: 'GameScene' });
+        this.scene.start('ChestSelectScene', {
+          nextScene: 'GameScene',
+          // completedLevelIdx jest 0-based; ukończony poziom 1-based = idx + 1.
+          completedLevel: this.completedLevelIdx + 1,
+          levelStartScore: this.levelStartScore,
+        });
       } else {
         this.scene.start('GameScene');
       }

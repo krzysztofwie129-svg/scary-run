@@ -11,6 +11,7 @@ import { AudioManager } from '../utils/AudioManager.js';
 import { playFanfare } from '../utils/SuccessFanfare.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { Leaderboard } from '../utils/Leaderboard.js';
+import { getRankingScore } from '../utils/storage.js';
 import { formatScore } from '../utils/format.js';
 import { Haptic } from '../utils/Haptic.js';
 import { StatsTracker } from '../utils/StatsTracker.js';
@@ -34,9 +35,13 @@ export class GameCompleteScene extends Phaser.Scene {
 
     // Leaderboard z level = LEVELS.length (czyli "ALL").
     // Sync local dla natychmiastowego "NEW HIGH SCORE!" UX.
+    // FIX: leaderboard score = ranking_score (suma rekordów per-level), TAK SAMO
+    // jak DeathScene. Wcześniej GameComplete wysyłał surowy player.score —
+    // zupełnie inna skala (bez mnożnika ×poziom) → niespójny ranking.
+    this.rankingScore = Math.floor(getRankingScore());
     const lbPayload = {
       name: this.player.name || 'Anon',
-      score: Math.floor(this.player.score),
+      score: this.rankingScore,
       level: LEVELS.length + 1, // sentinel "ALL" — odróżnia full game complete od śmierci na L11.
       coins: this.player.coins,
     };
@@ -105,7 +110,8 @@ export class GameCompleteScene extends Phaser.Scene {
     let y = 280;
     this.makeAnimatedStat(GAME_WIDTH / 2, y, '🪙 Total coins:', this.player.coins, labelStyle); y += 50;
     this.makeAnimatedStat(GAME_WIDTH / 2, y, '💎 Total diamonds:', this.player.diamonds, labelStyle); y += 50;
-    this.makeAnimatedStat(GAME_WIDTH / 2, y, '⭐ Final score:', Math.floor(this.player.score), labelStyle, true);
+    // Wyświetlamy ranking_score — to wartość która faktycznie trafia na leaderboard.
+    this.makeAnimatedStat(GAME_WIDTH / 2, y, '⭐ Wynik rankingowy:', this.rankingScore, labelStyle, true);
 
     if (this.isHighScore) {
       const hs = this.add.text(GAME_WIDTH / 2, y + 60, `★ NEW HIGH SCORE — Rank #${this.rank + 1} ★`, {

@@ -129,6 +129,26 @@ export class ShopScene extends Phaser.Scene {
 
     // === Tab content ===
     await this._renderTab();
+
+    // Desktop: scroll listy strzałkami ↑/↓.
+    this._setupKeyboardScroll();
+  }
+
+  /** Desktop: scroll aktywnej zakładki strzałkami ↑/↓. Działa na _scrollState
+   *  ustawianym przez _setupSmoothScroll — gdy bieżąca zakładka nie ma overflow,
+   *  strzałki nic nie robią. Rejestrowane raz; auto-cleanup na shutdown sceny. */
+  _setupKeyboardScroll() {
+    if (!this.input.keyboard) return;
+    const STEP = 130;
+    const scrollBy = (delta) => {
+      const s = this._scrollState;
+      if (!s) return;
+      s.velocity = 0;
+      s.targetY = Phaser.Math.Clamp(s.targetY + delta, s.minY, s.maxY);
+    };
+    // ArrowDown → w dół listy (container.y maleje), ArrowUp → w górę.
+    this.input.keyboard.on('keydown-DOWN', (e) => { if (e?.preventDefault) e.preventDefault(); scrollBy(-STEP); });
+    this.input.keyboard.on('keydown-UP', (e) => { if (e?.preventDefault) e.preventDefault(); scrollBy(STEP); });
   }
 
   async _refreshBalance() {

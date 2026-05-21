@@ -1,5 +1,7 @@
-// SettingsScene — opcje gry (zębatka z menu).
-// Zawiera: difficulty selector (easy/normal/hard) + reset gry + claim code.
+// SettingsScene — ustawienia gry (zębatka z menu).
+// Redesign 2026-05: layout dwukolumnowy, karty z zaokrąglonymi rogami,
+// segmentowany przełącznik trudności, akcja destrukcyjna (reset) wyraźnie
+// zdjęta z pierwszego planu. Sekcje: trudność / reset postępu / kopia postępu.
 
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { getDifficulty, setDifficulty, DIFFICULTY_LABELS } from '../utils/Difficulty.js';
@@ -7,10 +9,42 @@ import { resetGame } from '../utils/ResetGame.js';
 import { generateAndSaveCode, restoreFromCode, getCurrentCode } from '../utils/ClaimCode.js';
 import { reportError } from '../utils/SentryInit.js';
 
-const PURPLE = 0x2d1b4e;
-const GOLD = 0xffd93c;
-const PINK = 0xff6b9d;
-const VIOLET = 0x6b4ea0;
+// === Design tokens ===
+const C = {
+  bg: 0x150826,
+  bgTop: 0x241043,
+  card: 0x241640,
+  cardStroke: 0x4a3570,
+  track: 0x140a24,
+  gold: 0xffd93c,
+  pink: 0xff6b9d,
+  violet: 0xb084ff,
+  cyan: 0x4ecdc4,
+  danger: 0xff5b5b,
+};
+const T = {
+  white: '#ffffff',
+  muted: '#bdaee3',
+  faint: '#8678a8',
+  gold: '#ffd93c',
+  ink: '#1a0a2e',
+  danger: '#ff8f8f',
+};
+
+// Layout — kanwa 1280×720.
+const PAD = 44;
+const COL_GAP = 28;
+const COL_W = (GAME_WIDTH - PAD * 2 - COL_GAP) / 2; // 582
+const LEFT_X = PAD;
+const RIGHT_X = PAD + COL_W + COL_GAP;
+const LEFT_CX = LEFT_X + COL_W / 2;
+const RIGHT_CX = RIGHT_X + COL_W / 2;
+
+const DIFF_DESC = {
+  easy:   'Wolniej, mniej przeszkód · punkty −30%',
+  normal: 'Klasyczne tempo · punkty bez zmian',
+  hard:   'Szybciej z każdym poziomem · punkty +5%',
+};
 
 export class SettingsScene extends Phaser.Scene {
   constructor() {
@@ -20,159 +54,197 @@ export class SettingsScene extends Phaser.Scene {
   create() {
     this._domEls = [];
     this._domPositioners = [];
-    this.cameras.main.setBackgroundColor('#1a0a2e');
 
-    // === Header (Y=35) ===
-    this.add.text(GAME_WIDTH / 2, 35, 'USTAWIENIA', {
+    this._drawBackground();
+    this._buildHeader();
+    this._buildDifficultyCard();
+    this._buildResetCard();
+    this._buildCodeCard();
+
+    this.events.once('shutdown', () => this._cleanupDom());
+    this.events.once('destroy', () => this._cleanupDom());
+  }
+
+  // === Tło ===
+
+  _drawBackground() {
+    const g = this.add.graphics();
+    g.fillGradientStyle(C.bgTop, C.bgTop, C.bg, C.bg, 1);
+    g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  }
+
+  // === Header ===
+
+  _buildHeader() {
+    // Przycisk powrotu — przez wspólny helper _button (ten sam, sprawdzony
+    // mechanizm wejścia co reszta przycisków; wcześniejszy własny Container
+    // miał niestabilny input — raz łapał tap, raz nie).
+    this._button(80, 48, 58, 58, '‹', {
+      fill: C.card, stroke: C.cardStroke, textColor: T.gold,
+      fontSize: 36, radius: 16,
+      onClick: () => this.scene.start('MenuScene'),
+    });
+
+    this.add.text(GAME_WIDTH / 2, 48, 'USTAWIENIA', {
       fontFamily: 'Arial Black, sans-serif',
-      fontSize: '32px', color: '#ffd93c',
+      fontSize: '34px', color: T.gold,
       stroke: '#ff6b9d', strokeThickness: 5,
     }).setOrigin(0.5);
+  }
 
-    // Back button — shop_btn_back asset (spójny z resztą).
-    if (this.textures.exists('shop_btn_back')) {
-      const back = this.add.image(110, 50, 'shop_btn_back')
-        .setDisplaySize(180, 60)
-        .setDepth(99999)
-        .setInteractive({ useHandCursor: true });
-      back.on('pointerover', () => back.setScale(back.scaleX * 1.05, back.scaleY * 1.05));
-      back.on('pointerout', () => back.setScale(back.scaleX / 1.05, back.scaleY / 1.05));
-      back.on('pointerup', () => this.scene.start('MenuScene'));
-    } else {
-      const backBg = this.add.rectangle(80, 50, 130, 50, VIOLET, 0.95)
-        .setStrokeStyle(3, GOLD).setInteractive({ useHandCursor: true });
-      this.add.text(80, 50, '← WRÓĆ', {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '18px', color: '#ffffff',
-        stroke: '#000', strokeThickness: 3,
-      }).setOrigin(0.5);
-      backBg.on('pointerup', () => this.scene.start('MenuScene'));
-    }
+  // === Karta: poziom trudności ===
 
-    // === SEKCJA 1: Difficulty (Y=75-160) ===
-    this.add.text(GAME_WIDTH / 2, 75, 'POZIOM TRUDNOŚCI', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '20px', color: '#bdaee3',
-    }).setOrigin(0.5);
+  _buildDifficultyCard() {
+    const y = 88;
+    const h = 232;
+    this._panel(LEFT_X, y, COL_W, h);
+    this._sectionLabel(LEFT_X + 32, y + 38, 'POZIOM TRUDNOŚCI', C.gold);
+
     const current = getDifficulty();
-    const diffOpts = [
-      { mode: 'easy', label: DIFFICULTY_LABELS.easy, x: GAME_WIDTH / 2 - 200 },
-      { mode: 'normal', label: DIFFICULTY_LABELS.normal, x: GAME_WIDTH / 2 },
-      { mode: 'hard', label: DIFFICULTY_LABELS.hard, x: GAME_WIDTH / 2 + 200 },
-    ];
-    this._diffBtns = {};
-    for (const opt of diffOpts) {
-      const isActive = opt.mode === current;
-      const bg = this.add.rectangle(opt.x, 120, 170, 50, isActive ? GOLD : VIOLET, 0.95)
-        .setStrokeStyle(3, isActive ? PINK : GOLD)
-        .setInteractive({ useHandCursor: true });
-      const txt = this.add.text(opt.x, 120, opt.label, {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '18px',
-        color: isActive ? '#1a0a2e' : '#ffffff',
-        stroke: '#000', strokeThickness: 2,
+    this._diffDesc = this.add.text(LEFT_CX, y + 174, DIFF_DESC[current], {
+      fontFamily: 'Arial, sans-serif', fontSize: '15px', color: T.muted,
+      align: 'center',
+    }).setOrigin(0.5);
+
+    this._buildSegmented(
+      LEFT_CX, y + 110, COL_W - 64, 60,
+      [
+        { key: 'easy', label: DIFFICULTY_LABELS.easy },
+        { key: 'normal', label: DIFFICULTY_LABELS.normal },
+        { key: 'hard', label: DIFFICULTY_LABELS.hard },
+      ],
+      current,
+      (key) => {
+        setDifficulty(key);
+        this._diffDesc.setText(DIFF_DESC[key]);
+        this._showToast('Poziom: ' + DIFFICULTY_LABELS[key]);
+      },
+    );
+  }
+
+  // === Karta: reset postępu (akcja destrukcyjna — celowo stonowana) ===
+
+  _buildResetCard() {
+    const y = 340;
+    const h = 232;
+    this._panel(LEFT_X, y, COL_W, h);
+    this._sectionLabel(LEFT_X + 32, y + 38, 'RESET POSTĘPU', C.danger);
+
+    this.add.text(LEFT_CX, y + 92,
+      'Wyzeruje monety, diamenty i odblokowane poziomy.\nTej akcji nie cofniesz.',
+      {
+        fontFamily: 'Arial, sans-serif', fontSize: '15px', color: T.muted,
+        align: 'center', lineSpacing: 6,
       }).setOrigin(0.5);
-      bg.on('pointerup', () => {
-        setDifficulty(opt.mode);
-        this._refreshDifficultyButtons(opt.mode);
-        this._showToast('Zapisano: ' + opt.label);
-      });
-      this._diffBtns[opt.mode] = { bg, txt };
-    }
-    this.add.text(GAME_WIDTH / 2, 160,
-      'Łatwy: -30% trudności i punktów  •  Trudny: +5% per level',
-      { fontFamily: 'Arial, sans-serif', fontSize: '13px', color: '#8678a8' },
-    ).setOrigin(0.5);
 
-    // === SEKCJA 2: Reset postępu (Y=200-310) — jasne fioletowe tło, duży button ===
-    this.add.text(GAME_WIDTH / 2, 200, 'RESET POSTĘPU', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '22px', color: '#ffd93c',
-      stroke: '#ff6b9d', strokeThickness: 3,
-    }).setOrigin(0.5);
-    this.add.rectangle(GAME_WIDTH / 2, 255, 700, 80, 0xb084ff, 0.25)
-      .setStrokeStyle(2, 0xb084ff);
-    const _resetBtnBg = this.add.rectangle(GAME_WIDTH / 2, 255, 480, 60, 0xff6b9d, 1)
-      .setStrokeStyle(4, 0xffd93c).setInteractive({ useHandCursor: true });
-    this.add.text(GAME_WIDTH / 2, 255, 'ZACZNIJ OD POCZĄTKU', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '24px', color: '#ffffff',
-      stroke: '#000', strokeThickness: 4,
-    }).setOrigin(0.5);
-    _resetBtnBg.on('pointerup', () => this._showResetConfirm());
-    _resetBtnBg.on('pointerover', () => _resetBtnBg.setScale(1.03));
-    _resetBtnBg.on('pointerout', () => _resetBtnBg.setScale(1.0));
-    this.add.text(GAME_WIDTH / 2, 305,
-      'Stary wynik w rankingu zostaje pod poprzednim imieniem',
-      { fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#bdaee3' },
-    ).setOrigin(0.5);
+    // Button outline danger — nie wypełniony, żeby nie był najmocniejszym
+    // akcentem ekranu (to akcja, której zwykle NIE chcemy).
+    this._button(LEFT_CX, y + 158, 268, 50, 'Zacznij od nowa', {
+      fill: null, stroke: C.danger, textColor: T.danger,
+      fontSize: 18, radius: 13,
+      onClick: () => this._showResetConfirm(),
+    });
 
-    // === SEKCJA 3: Claim code (Y=345-700) ===
-    this.add.text(GAME_WIDTH / 2, 345, 'KOD RATUNKOWY', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '20px', color: '#bdaee3',
+    this.add.text(LEFT_CX, y + 200,
+      'Wynik w rankingu zostanie pod starym imieniem.',
+      { fontFamily: 'Arial, sans-serif', fontSize: '12px', color: T.faint })
+      .setOrigin(0.5);
+  }
+
+  // === Karta: kopia postępu (claim code) ===
+
+  _buildCodeCard() {
+    const y = 88;
+    const h = 484;
+    this._panel(RIGHT_X, y, COL_W, h);
+    this._sectionLabel(RIGHT_X + 32, y + 38, 'KOPIA POSTĘPU', C.violet);
+
+    this.add.text(RIGHT_CX, y + 76,
+      'Zapisz postęp jako kod i wczytaj go\nna innym urządzeniu.',
+      {
+        fontFamily: 'Arial, sans-serif', fontSize: '15px', color: T.muted,
+        align: 'center', lineSpacing: 5,
+      }).setOrigin(0.5);
+
+    // Twój kod
+    this.add.text(RIGHT_CX, y + 124, 'TWÓJ KOD', {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '13px', color: T.faint,
     }).setOrigin(0.5);
+
     const code = getCurrentCode();
-    this.add.rectangle(GAME_WIDTH / 2, 390, 460, 48, PURPLE, 1)
-      .setStrokeStyle(3, GOLD);
-    this._codeText = this.add.text(GAME_WIDTH / 2, 390, code || '— wygeneruj nowy —', {
-      fontFamily: 'Courier, monospace',
-      fontSize: code ? '22px' : '15px',
-      color: code ? '#ffd93c' : '#bdaee3',
+    const codeBox = this.add.graphics();
+    codeBox.fillStyle(C.track, 1);
+    codeBox.fillRoundedRect(RIGHT_CX - 230, y + 142, 460, 48, 12);
+    codeBox.lineStyle(2, code ? C.gold : C.cardStroke, 1);
+    codeBox.strokeRoundedRect(RIGHT_CX - 230, y + 142, 460, 48, 12);
+    this._codeText = this.add.text(RIGHT_CX, y + 166, code || '— jeszcze nie masz kodu —', {
+      fontFamily: code ? 'Courier, monospace' : 'Arial, sans-serif',
+      fontSize: code ? '23px' : '15px',
+      color: code ? T.gold : T.faint,
+      fontStyle: code ? 'bold' : 'normal',
+    }).setOrigin(0.5);
+    this._codeBox = codeBox;
+    this._codeBoxY = y + 142;
+
+    // Generuj + Kopiuj
+    this._button(RIGHT_CX - 122, y + 232, 252, 48,
+      code ? 'Nowy kod' : 'Wygeneruj kod', {
+        fill: C.violet, stroke: C.violet, textColor: T.ink,
+        fontSize: 17, radius: 13,
+        onClick: () => this._handleGenerate(),
+      });
+    this._button(RIGHT_CX + 134, y + 232, 196, 48, 'Kopiuj', {
+      fill: null, stroke: C.violet, textColor: '#d9c2ff',
+      fontSize: 17, radius: 13,
+      onClick: () => this._handleCopy(),
+    });
+
+    // Divider
+    const divY = y + 286;
+    const dg = this.add.graphics();
+    dg.lineStyle(1.5, C.cardStroke, 1);
+    dg.lineBetween(RIGHT_X + 40, divY, RIGHT_CX - 158, divY);
+    dg.lineBetween(RIGHT_CX + 158, divY, RIGHT_X + COL_W - 40, divY);
+    this.add.text(RIGHT_CX, divY, 'MASZ JUŻ KOD?', {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '13px', color: T.faint,
     }).setOrigin(0.5);
 
-    this._makeBtn(GAME_WIDTH / 2 - 145, 445, 240, 42,
-      code ? 'WYGENERUJ NOWY' : 'WYGENERUJ KOD', 0xb084ff,
-      async () => {
-        try {
-          const newCode = await generateAndSaveCode();
-          this._codeText.setText(newCode).setStyle({
-            fontSize: '22px', color: '#ffd93c',
-          });
-          this._showToast('Kod wygenerowany');
-        } catch (e) {
-          reportError(e, { context: 'generateCode' });
-          this._showToast('Błąd: ' + (e?.message || 'unknown'));
-        }
-      });
-    this._makeBtn(GAME_WIDTH / 2 + 145, 445, 240, 42, 'SKOPIUJ', 0x4ade80,
-      async () => {
-        const c = getCurrentCode();
-        if (!c) { this._showToast('Najpierw wygeneruj'); return; }
-        try {
-          await navigator.clipboard.writeText(c);
-          this._showToast('Skopiowano!');
-        } catch { this._showToast(c); }
-      });
+    // DOM input — kod do przywrócenia
+    this._buildCodeInput(y + 336);
 
-    this.add.text(GAME_WIDTH / 2, 500, 'lub odzyskaj postęp z kodu:', {
-      fontFamily: 'Arial, sans-serif', fontSize: '13px', color: '#8678a8',
-    }).setOrigin(0.5);
+    // Przywróć
+    this._button(RIGHT_CX, y + 410, 300, 54, 'Przywróć postęp', {
+      fill: C.gold, stroke: C.gold, textColor: T.ink,
+      fontSize: 19, radius: 15,
+      onClick: () => this._handleRestore(),
+    });
+  }
 
-    // DOM input — pozycjonowany w Phaser-coords (Y=545) z auto-resize na zmianę viewportu.
+  _buildCodeInput(yLogical) {
     const inputEl = document.createElement('input');
     inputEl.type = 'text';
     inputEl.placeholder = 'SCARY-XXXX-XXXX';
-    inputEl.maxLength = 15; // SCARY-XXXX-XXXX = 15 znakow (wczesniej 14 = bug, ucinalo ostatni)
+    inputEl.maxLength = 15;
     inputEl.autocomplete = 'off';
     inputEl.style.cssText = `
       position: absolute; left: 0; top: 0;
       transform: translate(-50%, -50%);
-      font-family: Courier, monospace;
+      box-sizing: border-box;
+      font-family: Courier, monospace; font-weight: bold;
       text-align: center;
-      background: #2d1b4e; color: #ffd93c;
-      border: 3px solid #ff6b9d; border-radius: 6px;
+      background: #140a24; color: #ffd93c;
+      border: 2px solid #b084ff; border-radius: 12px;
       text-transform: uppercase; letter-spacing: 2px;
+      outline: none;
       z-index: 1000;
     `;
     inputEl.addEventListener('input', () => {
-      // Pozwala paste z spacjami/cudzymi znakami; sanitize wykonuje restoreFromCode.
       inputEl.value = inputEl.value.toUpperCase();
     });
     document.body.appendChild(inputEl);
     this._domEls.push(inputEl);
+    this._codeInputEl = inputEl;
 
-    // Auto-position DOM input względem canvas (rozwiązuje fixed-percent issue na phone).
     const positionInput = () => {
       try {
         const canvas = this.game?.canvas;
@@ -180,190 +252,296 @@ export class SettingsScene extends Phaser.Scene {
         const rect = canvas.getBoundingClientRect();
         const sx = rect.width / GAME_WIDTH;
         const sy = rect.height / GAME_HEIGHT;
-        const px = rect.left + (GAME_WIDTH / 2) * sx;
-        const py = rect.top + 545 * sy;
-        inputEl.style.left = px + 'px';
-        inputEl.style.top = py + 'px';
-        inputEl.style.width = (300 * sx) + 'px';
-        inputEl.style.padding = (8 * sy) + 'px';
-        inputEl.style.fontSize = Math.max(13, Math.floor(18 * sy)) + 'px';
+        inputEl.style.left = (rect.left + RIGHT_CX * sx) + 'px';
+        inputEl.style.top = (rect.top + yLogical * sy) + 'px';
+        inputEl.style.width = (320 * sx) + 'px';
+        inputEl.style.height = (52 * sy) + 'px';
+        inputEl.style.fontSize = Math.max(14, Math.floor(20 * sy)) + 'px';
       } catch { /* ignore */ }
     };
     positionInput();
     window.addEventListener('resize', positionInput);
     window.addEventListener('orientationchange', positionInput);
     this._domPositioners.push({ fn: positionInput });
-
-    this._makeBtn(GAME_WIDTH / 2, 620, 320, 50, 'PRZYWRÓĆ POSTĘP', GOLD,
-      async () => {
-        const c = inputEl.value;
-        if (!c || !c.trim()) { this._showToast('Wpisz kod'); return; }
-        try {
-          const ok = await restoreFromCode(c);
-          if (ok) {
-            this._showToast('Odzyskano! Wracam do menu...');
-            this.time.delayedCall(1500, () => {
-              this._cleanupDom();
-              this.scene.start('MenuScene');
-            });
-          } else {
-            this._showToast('Kod nie istnieje');
-          }
-        } catch (e) {
-          this._showToast(e?.message || 'Błąd');
-          reportError(e, { context: 'restoreCode' });
-        }
-      });
-
-    // Drag-scroll camera (safety net dla bardzo małych ekranów < 720h logicznych).
-    this.cameras.main.setBounds(0, 0, GAME_WIDTH, Math.max(GAME_HEIGHT, 720));
-    let dragStartY = 0, camStart = 0, isDragging = false;
-    this.input.on('pointerdown', (p) => {
-      // Nie startuj dragu jeśli klik jest na intearctive elemencie (Phaser ogarnia).
-      isDragging = true; dragStartY = p.y; camStart = this.cameras.main.scrollY;
-    });
-    this.input.on('pointermove', (p) => {
-      if (!isDragging || !p.isDown) return;
-      const dy = p.y - dragStartY;
-      this.cameras.main.scrollY = Math.max(0, Math.min(50, camStart - dy));
-    });
-    this.input.on('pointerup', () => { isDragging = false; });
-
-    // Cleanup
-    this.events.once('shutdown', () => this._cleanupDom());
-    this.events.once('destroy', () => this._cleanupDom());
   }
 
-  _refreshDifficultyButtons(activeMode) {
-    for (const [mode, btn] of Object.entries(this._diffBtns)) {
-      const isActive = mode === activeMode;
-      btn.bg.setFillStyle(isActive ? GOLD : VIOLET, 0.95);
-      btn.bg.setStrokeStyle(3, isActive ? PINK : GOLD);
-      btn.txt.setColor(isActive ? '#1a0a2e' : '#ffffff');
+  // === Handlery sekcji kodu ===
+
+  async _handleGenerate() {
+    try {
+      const newCode = await generateAndSaveCode();
+      this._codeText.setText(newCode).setStyle({
+        fontFamily: 'Courier, monospace', fontSize: '23px',
+        color: T.gold, fontStyle: 'bold',
+      });
+      this._codeBox.clear();
+      this._codeBox.fillStyle(C.track, 1);
+      this._codeBox.fillRoundedRect(RIGHT_CX - 230, this._codeBoxY, 460, 48, 12);
+      this._codeBox.lineStyle(2, C.gold, 1);
+      this._codeBox.strokeRoundedRect(RIGHT_CX - 230, this._codeBoxY, 460, 48, 12);
+      this._showToast('Kod gotowy');
+    } catch (e) {
+      reportError(e, { context: 'generateCode' });
+      this._showToast('Nie udało się wygenerować kodu');
     }
   }
 
-  _makeBtn(x, y, w, h, label, fillColor, onClick) {
-    const bg = this.add.rectangle(x, y, w, h, fillColor, 0.95)
-      .setStrokeStyle(3, GOLD)
-      .setInteractive({ useHandCursor: true });
-    const txt = this.add.text(x, y, label, {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '18px',
-      color: '#1a0a2e',
-      stroke: '#fff', strokeThickness: 1,
-    }).setOrigin(0.5);
-    bg.on('pointerup', onClick);
-    return { bg, txt };
+  async _handleCopy() {
+    const c = getCurrentCode();
+    if (!c) { this._showToast('Najpierw wygeneruj kod'); return; }
+    try {
+      await navigator.clipboard.writeText(c);
+      this._showToast('Skopiowano');
+    } catch {
+      this._showToast(c);
+    }
   }
 
+  async _handleRestore() {
+    const c = this._codeInputEl?.value;
+    if (!c || !c.trim()) { this._showToast('Wpisz kod'); return; }
+    try {
+      const ok = await restoreFromCode(c);
+      if (ok) {
+        this._showToast('Postęp odzyskany — wracam do menu');
+        this.time.delayedCall(1500, () => {
+          this._cleanupDom();
+          this.scene.start('MenuScene');
+        });
+      } else {
+        this._showToast('Nie znaleziono takiego kodu');
+      }
+    } catch (e) {
+      this._showToast(e?.message || 'Nie udało się przywrócić postępu');
+      reportError(e, { context: 'restoreCode' });
+    }
+  }
+
+  // === Modal: potwierdzenie resetu ===
+
   _showResetConfirm() {
-    // Modal: "Czy na pewno?" + nick input + TAK/NIE
-    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2,
-      GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85).setDepth(10000)
-      .setInteractive();
-    const box = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 600, 320,
-      PURPLE, 1).setStrokeStyle(4, GOLD).setDepth(10001);
-    const t1 = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 110,
-      'Reset postępu', {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '28px', color: '#ffd93c',
-        stroke: '#ff6b9d', strokeThickness: 4,
-      }).setOrigin(0.5).setDepth(10002);
-    const t2 = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 65,
-      'Wszystkie monety, diamenty i postępy zostaną wyzerowane.\nWpisz nowe imię (lub zostaw stare):',
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const boxW = 580;
+    const boxH = 348;
+
+    const overlay = this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.82)
+      .setDepth(10000).setInteractive();
+
+    const box = this.add.graphics().setDepth(10001);
+    box.fillStyle(C.card, 1);
+    box.fillRoundedRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH, 24);
+    box.lineStyle(2, C.danger, 1);
+    box.strokeRoundedRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH, 24);
+
+    const t1 = this.add.text(cx, cy - 118, 'Zresetować postęp?', {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '28px', color: T.gold,
+      stroke: '#ff6b9d', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(10002);
+
+    const t2 = this.add.text(cx, cy - 60,
+      'Stracisz monety, diamenty i odblokowane poziomy.\nWpisz nowe imię albo zostaw stare.',
       {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '15px', color: '#bdaee3', align: 'center',
+        fontFamily: 'Arial, sans-serif', fontSize: '15px', color: T.muted,
+        align: 'center', lineSpacing: 6,
       }).setOrigin(0.5).setDepth(10002);
 
     const nameEl = document.createElement('input');
     nameEl.type = 'text';
-    nameEl.placeholder = 'NICK';
+    nameEl.placeholder = 'Twoje imię';
     nameEl.maxLength = 12;
     nameEl.style.cssText = `
       position: fixed; left: 50%; top: 51%;
       transform: translate(-50%, -50%);
-      width: 240px; padding: 10px;
+      box-sizing: border-box;
+      width: 260px; height: 50px;
       font-family: 'Arial Black', sans-serif;
       font-size: 22px; text-align: center;
-      background: #1a0a2e; color: #ffd93c;
-      border: 3px solid #ff6b9d; border-radius: 6px;
+      background: #140a24; color: #ffd93c;
+      border: 2px solid #ff6b9d; border-radius: 12px;
       text-transform: uppercase; letter-spacing: 2px;
+      outline: none;
       z-index: 10003;
     `;
-    nameEl.addEventListener('input', () => { nameEl.value = nameEl.value.toUpperCase().replace(/[^A-Z0-9 ]/g, ''); });
+    nameEl.addEventListener('input', () => {
+      nameEl.value = nameEl.value.toUpperCase().replace(/[^A-Z0-9 ]/g, '');
+    });
     document.body.appendChild(nameEl);
     this._domEls.push(nameEl);
 
-    const yesBg = this.add.rectangle(GAME_WIDTH / 2 - 110, GAME_HEIGHT / 2 + 80,
-      180, 50, 0xd05050, 1).setStrokeStyle(3, GOLD).setDepth(10002)
-      .setInteractive({ useHandCursor: true });
-    const yesTxt = this.add.text(GAME_WIDTH / 2 - 110, GAME_HEIGHT / 2 + 80,
-      'TAK, ZRESETUJ', {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '16px', color: '#ffffff',
-      }).setOrigin(0.5).setDepth(10003);
+    const yes = this._button(cx - 130, cy + 108, 232, 54, 'Tak, resetuj', {
+      fill: C.danger, stroke: C.danger, textColor: '#ffffff',
+      fontSize: 18, radius: 14, depth: 10002,
+      onClick: () => {
+        const newName = nameEl.value.trim().slice(0, 12);
+        resetGame();
+        if (newName) {
+          try { localStorage.setItem('scaryrun_pending_name', newName); } catch { /* ignore */ }
+        }
+        cleanup();
+        this._showToast('Postęp zresetowany');
+        this.time.delayedCall(1200, () => {
+          this._cleanupDom();
+          this.scene.start('MenuScene');
+        });
+      },
+    });
 
-    const noBg = this.add.rectangle(GAME_WIDTH / 2 + 110, GAME_HEIGHT / 2 + 80,
-      180, 50, VIOLET, 1).setStrokeStyle(3, GOLD).setDepth(10002)
-      .setInteractive({ useHandCursor: true });
-    const noTxt = this.add.text(GAME_WIDTH / 2 + 110, GAME_HEIGHT / 2 + 80,
-      'NIE', {
-        fontFamily: 'Arial Black, sans-serif',
-        fontSize: '16px', color: '#ffffff',
-      }).setOrigin(0.5).setDepth(10003);
+    const no = this._button(cx + 130, cy + 108, 232, 54, 'Anuluj', {
+      fill: null, stroke: C.cardStroke, textColor: '#ffffff',
+      fontSize: 18, radius: 14, depth: 10002,
+      onClick: () => cleanup(),
+    });
 
     const cleanup = () => {
-      try { nameEl.remove(); } catch {}
+      try { nameEl.remove(); } catch { /* ignore */ }
       this._domEls = this._domEls.filter((e) => e !== nameEl);
-      [overlay, box, t1, t2, yesBg, yesTxt, noBg, noTxt].forEach((o) => {
-        try { o.destroy(); } catch {}
+      [overlay, box, t1, t2, yes, no].forEach((o) => {
+        try { o.destroy(); } catch { /* ignore */ }
+      });
+    };
+  }
+
+  // === Komponenty UI ===
+
+  _panel(x, y, w, h) {
+    const g = this.add.graphics();
+    g.fillStyle(C.card, 1);
+    g.fillRoundedRect(x, y, w, h, 22);
+    g.lineStyle(1.5, C.cardStroke, 1);
+    g.strokeRoundedRect(x, y, w, h, 22);
+    return g;
+  }
+
+  _sectionLabel(x, y, text, accentColor) {
+    const g = this.add.graphics();
+    g.fillStyle(accentColor, 1);
+    g.fillRoundedRect(x, y - 11, 6, 22, 3);
+    this.add.text(x + 18, y, text, {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '21px', color: T.white,
+    }).setOrigin(0, 0.5);
+  }
+
+  /** Zaokrąglony przycisk jako Container (graphics + tekst + hit area). */
+  _button(cx, cy, w, h, label, opts = {}) {
+    const {
+      fill = null, stroke = null, textColor = '#ffffff',
+      fontSize = 19, radius = 14, depth = 0, onClick = () => {},
+    } = opts;
+    const c = this.add.container(cx, cy).setDepth(depth);
+    const g = this.add.graphics();
+    if (fill !== null) {
+      g.fillStyle(fill, 1);
+      g.fillRoundedRect(-w / 2, -h / 2, w, h, radius);
+    }
+    if (stroke !== null) {
+      g.lineStyle(2.5, stroke, 1);
+      g.strokeRoundedRect(-w / 2, -h / 2, w, h, radius);
+    }
+    const txt = this.add.text(0, 0, label, {
+      fontFamily: 'Arial Black, sans-serif', fontSize: fontSize + 'px',
+      color: textColor,
+    }).setOrigin(0.5);
+    // Hit target = prawdziwy Rectangle (origin 0.5), dziecko kontenera.
+    // Container.setInteractive({hitArea}) miał przesuniętą strefę klikalną —
+    // łapał tylko górny-lewy róg przycisku. Rectangle ma natywny, poprawnie
+    // wyśrodkowany input — niezawodny dla myszy i dotyku.
+    const hit = this.add.rectangle(0, 0, w, h, 0xffffff, 0)
+      .setInteractive({ useHandCursor: true });
+    c.add([g, txt, hit]);
+    hit.on('pointerover', () => this.tweens.add({ targets: c, scale: 1.04, duration: 90 }));
+    hit.on('pointerout', () => { this.tweens.add({ targets: c, scale: 1, duration: 90 }); txt.setScale(1); });
+    hit.on('pointerdown', () => txt.setScale(0.92));
+    hit.on('pointerup', () => { txt.setScale(1); onClick(); });
+    return c;
+  }
+
+  /** Segmentowany przełącznik (track + ruchomy „thumb" + etykiety). */
+  _buildSegmented(cx, cy, w, h, options, activeKey, onSelect) {
+    const n = options.length;
+    const inset = 5;
+    const segW = (w - inset * 2) / n;
+
+    const track = this.add.graphics();
+    track.fillStyle(C.track, 1);
+    track.fillRoundedRect(cx - w / 2, cy - h / 2, w, h, h / 2);
+    track.lineStyle(1.5, C.cardStroke, 1);
+    track.strokeRoundedRect(cx - w / 2, cy - h / 2, w, h, h / 2);
+
+    const thumb = this.add.graphics();
+    const labels = [];
+
+    const idxOf = (key) => Math.max(0, options.findIndex((o) => o.key === key));
+
+    const render = (activeIdx) => {
+      thumb.clear();
+      const x = cx - w / 2 + inset + activeIdx * segW;
+      thumb.fillStyle(C.gold, 1);
+      thumb.fillRoundedRect(x, cy - h / 2 + inset, segW, h - inset * 2, (h - inset * 2) / 2);
+      labels.forEach((lbl, i) => {
+        const on = i === activeIdx;
+        lbl.setColor(on ? T.ink : T.muted);
       });
     };
 
-    yesBg.on('pointerup', () => {
-      const newName = nameEl.value.trim().slice(0, 12);
-      resetGame();
-      // Po reset, MenuScene zachowuje się jakby user był nowy.
-      // Jeśli wpisał nick, zapiszemy go do session na potem (na char-select scenie
-      // standardowy flow zapyta o imię, więc przekazujemy startem).
-      if (newName) {
-        try { localStorage.setItem('scaryrun_pending_name', newName); } catch {}
-      }
-      cleanup();
-      this._showToast('Zresetowano postęp');
-      this.time.delayedCall(1200, () => {
-        this._cleanupDom();
-        this.scene.start('MenuScene');
+    options.forEach((opt, i) => {
+      const segCx = cx - w / 2 + inset + segW * (i + 0.5);
+      const lbl = this.add.text(segCx, cy, opt.label, {
+        fontFamily: 'Arial Black, sans-serif', fontSize: '19px', color: T.muted,
+      }).setOrigin(0.5);
+      labels.push(lbl);
+
+      const zone = this.add.zone(segCx, cy, segW, h).setInteractive({ useHandCursor: true });
+      // pointerdown (nawet pusty) stabilizuje wykrywanie tapu — patrz _buildHeader.
+      zone.on('pointerdown', () => {});
+      zone.on('pointerup', () => {
+        render(i);
+        this.tweens.add({ targets: lbl, scale: 1.12, duration: 110, yoyo: true });
+        onSelect(opt.key);
       });
     });
-    noBg.on('pointerup', cleanup);
+
+    render(idxOf(activeKey));
   }
+
+  // === Toast ===
+
+  _showToast(message) {
+    if (this._toast) {
+      try { this._toast.destroy(); } catch { /* ignore */ }
+    }
+    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT - 40).setDepth(99999);
+    const txt = this.add.text(0, 0, message, {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '18px', color: '#ffffff',
+    }).setOrigin(0.5);
+    const w = txt.width + 48;
+    const h = 46;
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.88);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    g.lineStyle(1.5, C.gold, 0.9);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    c.add([g, txt]);
+    this._toast = c;
+    c.setScale(0.85).setAlpha(0);
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 180, ease: 'Back.easeOut' });
+    this.tweens.add({
+      targets: c, alpha: 0, y: c.y - 16, duration: 400, delay: 1500,
+      onComplete: () => { try { c.destroy(); } catch { /* ignore */ } if (this._toast === c) this._toast = null; },
+    });
+  }
+
+  // === Sprzątanie DOM ===
 
   _cleanupDom() {
     for (const el of this._domEls) {
-      try { el.remove(); } catch {}
+      try { el.remove(); } catch { /* ignore */ }
     }
     this._domEls = [];
     for (const p of (this._domPositioners || [])) {
-      try { window.removeEventListener('resize', p.fn); } catch {}
-      try { window.removeEventListener('orientationchange', p.fn); } catch {}
+      try { window.removeEventListener('resize', p.fn); } catch { /* ignore */ }
+      try { window.removeEventListener('orientationchange', p.fn); } catch { /* ignore */ }
     }
     this._domPositioners = [];
-  }
-
-  _showToast(message) {
-    const toast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 25, message, {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '20px', color: '#ffffff',
-      stroke: '#000', strokeThickness: 4,
-      backgroundColor: 'rgba(0,0,0,0.8)',
-      padding: { x: 18, y: 8 },
-    }).setOrigin(0.5).setDepth(99999);
-    this.tweens.add({
-      targets: toast, alpha: 0, duration: 1500, delay: 1200,
-      onComplete: () => { try { toast.destroy(); } catch {} },
-    });
   }
 }

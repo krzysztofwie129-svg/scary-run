@@ -1,5 +1,6 @@
-// DeviceDetect — heurystyki touch + landscape. Mobile-only — gra dziala
-// wylacznie na telefonie w landscape (sesja 7).
+// DeviceDetect — heurystyki touch + landscape.
+// Telefon: gra tylko w landscape. Desktop: gra zawsze (2026-05 — wznowiony
+// tryb desktop; wcześniej gra była mobile-only od sesji 7).
 
 export function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -20,12 +21,20 @@ export function isPortrait() {
   return !isLandscape();
 }
 
-/** Czy można grać? mobile + landscape. */
+/** Desktop = brak touchscreena ALBO ekran większy niż telefon (laptop, monitor).
+ *  Laptop z ekranem dotykowym (touch + duży ekran) też traktujemy jak desktop. */
+export function isDesktop() {
+  if (!isTouchDevice()) return true;
+  return Math.max(window.innerWidth, window.innerHeight) > 1100;
+}
+
+/** Czy można grać? Desktop — zawsze. Telefon — tylko w landscape. */
 export function canPlay() {
-  // DEV: ?desktop=1 omija mobile-only check (do testów na desktopie).
+  // DEV: ?desktop=1 zachowane dla kompatybilności (puppeteer / testy).
   if (typeof window !== 'undefined' && window.location?.search) {
     if (new URLSearchParams(window.location.search).has('desktop')) return true;
   }
+  if (isDesktop()) return true;
   return isMobileDevice() && isLandscape();
 }
 

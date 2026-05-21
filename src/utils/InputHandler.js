@@ -24,13 +24,29 @@ export class InputHandler {
     };
 
     // 'pointerdown' łapie i mouse i touch. Mobile: touchscreen tap = pointerdown.
+    // Desktop: klik myszą = pointerdown, więc skok działa też bez dotyku.
     document.addEventListener('pointerdown', this._handler);
+
+    // Desktop: klawiatura — Spacja / strzałka w górę / W = skok.
+    this._keyHandler = (e) => {
+      if (e.repeat) return; // przytrzymanie klawisza nie spamuje skoków
+      if (e.target && e.target.tagName === 'INPUT') return;
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        e.preventDefault();
+        this.onJump();
+      }
+    };
+    document.addEventListener('keydown', this._keyHandler);
   }
 
   destroy() {
     if (this._handler) {
       try { document.removeEventListener('pointerdown', this._handler); } catch (e) { /* ignore */ }
       this._handler = null;
+    }
+    if (this._keyHandler) {
+      try { document.removeEventListener('keydown', this._keyHandler); } catch (e) { /* ignore */ }
+      this._keyHandler = null;
     }
   }
 }

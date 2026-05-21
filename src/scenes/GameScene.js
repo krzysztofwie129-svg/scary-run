@@ -302,31 +302,54 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Półprzezroczysty „glass" panel HUD-u z zaokrąglonymi rogami. */
+  _hudPanel(x, y, w, h, accent) {
+    const g = this.add.graphics().setDepth(1000).setScrollFactor(0);
+    g.fillStyle(0x140a24, 0.66);
+    g.fillRoundedRect(x, y, w, h, 14);
+    g.lineStyle(2, accent, 0.5);
+    g.strokeRoundedRect(x, y, w, h, 14);
+    return g;
+  }
+
   createHUD() {
     const player = sessionManager.currentPlayer();
     this._hudSafeMargin = this.getHudSafeMargin();
     const sm = this._hudSafeMargin;
-    const fontStyle = {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: `${HUD_FONT_SIZE}px`,
-      color: '#ffe066',
-      stroke: '#000',
-      strokeThickness: 4,
-    };
-    const subStyle = {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '18px',
-      color: '#bdaee3',
-      stroke: '#000',
-      strokeThickness: 3,
-    };
 
-    // Lewy górny: ikony serc — DYNAMICZNE.
+    // === HUD rozgrywki — redesign 2026-05: trzy panele „glass" + pasek czasu ===
+    const PY = 26;            // górna krawędź paneli
+    const PH = 58;            // wysokość panelu
+    const pcy = PY + PH / 2;  // środek panelu w pionie (55)
+
+    // -- Lewy panel: życie + poziom --
+    const leftX = 20 + sm;
+    this._hudPanel(leftX, PY, 252, PH, 0xff4d6d);
+    this._lifeHeartPos = { x: leftX + 38, y: pcy };
     this.lifeIcons = [];
     this.refreshLivesHUD();
+    this.levelText = this.add.text(leftX + 74, pcy - 9, `LEVEL ${this.lvl.id}`, {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '21px', color: '#ffe066',
+      stroke: '#000', strokeThickness: 3,
+    }).setOrigin(0, 0.5).setDepth(1002).setScrollFactor(0);
+    this.add.text(leftX + 74, pcy + 14, this.lvl.name, {
+      fontFamily: 'Arial, sans-serif', fontSize: '13px', color: '#bdaee3',
+    }).setOrigin(0, 0.5).setDepth(1002).setScrollFactor(0);
 
-    this.levelText = this.add.text(20 + sm, 60, `LEVEL ${this.lvl.id} — ${this.lvl.name}`, fontStyle).setDepth(1000).setScrollFactor(0);
-    this.timeText = this.add.text(20 + sm, 95, 'Time: 0:30', subStyle).setDepth(1000).setScrollFactor(0);
+    // -- Środkowy panel (monety + diamenty) i prawy panel (wynik) — tła --
+    this._hudPanel(GAME_WIDTH / 2 - 150, PY, 300, PH, 0xffd93c);
+    this._hudPanel(GAME_WIDTH - 20 - sm - 262, PY, 262, PH, 0xb084ff);
+
+    // -- Pasek czasu pod panelami --
+    const barW = 1140;
+    const barH = 12;
+    this._hudBar = { x: (GAME_WIDTH - barW) / 2, y: 110, w: barW, h: barH };
+    this.progressBarBg = this.add.graphics().setDepth(1000).setScrollFactor(0);
+    this.progressBarBg.fillStyle(0x140a24, 0.72);
+    this.progressBarBg.fillRoundedRect(this._hudBar.x, this._hudBar.y, barW, barH, barH / 2);
+    this.progressBarBg.lineStyle(1.5, 0xffd93c, 0.25);
+    this.progressBarBg.strokeRoundedRect(this._hudBar.x, this._hudBar.y, barW, barH, barH / 2);
+    this.progressBar = this.add.graphics().setDepth(1001).setScrollFactor(0);
 
     // Środek górny: animowana ikona coin (sprite) + licznik, diament + licznik.
     if (!this.anims.exists('coin_spin')) {
@@ -373,39 +396,51 @@ export class GameScene extends Phaser.Scene {
     ]) _mkAnim(`${m}_anim`, m, 10, 10);
     for (const m of ['pzombie_1', 'pzombie_2', 'pzombie_3']) _mkAnim(`${m}_anim`, m, 4, 8);
     for (const m of ['zombie_01', 'zombie_02']) _mkAnim(`${m}_anim`, m, 8, 12);
-    const cx = GAME_WIDTH / 2;
-    this.coinIcon = this.add.sprite(cx - 100, 28, 'coin_00').setOrigin(0.5);
+    // === Środkowy panel: monety + diamenty ===
+    const ccx = GAME_WIDTH / 2;
     const coinScale = HUD_COIN_ICON_SIZE / 100;
-    this.coinIcon.setScale(coinScale);
-    this.coinIcon.setDepth(1000).setScrollFactor(0);
-    if (this.anims.exists('coin_spin')) { try { this.coinIcon.play('coin_spin'); } catch (_) {} }
+    const mcy = 55; // środek paneli (PY 26 + PH/2 29)
+    this.coinIcon = this.add.sprite(ccx - 92, mcy, 'coin_00').setOrigin(0.5);
+    this.coinIcon.setScale(coinScale).setDepth(1002).setScrollFactor(0);
+    if (this.anims.exists('coin_spin')) { try { this.coinIcon.play('coin_spin'); } catch (_) { /* ignore */ } }
+    this.coinCountText = this.add.text(ccx - 70, mcy, formatNumber(player.coins), {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '23px', color: '#ffe066',
+      stroke: '#000', strokeThickness: 3,
+    }).setOrigin(0, 0.5).setDepth(1002).setScrollFactor(0);
 
-    this.coinCountText = this.add.text(cx - 80, 28, formatNumber(player.coins), {
-      ...fontStyle, fontSize: '24px',
-    }).setOrigin(0, 0.5).setDepth(1000).setScrollFactor(0);
+    // Separator monety | diamenty.
+    const sep = this.add.graphics().setDepth(1002).setScrollFactor(0);
+    sep.lineStyle(2, 0xffffff, 0.12);
+    sep.lineBetween(ccx, mcy - 15, ccx, mcy + 15);
 
-    this.diamondIcon = this.add.image(cx + 30, 28, 'diamond').setOrigin(0.5);
-    this.diamondIcon.setScale(coinScale);
-    this.diamondIcon.setDepth(1000).setScrollFactor(0);
+    this.diamondIcon = this.add.image(ccx + 58, mcy, 'diamond').setOrigin(0.5);
+    this.diamondIcon.setScale(coinScale).setDepth(1002).setScrollFactor(0);
+    this.diamondCountText = this.add.text(ccx + 80, mcy, formatNumber(player.diamonds), {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '23px', color: '#c9a3ff',
+      stroke: '#000', strokeThickness: 3,
+    }).setOrigin(0, 0.5).setDepth(1002).setScrollFactor(0);
 
-    this.diamondCountText = this.add.text(cx + 50, 28, formatNumber(player.diamonds), {
-      ...fontStyle, fontSize: '24px',
-    }).setOrigin(0, 0.5).setDepth(1000).setScrollFactor(0);
-
-    // Prawy górny: SCORE + (jeśli MP) imię gracza.
-    const rightX = GAME_WIDTH - 20 - sm;
-    this.scoreText = this.add.text(rightX, 16, `Score: ${formatScore(0)}`, { ...fontStyle, color: '#ffe066' })
-      .setOrigin(1, 0).setDepth(1000).setScrollFactor(0);
+    // === Prawy panel: wynik ===
+    const rPanelL = GAME_WIDTH - 20 - sm - 262;
+    this.add.text(rPanelL + 22, mcy, 'WYNIK', {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '14px', color: '#8678a8',
+    }).setOrigin(0, 0.5).setDepth(1002).setScrollFactor(0);
+    this.scoreText = this.add.text(GAME_WIDTH - 20 - sm - 22, mcy, formatScore(0), {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '26px', color: '#ffe066',
+      stroke: '#000', strokeThickness: 4,
+    }).setOrigin(1, 0.5).setDepth(1002).setScrollFactor(0);
     if (sessionManager.isMultiplayer) {
-      this.add.text(rightX, 50, `${player.name} (P${sessionManager.currentPlayerIndex + 1})`, subStyle)
-        .setOrigin(1, 0).setDepth(1000).setScrollFactor(0);
+      this.add.text(GAME_WIDTH - 20 - sm - 22, 96, `${player.name} (P${sessionManager.currentPlayerIndex + 1})`, {
+        fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#bdaee3',
+        stroke: '#000', strokeThickness: 3,
+      }).setOrigin(1, 0.5).setDepth(1002).setScrollFactor(0);
     }
 
-    // Pasek progresu na górze.
-    this.progressBarBg = this.add.graphics().setDepth(1000).setScrollFactor(0);
-    this.progressBarBg.fillStyle(0x000000, 0.5);
-    this.progressBarBg.fillRect((GAME_WIDTH - HUD_PROGRESS_BAR_WIDTH) / 2, 90, HUD_PROGRESS_BAR_WIDTH, HUD_PROGRESS_BAR_HEIGHT);
-    this.progressBar = this.add.graphics().setDepth(1001).setScrollFactor(0);
+    // === Pasek czasu — etykieta z pozostałym czasem (przy prawym końcu paska) ===
+    this.timeText = this.add.text(this._hudBar.x + this._hudBar.w, 96, '0:30', {
+      fontFamily: 'Arial Black, sans-serif', fontSize: '17px', color: '#ffe066',
+      stroke: '#000', strokeThickness: 3,
+    }).setOrigin(1, 0.5).setDepth(1001).setScrollFactor(0);
 
     // Sesja C: power-up HUD — slots pod paskiem progresu, lewy róg.
     this.powerUpHUDSlots = []; // [{ icon, bg, barFill, barBg, type }]
@@ -481,17 +516,13 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this.lifeIcons = [];
-    // 1 życie 1 szansa: zawsze 1 ikona, żaden power-up tego nie zmienia.
-    const lives = 1;
-    const sm = this._hudSafeMargin || 0;
-    for (let i = 0; i < lives; i++) {
-      const x = 24 + sm + i * (HUD_LIFE_ICON_SIZE + 6);
-      const heart = this.add.image(x, 30, 'life').setOrigin(0, 0.5);
-      heart.setDisplaySize(HUD_LIFE_ICON_SIZE, HUD_LIFE_ICON_SIZE);
-      heart.setTint(0xff3030);
-      heart.setDepth(1000).setScrollFactor(0);
-      this.lifeIcons.push(heart);
-    }
+    // 1 życie 1 szansa: zawsze 1 ikona serca, osadzona w lewym panelu HUD.
+    const pos = this._lifeHeartPos || { x: 38 + (this._hudSafeMargin || 0), y: 30 };
+    const heart = this.add.image(pos.x, pos.y, 'life').setOrigin(0.5);
+    heart.setDisplaySize(34, 34);
+    heart.setTint(0xff3b54);
+    heart.setDepth(1002).setScrollFactor(0);
+    this.lifeIcons.push(heart);
   }
 
   updateHUD(timeRemaining) {
@@ -499,21 +530,21 @@ export class GameScene extends Phaser.Scene {
     const seconds = Math.max(0, Math.ceil(timeRemaining));
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    this.timeText.setText(`Time: ${m}:${s.toString().padStart(2, '0')}`);
+    this.timeText.setText(`${m}:${s.toString().padStart(2, '0')}`);
     this.coinCountText.setText(formatNumber(player.coins));
     this.diamondCountText.setText(formatNumber(player.diamonds));
-    this.scoreText.setText(`Score: ${formatScore(player.score - (this._levelStartScore || 0))}`);
+    this.scoreText.setText(formatScore(player.score - (this._levelStartScore || 0)));
     // 1 życie 1 szansa: HUD zawsze 1 ikona, refresh nie jest potrzebny po init.
 
+    // Pasek czasu — zaokrąglony, czerwienieje w ostatnich sekundach.
     const progress = 1 - Math.max(0, timeRemaining) / this.lvl.duration;
     this.progressBar.clear();
-    this.progressBar.fillStyle(0xffe066, 1);
-    this.progressBar.fillRect(
-      (GAME_WIDTH - HUD_PROGRESS_BAR_WIDTH) / 2,
-      90,
-      HUD_PROGRESS_BAR_WIDTH * progress,
-      HUD_PROGRESS_BAR_HEIGHT,
-    );
+    const b = this._hudBar;
+    if (b && progress > 0) {
+      const fillW = Math.max(b.h, b.w * Math.min(1, progress));
+      this.progressBar.fillStyle(timeRemaining <= 6 ? 0xff5b5b : 0xffd93c, 1);
+      this.progressBar.fillRoundedRect(b.x, b.y, fillW, b.h, b.h / 2);
+    }
   }
 
   // === Spawner: tier mix + anti-overlap ===
@@ -700,9 +731,15 @@ export class GameScene extends Phaser.Scene {
     });
     if (this.finishLine) this.finishLine.update(this.worldSpeed, delta);
 
-    // Sesja C: magnet — przyciągaj monety w promieniu 250px.
+    // Sesja C: magnet — przyciągaj monety/diamenty w promieniu 250px.
     if (powerUpManager.isActive(POWER_UP_TYPES.MAGNET)) {
       const magnetRange = 250;
+      // Auto-collect: gdy moneta dotrze blisko gracza, zbieramy ją OD RAZU.
+      // Bug fix (Android): wcześniej magnes tylko dociągał monetę, a zebranie
+      // zależało od AABB ciała gracza. Ciało jest mniejsze/przesunięte względem
+      // sprite'a + przy spadkach FPS moneta potrafiła "przeskoczyć" ciało →
+      // moneta dolatywała do gracza, ale bez dźwięku, efektu i punktów.
+      const magnetCollectRadius = 50;
       const px = this.player.x;
       const py = this.player.y;
       this.coins.children.iterate((c) => {
@@ -710,6 +747,11 @@ export class GameScene extends Phaser.Scene {
         const dx = px - c.x;
         const dy = py - c.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < magnetCollectRadius) {
+          // collectCoin: dźwięk + cząsteczki + punkty + portfel (monety/diamenty).
+          this.collectCoin(c);
+          return true;
+        }
         if (dist < magnetRange && dist > 0) {
           const speed = 800 * (1 - dist / magnetRange);
           c.x += (dx / dist) * speed * (delta / 1000);

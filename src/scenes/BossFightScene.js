@@ -150,12 +150,18 @@ export class BossFightScene extends Phaser.Scene {
   createControlButtons() {
     // JUMP + ATTACK ikonki TYLKO jako visual hint (NIE klikalne).
     // Klikalność: lewa połowa ekranu = JUMP, prawa = ATTACK (createInputHandlers).
-    const btnSize = 150;
-    const margin = 95;
+    // Ikony na GÓRZE ekranu (~30px pod HUD) zamiast na dole — wcześniej stały
+    // nad GROUND_Y i zasłaniały gracza oraz bossa. Góra ekranu to tło (niebo),
+    // więc hinty nie kolidują z rozgrywką. Lekko węższe (120 vs 150) + odsunięte
+    // od rogów, żeby ominąć przycisk pauzy (prawy-górny róg) i pasek HP.
+    const btnSize = 120;
+    const iconY = 150;
+    const leftX = 130;
+    const rightX = GAME_WIDTH - 130;
 
     const makeHintIcon = (x, key) => {
       if (!this.textures.exists(key)) return null;
-      return this.add.image(x, GAME_HEIGHT - margin, key)
+      return this.add.image(x, iconY, key)
         .setDisplaySize(btnSize, btnSize)
         .setDepth(99990)
         .setAlpha(0.85);
@@ -164,8 +170,8 @@ export class BossFightScene extends Phaser.Scene {
     // Nowe assety btn_jump / btn_attack (purple-gold round). Fallback na stare boss_btn_*.
     const jumpKey = this.textures.exists('btn_jump') ? 'btn_jump' : 'boss_btn_jump';
     const attackKey = this.textures.exists('btn_attack') ? 'btn_attack' : 'boss_btn_attack';
-    this.jumpButton = makeHintIcon(margin, jumpKey);
-    this.attackButton = makeHintIcon(GAME_WIDTH - margin, attackKey);
+    this.jumpButton = makeHintIcon(leftX, jumpKey);
+    this.attackButton = makeHintIcon(rightX, attackKey);
   }
 
   createBackground() {
@@ -428,6 +434,26 @@ export class BossFightScene extends Phaser.Scene {
       this.swipeStartY = null;
       this.swipeStartX = null;
     });
+
+    // Desktop: sterowanie klawiaturą. Skok = Spacja / ↑ / W,
+    // atak = Enter / X / D / →, ślizg = ↓ / S. (mysz: lewa połowa ekranu = skok,
+    // prawa = atak, przeciągnięcie w dół = ślizg.)
+    if (this.input.keyboard) {
+      this.input.keyboard.on('keydown', (e) => {
+        if (this.fightOver || e.repeat) return;
+        const c = e.code;
+        if (c === 'Space' || c === 'ArrowUp' || c === 'KeyW') {
+          e.preventDefault();
+          this.playerJump();
+        } else if (c === 'Enter' || c === 'KeyX' || c === 'KeyD' || c === 'ArrowRight') {
+          e.preventDefault();
+          this.playerAttack();
+        } else if (c === 'ArrowDown' || c === 'KeyS') {
+          e.preventDefault();
+          this.playerSlide();
+        }
+      });
+    }
   }
 
   playerJump() {
