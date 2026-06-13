@@ -19,6 +19,12 @@ export function initSentry() {
         /NetworkError/,
         /Failed to fetch/,
         /AbortError/,
+        // WebGL context-recovery crashes — known Phaser bug on weak GPUs,
+        // already mitigated by the auto-reload safety net in main.js
+        // (_isWebglCrash → _scheduleReload). Mirrors WEBGL_CRASH_PATTERNS
+        // there. The genuinely bad case (reload loop) is still reported
+        // via captureMessage('WebGL reload loop limit…').
+        /Link Shader failed|Framebuffer status|Framebuffer Unsupported|FRAMEBUFFER_(IN)?COMPLETE|gl\.linkProgram|createResource/i,
       ],
       beforeSend(event) {
         try {
