@@ -45,10 +45,10 @@ export class PreloadScene extends Phaser.Scene {
       return capitalize(anim);
     };
 
-    // Dead/Win — folder capitalized (Dead/, Win/) + PNG (nie WebP).
-    // Pozostałe anim — folder lowercase + WebP.
+    // Dead/Win — folder capitalized (Dead/, Win/). Wszystkie anim w WebP
+    // (2026-06-13: Dead/Win skonwertowane PNG->WebP, oszczędność wagi).
     const animFolderName = (anim) => (anim === 'dead' || anim === 'win') ? capitalize(anim) : anim;
-    const animFileExt = (anim) => (anim === 'dead' || anim === 'win') ? 'png' : 'webp';
+    const animFileExt = () => 'webp';
     for (const charKey of CHARACTER_KEYS) {
       const charPath = ASSET_PATHS.characters[charKey];
       for (const [anim, count] of Object.entries(ANIM_FRAME_COUNTS)) {
@@ -61,8 +61,8 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     // Skin full-sprite chary (char04-07) — inna struktura folderów niż char01-03:
-    //   public/assets/characters/Character NN/Png/Character Sprite/Anim/Character-Anim_NN.png
-    // Folder anim CAPITALIZED, file PNG (nie WebP). Klucz tekstur kompatybilny z resztą:
+    //   public/assets/characters/Character NN/Png/Character Sprite/Anim/Character-Anim_NN.webp
+    // Folder anim CAPITALIZED, file WebP (2026-06-13 skonwertowane z PNG). Klucz tekstur kompatybilny z resztą:
     //   char04_run_00, char05_idle_05, etc. (Player.setupAnimations buduje frames z tych kluczy).
     // Roll w nowych charach NIE jest używany w tej fazie (skiny sklepowe), pomijamy.
     // Lazy-load skin char04-07 — TYLKO ten który gracz ma equipped (zamiast
@@ -90,7 +90,7 @@ export class PreloadScene extends Phaser.Scene {
         const cap = capitalize(anim);
         for (let i = 0; i < count; i++) {
           const textureKey = `${charKey}_${anim}_${pad2(i)}`;
-          const url = `${basePath}/${cap}/Character-${cap}_${pad2(i)}.png`;
+          const url = `${basePath}/${cap}/Character-${cap}_${pad2(i)}.webp`;
           this.load.image(textureKey, url);
         }
       }
@@ -323,20 +323,20 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('menu_btn_shop', 'assets/ui/menu_btn_shop.webp');
 
     // HUD redesign — 5 nowych grafik (game_hud_bar, btn_pause, btn_jump, btn_attack, boss_defeat_popup).
-    this.load.image('game_hud_bar', 'assets/ui/game_hud_bar.png');
-    this.load.image('btn_pause', 'assets/ui/btn_pause.png');
-    this.load.image('btn_jump', 'assets/ui/btn_jump.png');
-    this.load.image('btn_attack', 'assets/ui/btn_attack.png');
-    this.load.image('boss_defeat_popup', 'assets/ui/boss_defeat_popup.png');
+    this.load.image('game_hud_bar', 'assets/ui/game_hud_bar.webp');
+    this.load.image('btn_pause', 'assets/ui/btn_pause.webp');
+    this.load.image('btn_jump', 'assets/ui/btn_jump.webp');
+    this.load.image('btn_attack', 'assets/ui/btn_attack.webp');
+    this.load.image('boss_defeat_popup', 'assets/ui/boss_defeat_popup.webp');
 
     // Shop redesign — 7 grafik dla SklepScene.
-    this.load.image('shop_bg', 'assets/ui/shop_bg.png');
-    this.load.image('shop_header_sklep', 'assets/ui/shop_header_sklep.png');
-    this.load.image('shop_btn_back', 'assets/ui/shop_btn_back.png');
-    this.load.image('shop_tab_skiny', 'assets/ui/shop_tab_skiny.png');
-    this.load.image('shop_tab_powerupy', 'assets/ui/shop_tab_powerupy.png');
-    this.load.image('shop_card_unowned', 'assets/ui/shop_card_unowned.png');
-    this.load.image('shop_card_equipped', 'assets/ui/shop_card_equipped.png');
+    this.load.image('shop_bg', 'assets/ui/shop_bg.webp');
+    this.load.image('shop_header_sklep', 'assets/ui/shop_header_sklep.webp');
+    this.load.image('shop_btn_back', 'assets/ui/shop_btn_back.webp');
+    this.load.image('shop_tab_skiny', 'assets/ui/shop_tab_skiny.webp');
+    this.load.image('shop_tab_powerupy', 'assets/ui/shop_tab_powerupy.webp');
+    this.load.image('shop_card_unowned', 'assets/ui/shop_card_unowned.webp');
+    this.load.image('shop_card_equipped', 'assets/ui/shop_card_equipped.webp');
     // Boss BGs — 1 per level (1-10). Cycle gdy level > 10.
     for (let i = 1; i <= 10; i++) {
       const key = `boss_bg_${String(i).padStart(2, '0')}`;

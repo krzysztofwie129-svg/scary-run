@@ -62,7 +62,7 @@ export class ShopScene extends Phaser.Scene {
       for (let i = 0; i < ANIM_FRAME_COUNTS.idle; i++) {
         const textureKey = `${charKey}_idle_${pad2(i)}`;
         if (!this.textures.exists(textureKey)) {
-          missing.push({ key: textureKey, url: `assets/characters/Character ${cn}/Png/Character Sprite/Idle/Character-Idle_${pad2(i)}.png` });
+          missing.push({ key: textureKey, url: `assets/characters/Character ${cn}/Png/Character Sprite/Idle/Character-Idle_${pad2(i)}.webp` });
         }
       }
     }
