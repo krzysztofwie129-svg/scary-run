@@ -175,7 +175,9 @@ export const LEVELS = [
     obstacleSpawnRate: { min: 1.62, max: 2.34 },
     coinSpawnRate: { min: 0.7, max: 1.5 },
     diamondChance: 0.075,
-    worldSpeed: 330,
+    // Rebalans 2026-06-14: L1-L7 znacznie wolniejsze (łatwiejszy start na
+    // easy/normal). Łagodna krzywa 270→430, bez urwiska przed L8 (488).
+    worldSpeed: 270,
     musicVolume: 0.0,
   },
   // L2 — sesja 9: łagodniejsza krzywa (+30 speed, więcej low/mid)
@@ -190,7 +192,7 @@ export const LEVELS = [
     obstacleSpawnRate: { min: 1.44, max: 2.16 },
     coinSpawnRate: { min: 0.6, max: 1.3 },
     diamondChance: 0.12,
-    worldSpeed: 363,
+    worldSpeed: 295,
     musicVolume: 0.0,
   },
   // L3
@@ -205,7 +207,7 @@ export const LEVELS = [
     obstacleSpawnRate: { min: 1.26, max: 1.98 },
     coinSpawnRate: { min: 0.55, max: 1.2 },
     diamondChance: 0.18,
-    worldSpeed: 396,
+    worldSpeed: 320,
     musicVolume: 0.0,
   },
   // L4
@@ -220,7 +222,7 @@ export const LEVELS = [
     obstacleSpawnRate: { min: 1.17, max: 1.80 },
     coinSpawnRate: { min: 0.5, max: 1.1 },
     diamondChance: 0.22,
-    worldSpeed: 429,
+    worldSpeed: 345,
     musicVolume: 0.0,
   },
   // L5 — biom L2 reuse
@@ -235,7 +237,7 @@ export const LEVELS = [
     obstacleSpawnRate: { min: 1.08, max: 1.62 },
     coinSpawnRate: { min: 0.5, max: 1.0 },
     diamondChance: 0.25,
-    worldSpeed: 473,
+    worldSpeed: 370,
     musicVolume: 0.0,
   },
   // L6+ rebalance (Faza 2): speed +1% per level (od 473 baseline z L5),
@@ -257,7 +259,7 @@ export const LEVELS = [
     },
     obstacleSpawnRate: { min: 1.40, max: 2.00 },
     coinSpawnRate: { min: 0.45, max: 0.95 }, diamondChance: 0.28,
-    worldSpeed: 478, musicVolume: 0.0,
+    worldSpeed: 400, musicVolume: 0.0,
   },
   {
     // L7 — TEST MODE: TYLKO 13 nowych halloween monsterów (necro/skeleton/
@@ -274,7 +276,7 @@ export const LEVELS = [
     },
     obstacleSpawnRate: { min: 1.40, max: 2.00 },
     coinSpawnRate: { min: 0.4, max: 0.9 }, diamondChance: 0.30,
-    worldSpeed: 483, musicVolume: 0.0,
+    worldSpeed: 430, musicVolume: 0.0,
   },
   {
     id: 8, name: 'Dragon Dungeon', duration: 30,

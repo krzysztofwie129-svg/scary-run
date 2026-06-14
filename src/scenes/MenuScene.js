@@ -18,7 +18,6 @@ import { AudioManager } from '../utils/AudioManager.js';
 import { sessionManager } from '../utils/SessionManager.js';
 import { GameStateStore } from '../utils/GameStateStore.js';
 import { FullscreenManager } from '../utils/FullscreenManager.js';
-import { InstallPromptManager } from '../utils/InstallPromptManager.js';
 import { PlayerStore } from '../utils/PlayerStore.js';
 import { StatsTracker } from '../utils/StatsTracker.js';
 import { getWallet, getRankingScore, getCurrentLevel } from '../utils/storage.js';
@@ -199,11 +198,11 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(1, 0.5).setDepth(10);
     }
 
-    // 5. Icons row (placeholder) — top-right.
-    if (this.textures.exists('menu_icons_row')) {
-      this.add.image(GAME_WIDTH - 200, 70, 'menu_icons_row')
-        .setDisplaySize(360, 120);
-    }
+    // 5. Ustawienia — pojedyncza zębatka top-right.
+    // Baked menu_icons_row (prezent/puchar/zębatka/postać) miał 3 placeholdery
+    // bez logiki (gift, trophy, person). Per user: chowamy je — zostaje tylko
+    // funkcjonalna zębatka, rysowana w Phaser (crisp, bez emoji, cross-platform).
+    this._buildSettingsIconButton();
 
     // SKLEP button — image z death_screen mockup'a (sklep kiosk + "SKLEP").
     // Pozycja: centrowany pod sekcją diamentu w stat_bars (cały dolny bar).
@@ -237,22 +236,6 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // Settings — wykorzystujemy istniejącą zębatkę z baked menu_icons_row
-    // (4 ikony: gift, trophy, gear, person; 360×120 na (GAME_WIDTH-200, 70)).
-    // Gear = 3-cia z lewej. Pozycja w obrębie obrazka:
-    //   image center X = GAME_WIDTH - 200 = 1080
-    //   image szer = 360 → range x: 900 - 1260
-    //   4 ikony równomiernie → środek 3-ciej = 900 + (360 * 5/8) = 1125
-    //   środek Y = 70
-    // Kładziemy invisible interactive zone nad nią + click → SettingsScene.
-    const _gearHit = this.add.zone(1125, 70, 80, 80)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    _gearHit.on('pointerup', () => {
-      this.audioManager?.playSfx('click');
-      this.scene.start('SettingsScene');
-    });
-
     // Build buttons (zależnie od hasSave).
     this.menuState = 'main';
     this.buildMainButtons();
@@ -263,12 +246,70 @@ export class MenuScene extends Phaser.Scene {
         .setDisplaySize(440, 90);
     }
 
-    // 7. Install prompt (iOS).
-    if (InstallPromptManager.shouldShow()) {
-      this.time.delayedCall(1000, () => {
-        this.scene.launch('InstallPromptScene');
-      });
+    // Prompt instalacji PWA ("Dodaj do ekranu początkowego") usunięty per user
+    // 2026-06-14 — nie pokazujemy już instrukcji Add to Home Screen.
+  }
+
+  /** Przycisk ustawień (zębatka) — top-right corner. Zastępuje baked
+   *  menu_icons_row; rysowany w graphics dla ostrości i kontroli motywu. */
+  _buildSettingsIconButton() {
+    const x = GAME_WIDTH - 70;
+    const y = 62;
+    const r = 30;
+    const c = this.add.container(x, y).setDepth(20);
+
+    const glow = this.add.graphics();
+    glow.fillStyle(0xffd93c, 0.18);
+    glow.fillCircle(0, 0, r + 9);
+    glow.setBlendMode(Phaser.BlendModes.ADD);
+
+    const disc = this.add.graphics();
+    disc.fillStyle(0x241043, 0.96);
+    disc.fillCircle(0, 0, r);
+    disc.lineStyle(3, 0xffd93c, 0.95);
+    disc.strokeCircle(0, 0, r);
+
+    const cog = this.add.graphics();
+    this._drawCog(cog, 0, 0, 16, 11, 5, 8, 0xffd93c, 0x241043);
+
+    const hit = this.add.circle(0, 0, r + 6, 0xffffff, 0)
+      .setInteractive({ useHandCursor: true });
+    c.add([glow, disc, cog, hit]);
+
+    hit.on('pointerover', () => {
+      this.tweens.add({ targets: c, scale: 1.08, duration: 120, ease: 'Back.easeOut' });
+      glow.setAlpha(0.34);
+    });
+    hit.on('pointerout', () => {
+      this.tweens.add({ targets: c, scale: 1, duration: 120 });
+      glow.setAlpha(0.18);
+    });
+    hit.on('pointerdown', () => c.setScale(0.93));
+    hit.on('pointerup', () => {
+      c.setScale(1);
+      this.audioManager?.playSfx('click');
+      this.tweens.add({ targets: cog, angle: 120, duration: 280, ease: 'Cubic.easeOut' });
+      this.time.delayedCall(130, () => this.scene.start('SettingsScene'));
+    });
+  }
+
+  /** Zębatka jako wypełniony wielokąt z płaskimi zębami + środkowa dziura. */
+  _drawCog(g, cx, cy, rOut, rIn, rHole, teeth, color, holeColor) {
+    const TAU = Math.PI * 2;
+    const half = (TAU / teeth) * 0.26;
+    const pts = [];
+    for (let i = 0; i < teeth; i++) {
+      const a = (i / teeth) * TAU - Math.PI / 2;
+      const aNext = a + TAU / teeth;
+      pts.push({ x: cx + Math.cos(a - half) * rOut, y: cy + Math.sin(a - half) * rOut });
+      pts.push({ x: cx + Math.cos(a + half) * rOut, y: cy + Math.sin(a + half) * rOut });
+      pts.push({ x: cx + Math.cos(a + half) * rIn, y: cy + Math.sin(a + half) * rIn });
+      pts.push({ x: cx + Math.cos(aNext - half) * rIn, y: cy + Math.sin(aNext - half) * rIn });
     }
+    g.fillStyle(color, 1);
+    g.fillPoints(pts, true);
+    g.fillStyle(holeColor, 1);
+    g.fillCircle(cx, cy, rHole);
   }
 
   destroyButtons() {

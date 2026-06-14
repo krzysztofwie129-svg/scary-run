@@ -11,7 +11,7 @@ await page.evaluateOnNewDocument(() => {
 });
 await page.goto('http://localhost:5173/?desktop=1', { waitUntil: 'networkidle2' });
 await new Promise((r) => setTimeout(r, 3000));
-await page.mouse.click(1125, 70); // gear
+await page.mouse.click(1210, 62); // gear
 await new Promise((r) => setTimeout(r, 1500));
 await page.screenshot({ path: '/tmp/settings_v2.png' });
 

@@ -701,7 +701,11 @@ export class GameScene extends Phaser.Scene {
     this.elapsedSeconds += delta / 1000;
 
     const rampProgress = Math.min(this.elapsedSeconds, DIFFICULTY_RAMP_DURATION) / DIFFICULTY_RAMP_DURATION;
-    let baseSpeed = this.lvl.worldSpeed * (1 + 0.3 * rampProgress);
+    // BUGFIX 2026-06-14: ten per-frame recompute gubił mnożnik trudności
+    // (_difficultyMul) — easy/hard NIE zmieniały prędkości świata, bo init
+    // z linii ~111 był nadpisywany co klatkę raw lvl.worldSpeed. Teraz
+    // mnożymy z powrotem: easy=0.7×, hard=kumulatywnie.
+    let baseSpeed = this.lvl.worldSpeed * this._difficultyMul * (1 + 0.3 * rampProgress);
     // Sesja C: speed boost ×1.4 gdy SPEED active.
     if (powerUpManager.isActive(POWER_UP_TYPES.SPEED)) baseSpeed *= 1.4;
     this.worldSpeed = baseSpeed;
